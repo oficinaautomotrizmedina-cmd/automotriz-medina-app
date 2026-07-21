@@ -1,0 +1,2256 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Módulo Externo</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #fff;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d7dde7;
+      --brand: #155e75;
+      --ok: #166534;
+      --ok-bg: #effaf2;
+      --danger: #b91c1c;
+      --soft: #eef6f6;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+    }
+    button, input, select, textarea { font: inherit; }
+    button {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 11px;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9aa7b8; }
+    button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    button.success { background: #0f766e; border-color: #0f766e; color: #fff; }
+    button.notify { background: #2563eb; border-color: #2563eb; color: #fff; }
+    button.print { background: #111827; border-color: #111827; color: #fff; }
+    button.spell-check-btn { background: #16a34a; border-color: #16a34a; color: #fff; }
+    button.spell-check-btn:hover { background: #15803d; border-color: #15803d; }
+    button.danger { color: var(--danger); }
+    button.small { padding: 5px 8px; font-size: 12px; }
+    input, select, textarea {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 9px;
+    }
+    input.required-missing, select.required-missing {
+      border-color: #dc2626;
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, .12);
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .item-form textarea { min-height: 36px; height: 36px; resize: vertical; }
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand h1 { margin: 0; font-size: 18px; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .drop-zone {
+      flex-basis: 100%;
+      border: 1px dashed #cbd5e1;
+      border-radius: var(--radius);
+      background: #f8fafc;
+      color: #475569;
+      min-height: 54px;
+      padding: 16px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .drop-zone.drag-over {
+      background: #ecfdf5;
+      border-color: #16a34a;
+      color: #166534;
+      font-weight: 700;
+    }
+    .file-status {
+      flex-basis: 100%;
+      text-align: right;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .layout {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 12px;
+    }
+    .sidebar, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .sidebar { padding: 12px; align-self: start; position: sticky; top: 76px; }
+    .nav { display: grid; gap: 8px; }
+    .nav button {
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav button.active { background: var(--soft); border-color: #9ac6c2; color: #0f766e; font-weight: 700; }
+    .panel { padding: 14px; }
+    .panel + .panel { margin-top: 14px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .section-head h2 { margin: 0; font-size: 20px; }
+    .section-head p { margin: 4px 0 0; color: var(--muted); }
+    .grid { display: grid; gap: 12px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .item-form {
+      display: grid;
+      grid-template-columns: 150px minmax(180px, 1fr) 90px 130px auto;
+      gap: 10px;
+      align-items: end;
+    }
+    .item-list { display: grid; gap: 8px; margin-top: 12px; }
+    .item-card {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr) 90px 130px 95px;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 10px;
+      cursor: grab;
+    }
+    .item-card:active { cursor: grabbing; }
+    .item-card.drag-over { outline: 2px dashed #0f766e; background: #f0fdfa; }
+    .item-card.dragging { opacity: .55; }
+    .item-card.editing { cursor: default; }
+    .sheet-wrap {
+      width: 100%;
+      overflow-x: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .sheet-table {
+      width: 100%;
+      min-width: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    .sheet-table th,
+    .sheet-table td {
+      border-right: 1px solid #e4e9f1;
+      border-bottom: 1px solid #e4e9f1;
+      padding: 0;
+      height: 38px;
+      vertical-align: middle;
+      background: #fff;
+    }
+    .sheet-table th {
+      height: 34px;
+      padding: 7px 8px;
+      text-align: center;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .sheet-table tr:last-child td { border-bottom: 0; }
+    .sheet-table th:last-child,
+    .sheet-table td:last-child { border-right: 0; }
+    .sheet-row.drag-over td { background: #effaf2; box-shadow: inset 0 2px 0 #0f766e; }
+    .sheet-row.dragging td { opacity: .55; }
+    .sheet-row.pointer-dragging td { opacity: .45; }
+    .sheet-table .sheet-move { width: 26px; }
+    .sheet-drag {
+      width: 26px;
+      text-align: center;
+      color: #94a3b8;
+      cursor: grab;
+      user-select: none;
+      font-weight: 700;
+      touch-action: none;
+    }
+    .sheet-row:active .sheet-drag { cursor: grabbing; }
+    .sheet-table .sheet-type { width: 118px; }
+    .sheet-table .sheet-cant { width: 58px; }
+    .sheet-table .sheet-auth { width: 82px; }
+    .sheet-table .sheet-asist { width: 104px; }
+    .sheet-table .sheet-actions { width: 32px; }
+    .sheet-table input,
+    .sheet-table select,
+    .sheet-table textarea {
+      width: 100%;
+      min-height: 36px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 7px 6px;
+      outline: none;
+    }
+    .sheet-table textarea {
+      height: 36px;
+      min-height: 36px;
+      resize: vertical;
+      overflow: auto;
+      line-height: 20px;
+    }
+    .sheet-table input:focus,
+    .sheet-table select:focus,
+    .sheet-table textarea:focus {
+      box-shadow: inset 0 0 0 2px #155e75;
+      background: #fff;
+    }
+    .sheet-table input[type="checkbox"] {
+      width: 18px;
+      min-height: 18px;
+      accent-color: #16a34a;
+      margin: 0 auto;
+      display: block;
+      box-shadow: none;
+    }
+    .excel-selected-cell {
+      box-shadow: inset 0 0 0 2px #155e75;
+      background: #eef7f8 !important;
+      outline: none;
+    }
+    .excel-selected-cell input,
+    .excel-selected-cell textarea,
+    .excel-selected-cell select {
+      background: transparent;
+      cursor: default;
+    }
+    .excel-editing-cell {
+      box-shadow: inset 0 0 0 2px #16a34a;
+      background: #fff !important;
+      outline: none;
+    }
+    .excel-editing-cell input,
+    .excel-editing-cell textarea,
+    .excel-editing-cell select {
+      background: #fff;
+      caret-color: auto;
+      cursor: text;
+    }
+    .excel-selected-cell select,
+    .excel-editing-cell select {
+      cursor: pointer;
+    }
+    .sheet-delete {
+      width: 100%;
+      height: 36px;
+      min-height: 36px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      color: var(--danger);
+      background: transparent;
+      font-weight: 700;
+    }
+    .sheet-delete:hover { background: #fff1f2; border: 0; }
+    .sheet-disabled {
+      color: #94a3b8;
+      text-align: center;
+      font-size: 12px;
+    }
+    .sheet-tools { display: flex; gap: 8px; justify-content: flex-end; }
+    .sheet-add { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+    .sheet-add:hover { background: #e2e8f0; border-color: #94a3b8; }
+    .print-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #334155;
+      font-size: 12px;
+      text-transform: none;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .print-check input {
+      width: 16px;
+      min-height: 16px;
+      accent-color: #155e75;
+    }
+    .dual-sheets {
+      display: grid;
+      grid-template-columns: minmax(560px, 1.85fr) minmax(260px, .65fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .sheet-box { min-width: 0; }
+    .mini-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .mini-head h3 {
+      margin: 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #334155;
+    }
+    .parts-table .parts-cant { width: 62px; }
+    .type-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .auth-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--ok);
+      font-size: 12px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .auth-check input { width: 16px; min-height: 16px; accent-color: #16a34a; }
+    .pill {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: #fff;
+    }
+    .pill.ok { border-color: #a7d7b5; color: var(--ok); background: var(--ok-bg); }
+    .item-desc { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .muted { color: var(--muted); }
+    .vehicle-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .summary-box { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; background: #fff; }
+    .summary-box span { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .summary-box strong { display: block; margin-top: 3px; overflow-wrap: anywhere; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: #111827;
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 9px 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s;
+      z-index: 20;
+    }
+    .toast.show { opacity: 1; }
+    .print-area { display: none; }
+    .doc {
+      width: 8.5in;
+      min-height: 11in;
+      margin: 0 auto;
+      padding: .5in;
+      background: #fff;
+      color: #111827;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .doc-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      border-bottom: 3px solid #155e75;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .doc-brand { font-size: 20px; font-weight: 800; letter-spacing: .02em; color: #155e75; }
+    .doc-subtitle { margin-top: 6px; color: #4b5563; font-size: 11px; line-height: 1.35; max-width: 360px; }
+    .doc-title { text-align: right; }
+    .doc h1 { margin: 0; font-size: 24px; letter-spacing: .04em; text-transform: uppercase; }
+    .doc h2 { margin: 20px 0 8px; font-size: 14px; color: #155e75; text-transform: uppercase; letter-spacing: .04em; }
+    .doc p { margin: 3px 0; }
+    .doc-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 12px; }
+    .doc-field { min-height: 38px; padding: 0; }
+    .doc-label { display: block; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .doc-value { display: block; margin-top: 3px; font-weight: 700; overflow-wrap: anywhere; }
+    .print-items { width: 100%; max-width: 100%; overflow: hidden; }
+    .print-row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 96px;
+      align-items: start;
+      border-bottom: 1px solid #edf2f7;
+      font-size: 12px;
+    }
+    .print-row.spacer { min-height: 34px; }
+    .print-row.header {
+      border-bottom: 1px solid #cbd5e1;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .print-cell { min-width: 0; padding: 10px; }
+    .print-num { text-align: center; }
+    .print-desc {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      white-space: normal;
+      line-height: 1.35;
+    }
+    .print-qty { text-align: right; padding-right: 14px; white-space: nowrap; }
+    @media (max-width: 1180px) {
+      .dual-sheets { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 920px) {
+      .topbar-inner { align-items: flex-start; flex-direction: column; }
+      .toolbar { justify-content: flex-start; }
+      .file-status { text-align: left; }
+      .layout { grid-template-columns: 1fr; padding: 8px; }
+      .panel { padding: 10px; }
+      .sidebar { position: static; }
+      .grid.cols-4, .vehicle-summary { grid-template-columns: 1fr; }
+      .sheet-wrap { overflow-x: auto; }
+      .sheet-table { min-width: 720px; }
+      .parts-table { min-width: 420px; }
+      .item-form, .item-card { grid-template-columns: 1fr; }
+    }
+    @media print {
+      @page { size: letter; margin: 0; }
+      body { background: #fff; }
+      .app-shell, .toast { display: none !important; }
+      .print-area { display: block; }
+      .doc { width: auto; min-height: auto; margin: 0; padding: .5in; }
+    }
+  </style>
+</head>
+<body lang="es" spellcheck="true">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <h1>Módulo Externo</h1>
+        </div>
+        <div class="toolbar">
+          <button id="newFile">Crear nuevo expediente / borrar todo</button>
+          <button id="saveFile" class="primary">Guardar</button>
+          <input id="loadFile" type="file" accept=".xls,.html,.json" hidden>
+          <div id="fileStatus" class="file-status">Sin archivo vinculado</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <nav class="nav">
+          <button data-section="ingreso" class="active">Ingreso <span id="countAll">0</span></button>
+          <button data-section="autorizado">Autorizado <span id="countAuth">0</span></button>
+        </nav>
+      </aside>
+
+      <section>
+        <section id="ingreso" class="section active">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Ingreso</h2>
+              </div>
+              <div class="actions">
+                <button class="success" id="autoFillVehicleBtn" type="button">Autorellenar datos del vehiculo</button>
+                <button class="notify" onclick="openNotify()">Notificar</button>
+                <button class="print" data-print="ingreso">Imprimir ingreso</button>
+              </div>
+            </div>
+            <div class="grid cols-4">
+              <label>Fecha de ingreso<input id="fecha" type="date" required></label>
+              <label>Hora<input id="hora" type="time" required></label>
+              <label>Tecnico<select id="tecnico" required><option>Edwin</option><option>Rafael</option><option>Cristian</option><option>Otro</option></select></label>
+              <label>Marca<input id="marca" required></label>
+              <label>Modelo<input id="modelo" required></label>
+              <label>Año<input id="anio" required></label>
+              <label>Color<input id="color" required></label>
+              <label>VIN<input id="vin" required></label>
+              <label>Placa<input id="placa" required></label>
+              <label>Odómetro<input id="odometro" type="number" min="0" step="1" required></label>
+              <label>Unidad<select id="odometroUnidad"><option value="mi">Millas</option><option value="km">Kilometros</option></select></label>
+              <label>Corrector<button id="spellCheckBtn" class="spell-check-btn" type="button">Corrector</button></label>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="dual-sheets">
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>ITEMS DE TRABAJO</h3>
+                  <div class="sheet-tools">
+                    <button class="small sheet-add" data-add-rows="ingreso">Agregar renglones</button>
+                  </div>
+                </div>
+                <div id="items" class="sheet-wrap"></div>
+              </div>
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>REPUESTOS</h3>
+                  <div class="sheet-tools">
+                    <label class="print-check"><input id="printRepuestos" type="checkbox">Agregar a impresión</label>
+                  </div>
+                </div>
+                <div id="partsItems" class="sheet-wrap"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="autorizado" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Trabajo autorizado</h2>
+              </div>
+              <div class="actions">
+                <button class="notify" onclick="openNotify()">Notificar</button>
+                <button class="print" data-print="autorizado">Imprimir autorizado</button>
+              </div>
+            </div>
+            <div id="authFields" class="grid cols-4"></div>
+          </div>
+          <div class="panel">
+            <div class="dual-sheets">
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>ITEMS AUTORIZADOS</h3>
+                  <div class="sheet-tools">
+                    <button class="small sheet-add" data-add-rows="autorizado">Agregar renglones</button>
+                  </div>
+                </div>
+                <div id="authorizedItems" class="sheet-wrap"></div>
+              </div>
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>REPUESTOS</h3>
+                  <div class="sheet-tools">
+                    <label class="print-check"><input id="printAuthRepuestos" type="checkbox">Agregar a impresión</label>
+                  </div>
+                </div>
+                <div id="authPartsItems" class="sheet-wrap"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="printArea" class="print-area"></div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const text = (v) => String(v == null ? '' : v);
+    const esc = (v) => text(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const today = () => new Date().toISOString().slice(0, 10);
+    const nowTime = () => new Date().toTimeString().slice(0, 5);
+    const fields = ['fecha','hora','tecnico','marca','modelo','anio','color','vin','placa','odometro','odometroUnidad'];
+    const VEHICLE_AUTOFILL_KEY = 'am_quick_vehicle_autofill';
+    const uppercaseVehicleFields = ['marca','modelo','anio','color','vin','placa','odometro'];
+    const requiredVehicleFields = ['fecha','hora','tecnico','marca','modelo','anio','color','vin','placa','odometro'];
+    const requiredVehicleLabels = {
+      fecha: 'Fecha de ingreso',
+      hora: 'Hora',
+      tecnico: 'Tecnico',
+      marca: 'Marca',
+      modelo: 'Modelo',
+      anio: 'Año',
+      color: 'Color',
+      vin: 'VIN',
+      placa: 'Placa',
+      odometro: 'Odómetro'
+    };
+    let expedienteId = Date.now();
+    let items = [];
+    let repuestos = [];
+    let authItems = [];
+    let authRepuestos = [];
+    let currentFileHandle = null;
+    let currentFileName = '';
+    let editingId = null;
+    let isDirty = false;
+    let autoSaveTimer = null;
+    let isAutoSaving = false;
+    let lastSavedAt = null;
+    let allowUnloadOnce = false;
+    const UNSAVED_CHANGES_MESSAGE = 'Hay cambios sin guardar. Si actualiza o cierra esta ventana se pueden perder datos. Por favor, asegurese de guardar el archivo antes de continuar.';
+    const QUICK_ARCHIVE_KEY = 'am_quick_taller_archives_v1';
+    let archiveReception = '';
+    const minSheetRows = 15;
+    const extraSheetRows = { ingreso: 0, autorizado: 0, repuestos: 0, authRepuestos: 0 };
+    const removedSheetRows = { ingreso: 0, autorizado: 0, repuestos: 0, authRepuestos: 0 };
+    const itemTypes = ['Revision','Diagnostico','Reparacion','Mantenimiento','Repuestos','Laboratorio','Programacion','Torno','Combustibles','Sugerencias','Otros'];
+    const assistanceOptions = ['', 'Edwin', 'Rafael', 'Cristian', 'Otro'];
+
+    function isSuggestion(tipo) {
+      return String(tipo || '').toLowerCase() === 'sugerencias';
+    }
+
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 1500);
+    }
+
+    function upperText(value) {
+      return text(value).toLocaleUpperCase('es-SV');
+    }
+
+    function forceUppercaseInput(el) {
+      if (!el) return;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const upper = upperText(el.value);
+      if (el.value !== upper) {
+        el.value = upper;
+        if (typeof start === 'number' && typeof end === 'number') {
+          el.setSelectionRange(start, end);
+        }
+      }
+    }
+
+    function autoFillVehicleFromEmployeeModule() {
+      let data = null;
+      const vehicleParam = new URLSearchParams(location.search).get('vehicle');
+      if (vehicleParam) {
+        try {
+          data = JSON.parse(decodeURIComponent(escape(atob(vehicleParam))));
+        } catch (err) {
+          data = null;
+        }
+      }
+      try {
+        data = data || JSON.parse(localStorage.getItem(VEHICLE_AUTOFILL_KEY) || 'null');
+      } catch (err) {
+        data = data || null;
+      }
+      if (!data) {
+        alert('No hay datos de vehiculo enviados desde el modulo de empleados. Abra primero un vehiculo y luego este modulo.');
+        return;
+      }
+      const normalizeTechnician = (value) => {
+        const key = String(value || '').trim().toLowerCase();
+        if (key === 'edwin') return 'Edwin';
+        if (key === 'rafael') return 'Rafael';
+        if (key === 'cristian' || key === 'christian') return 'Cristian';
+        return value || 'Edwin';
+      };
+      const map = {
+        fecha: data.fecha,
+        hora: data.hora,
+        tecnico: normalizeTechnician(data.tecnico),
+        marca: data.marca,
+        modelo: data.modelo,
+        anio: data.anio,
+        color: data.color,
+        vin: data.vin,
+        placa: data.placa,
+        odometro: data.odometro,
+        odometroUnidad: data.odometroUnidad
+      };
+      Object.entries(map).forEach(([id, value]) => {
+        const el = $(id);
+        if (!el || value == null) return;
+        el.value = value;
+        if (uppercaseVehicleFields.includes(id)) forceUppercaseInput(el);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      markDirty();
+      toast('Datos del vehiculo autorellenados');
+    }
+
+    function decodeVehiclePayload(value) {
+      if (!value) return null;
+      try { return JSON.parse(decodeURIComponent(escape(atob(value)))); }
+      catch (err) { return null; }
+    }
+
+    function initialVehiclePayload() {
+      const params = new URLSearchParams(location.search);
+      let data = decodeVehiclePayload(params.get('vehicle'));
+      try { data = data || JSON.parse(localStorage.getItem(VEHICLE_AUTOFILL_KEY) || 'null'); }
+      catch (err) { data = data || null; }
+      return data || {};
+    }
+
+    function archiveStore() {
+      try { return JSON.parse(localStorage.getItem(QUICK_ARCHIVE_KEY) || '{}') || {}; }
+      catch (err) { return {}; }
+    }
+
+    function compactArchiveStore(store = {}) {
+      const compact = {};
+      Object.values(store || {}).forEach(archive => {
+        const data = archive?.data || {};
+        const key = archiveNorm(archive?.rec || data.rec || data.vin || data.placa || '');
+        if (!key) return;
+        const existing = compact[key];
+        const next = { rec: archive?.rec || data.rec || key, updatedAt: archive?.updatedAt || new Date().toISOString(), data };
+        if (!existing || Date.parse(next.updatedAt || 0) >= Date.parse(existing.updatedAt || 0)) compact[key] = next;
+      });
+      return compact;
+    }
+
+    function saveArchiveStore(store) {
+      const compact = compactArchiveStore(store || {});
+      localStorage.removeItem(QUICK_ARCHIVE_KEY);
+      localStorage.setItem(QUICK_ARCHIVE_KEY, JSON.stringify(compact));
+    }
+
+    function currentArchiveKey() {
+      return String(archiveReception || $('placa')?.value || expedienteId || '').trim();
+    }
+
+    function archiveNorm(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function archiveVehicleKey(data = {}) {
+      return [data.marca, data.modelo, data.anio].map(archiveNorm).filter(Boolean).join('|');
+    }
+
+    function archiveAliasKeys(data = {}) {
+      return [
+        currentArchiveKey(),
+        archiveReception,
+        data.rec,
+        data.vin,
+        data.placa
+      ].map(archiveNorm).filter(Boolean);
+    }
+
+    function archiveMatchesVehicle(archive, currentData = {}) {
+      const saved = archive?.data || {};
+      const currentKeys = archiveAliasKeys(currentData);
+      const savedKeys = [archive?.rec, saved.rec, saved.vin, saved.placa].map(archiveNorm).filter(Boolean);
+      if (savedKeys.some(key => currentKeys.includes(key))) return true;
+      const currentVehicleKey = archiveVehicleKey(currentData);
+      return !!currentVehicleKey && currentVehicleKey === archiveVehicleKey(saved);
+    }
+
+    function archiveContentScore(archive) {
+      const data = archive?.data || {};
+      let score = 0;
+      ['items', 'repuestos', 'authItems', 'authRepuestos'].forEach(key => {
+        if (Array.isArray(data[key])) score += data[key].length * 5;
+      });
+      ['marca', 'modelo', 'anio', 'color', 'vin', 'placa', 'odometro', 'tecnico'].forEach(key => {
+        if (String(data[key] || '').trim()) score += 1;
+      });
+      if (archive?.html) score += 1;
+      return score;
+    }
+
+    function newestUsefulArchive(candidates) {
+      return [...new Set(candidates)].sort((a, b) => {
+        const scoreDiff = archiveContentScore(b) - archiveContentScore(a);
+        if (scoreDiff) return scoreDiff;
+        return Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0);
+      })[0] || null;
+    }
+
+    function persistedArchive() {
+      const key = currentArchiveKey();
+      const store = archiveStore();
+      const currentData = blankDataFromVehicle();
+      const exactKeys = archiveAliasKeys(currentData);
+      const candidates = exactKeys.map(alias => store[alias]).filter(Boolean);
+      Object.values(store).forEach(archive => {
+        if (archiveMatchesVehicle(archive, currentData)) candidates.push(archive);
+      });
+      if (!candidates.length && key) return store[key] || null;
+      return newestUsefulArchive(candidates);
+    }
+
+    function persistArchiveSnapshot(note = '') {
+      const key = currentArchiveKey();
+      if (!key) return;
+      try {
+        const store = archiveStore();
+        const data = getData();
+        const snapshot = { rec: key, updatedAt: new Date().toISOString(), data };
+        store[archiveNorm(key)] = snapshot;
+        saveArchiveStore(store);
+        if (note) updateFileStatus(note);
+      } catch (err) {
+        console.warn('No se pudo guardar archivo rápido local', err);
+        try {
+          localStorage.removeItem(QUICK_ARCHIVE_KEY);
+          localStorage.setItem(QUICK_ARCHIVE_KEY, JSON.stringify({ [archiveNorm(key)]: { rec: key, updatedAt: new Date().toISOString(), data: getData() } }));
+          if (note) updateFileStatus(note);
+        } catch (innerErr) {
+          console.warn('No se pudo compactar archivo rápido local', innerErr);
+        }
+      }
+    }
+
+    function blankDataFromVehicle() {
+      const data = initialVehiclePayload();
+      archiveReception = data.rec || archiveReception || '';
+      return { ...blankData(), ...data, rec: archiveReception };
+    }
+
+    function validateRequiredVehicleFields() {
+      const missing = [];
+      requiredVehicleFields.forEach(id => {
+        const el = $(id);
+        const empty = !text(el && el.value).trim();
+        if (el) el.classList.toggle('required-missing', empty);
+        if (empty) missing.push(id);
+      });
+      if (missing.length) {
+        const labels = missing.map(id => requiredVehicleLabels[id] || id).join(', ');
+        alert('Debe completar estos campos obligatorios: ' + labels + '.');
+        const first = $(missing[0]);
+        if (first) {
+          first.focus();
+          first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
+      }
+      return true;
+    }
+
+    function openNotify() {
+      window.location.href = 'https://automdsv-svg.github.io/notificaciones/';
+    }
+
+    function saveTimeLabel(date = new Date()) {
+      return date.toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function updateFileStatus(note = '') {
+      const base = currentFileName ? `Archivo abierto: ${currentFileName}` : 'Sin archivo vinculado';
+      const status = note || (lastSavedAt ? `Ultimo guardado: ${saveTimeLabel(lastSavedAt)}` : '');
+      $('fileStatus').textContent = status ? `${base} | ${status}` : base;
+    }
+
+    function setFileHandle(handle) {
+      currentFileHandle = handle || null;
+      currentFileName = handle && handle.name ? handle.name : '';
+      updateFileStatus();
+    }
+
+    function markDirty() {
+      isDirty = true;
+      updateFileStatus(currentFileHandle ? 'Cambios pendientes de autoguardado' : 'Cambios sin guardar');
+      persistArchiveSnapshot('Cambios guardados internamente');
+      scheduleAutoSave();
+    }
+
+    function hasPendingChanges() {
+      return !!isDirty;
+    }
+
+    function preventUnsafeUnload(ev) {
+      if (!hasPendingChanges() || allowUnloadOnce) return;
+      ev.preventDefault();
+      ev.returnValue = UNSAVED_CHANGES_MESSAGE;
+      return ev.returnValue;
+    }
+
+    function preventKeyboardRefresh(ev) {
+      const key = String(ev.key || '').toLowerCase();
+      const isRefresh = key === 'f5' || ((ev.ctrlKey || ev.metaKey) && key === 'r');
+      if (!isRefresh || !hasPendingChanges()) return;
+      const ok = confirm(UNSAVED_CHANGES_MESSAGE);
+      if (!ok) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        updateFileStatus('Actualizacion cancelada. Guarde el archivo para no perder informacion.');
+        return;
+      }
+      allowUnloadOnce = true;
+      setTimeout(() => { allowUnloadOnce = false; }, 1500);
+    }
+
+    function renderAndMarkDirty() {
+      render();
+      markDirty();
+    }
+
+    function scheduleAutoSave() {
+      clearTimeout(autoSaveTimer);
+      if (!currentFileHandle) return;
+      autoSaveTimer = setTimeout(autoSaveExcel, 700);
+    }
+
+    async function autoSaveExcel() {
+      if (!currentFileHandle || isAutoSaving) return;
+      isAutoSaving = true;
+      try {
+        await writeWorkbookToHandle(currentFileHandle, htmlWorkbook());
+        isDirty = false;
+        lastSavedAt = new Date();
+        updateFileStatus(`Autoguardado: ${saveTimeLabel(lastSavedAt)}`);
+      } catch (e) {
+        isDirty = true;
+        updateFileStatus('No se pudo autoguardar. Guarde manualmente.');
+      } finally {
+        isAutoSaving = false;
+      }
+    }
+
+    function blankData() {
+      return { id: Date.now(), fecha: today(), hora: nowTime(), tecnico: 'Edwin', odometroUnidad: 'mi', items: [], repuestos: [], authItems: [], authRepuestos: [], printRepuestos: false, printAuthRepuestos: false };
+    }
+
+    function isRealItem(it) {
+      return !!text(it && it.desc).trim();
+    }
+
+    function isSheetSpacer(it) {
+      return !!(it && it.spacer);
+    }
+
+    function cleanSheetList(list) {
+      const out = list.map(x => ({...x}));
+      while (out.length && !isRealItem(out[out.length - 1])) out.pop();
+      return out;
+    }
+
+    function cleanItemsForSave() {
+      const ingreso = cleanSheetList(items.filter(x => !x.authOnly));
+      const authOnly = cleanSheetList(items.filter(x => x.authOnly));
+      const used = new Set([...ingreso, ...authOnly].map(x => x.id));
+      return items.filter(x => used.has(x.id)).map(x => ({...x}));
+    }
+
+    function isRealPart(it) {
+      return !!text(it && it.desc).trim();
+    }
+
+    function cleanPartsForSave() {
+      return cleanSheetList(repuestos).map(x => ({...x}));
+    }
+
+    function getData() {
+      syncAuthorizedCopies();
+      const data = {
+        id: expedienteId,
+        items: cleanItemsForSave(),
+        repuestos: cleanPartsForSave(),
+        authItems: cleanSheetList(authItems).map(x => ({...x})),
+        authRepuestos: cleanSheetList(authRepuestos).map(x => ({...x})),
+        updatedAt: Date.now()
+      };
+      fields.forEach(id => data[id] = uppercaseVehicleFields.includes(id) ? upperText($(id)?.value || '') : ($(id)?.value || ''));
+      data.printRepuestos = !!$('printRepuestos')?.checked;
+      data.printAuthRepuestos = !!$('printAuthRepuestos')?.checked;
+      return data;
+    }
+
+    function readIngresoValues() {
+      const fieldValue = (id) => uppercaseVehicleFields.includes(id) ? upperText($(id)?.value || '') : ($(id)?.value || '');
+      return {
+        fecha: fieldValue('fecha'),
+        hora: fieldValue('hora'),
+        tecnico: fieldValue('tecnico'),
+        marca: fieldValue('marca'),
+        modelo: fieldValue('modelo'),
+        anio: fieldValue('anio'),
+        color: fieldValue('color'),
+        vin: fieldValue('vin'),
+        placa: fieldValue('placa'),
+        odometro: fieldValue('odometro'),
+        odometroUnidad: fieldValue('odometroUnidad')
+      };
+    }
+
+    function normalizeLoadedData(data) {
+      const out = {...(data || {})};
+      const aliases = {
+        fecha: ['fecha', 'Fecha de ingreso', 'Fecha ingreso', 'Fecha de recepcion', 'Fecha de recepción'],
+        hora: ['hora', 'Hora', 'Hora de ingreso', 'Hora recepcion', 'Hora recepción'],
+        tecnico: ['tecnico', 'Tecnico', 'Técnico'],
+        marca: ['marca', 'Marca'],
+        modelo: ['modelo', 'Modelo'],
+        anio: ['anio', 'Año', 'ano', 'Anio'],
+        color: ['color', 'Color'],
+        vin: ['vin', 'VIN'],
+        placa: ['placa', 'Placa'],
+        odometro: ['odometro', 'Odómetro', 'Odómetro', 'Odómetro (valor)', 'Odómetro (valor)'],
+        odometroUnidad: ['odometroUnidad', 'Unidad', 'Odómetro (unidad)', 'Odómetro (unidad)']
+      };
+      Object.entries(aliases).forEach(([key, names]) => {
+        if (out[key]) return;
+        for (const name of names) {
+          if (out[name] != null && out[name] !== '') {
+            out[key] = out[name];
+            return;
+          }
+        }
+      });
+      return out;
+    }
+
+    function setData(data) {
+      data = normalizeLoadedData(data);
+      expedienteId = data.id || Date.now();
+      fields.forEach(id => { if ($(id)) $(id).value = data[id] || ''; });
+      items = (data.items || []).map((it, i) => ({
+        id: it.id || Date.now() + i,
+        tipo: it.tipo || 'Revision',
+        desc: it.desc || '',
+        cant: isSuggestion(it.tipo) ? '' : Math.max(1, Number(it.cant || 1)),
+        asistencia: isSuggestion(it.tipo) ? '' : (it.asistencia || ''),
+        autorizado: !!it.autorizado,
+        authOnly: !!it.authOnly,
+        spacer: !!it.spacer && !text(it.desc).trim()
+      }));
+      repuestos = (data.repuestos || []).map((it, i) => ({
+        id: it.id || Date.now() + 50000 + i,
+        tipo: 'Repuestos',
+        desc: it.desc || '',
+        cant: it.cant || '',
+        spacer: !!it.spacer && !text(it.desc).trim(),
+        userEdited: !!it.userEdited
+      }));
+      authItems = (data.authItems || []).map((it, i) => ({
+        id: it.id || Date.now() + 70000 + i,
+        sourceId: it.sourceId || null,
+        tipo: it.tipo || 'Revision',
+        desc: it.desc || '',
+        cant: isSuggestion(it.tipo) ? '' : Math.max(1, Number(it.cant || 1)),
+        asistencia: isSuggestion(it.tipo) ? '' : (it.asistencia || ''),
+        autorizado: true,
+        authOnly: true,
+        spacer: !!it.spacer && !text(it.desc).trim()
+      }));
+      authRepuestos = (data.authRepuestos || []).map((it, i) => ({
+        id: it.id || Date.now() + 90000 + i,
+        sourceItemId: it.sourceItemId || null,
+        tipo: 'Repuestos',
+        desc: it.desc || '',
+        cant: it.cant || '',
+        spacer: !!it.spacer && !text(it.desc).trim()
+      }));
+      if ($('printRepuestos')) $('printRepuestos').checked = !!data.printRepuestos;
+      if ($('printAuthRepuestos')) $('printAuthRepuestos').checked = !!data.printAuthRepuestos;
+      editingId = null;
+      extraSheetRows.ingreso = 0;
+      extraSheetRows.autorizado = 0;
+      extraSheetRows.repuestos = 0;
+      extraSheetRows.authRepuestos = 0;
+      removedSheetRows.ingreso = 0;
+      removedSheetRows.autorizado = 0;
+      removedSheetRows.repuestos = 0;
+      removedSheetRows.authRepuestos = 0;
+      syncAuthorizedCopies();
+      render();
+    }
+
+    function vehicleTitle(d = getData()) {
+      return [d.marca, d.modelo, d.anio, d.placa ? 'Placa ' + d.placa : ''].filter(Boolean).join(' - ');
+    }
+
+    function fileBaseName(kind) {
+      const d = getData();
+      const clean = (s) => text(s).trim().replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
+      const tecnico = clean(d.tecnico).toUpperCase();
+      return [clean(d.marca), clean(d.modelo), clean(d.anio), clean(d.color), clean(d.placa), tecnico].filter(Boolean).join('_') || 'SIN_DATOS';
+    }
+
+    function addItem() {
+      const desc = $('itemDesc').value.trim();
+      if (!desc) { alert('Escribe una descripcion.'); return; }
+      const tipo = $('itemTipo').value;
+      items.push({
+        id: Date.now(),
+        tipo,
+        desc,
+        cant: isSuggestion(tipo) ? '' : Math.max(1, Number($('itemCant').value || 1)),
+        asistencia: isSuggestion(tipo) ? '' : $('itemAsistencia').value,
+        autorizado: false,
+        authOnly: false
+      });
+      $('itemDesc').value = '';
+      $('itemCant').value = '1';
+      $('itemAsistencia').value = '';
+      $('itemDesc').focus();
+      renderAndMarkDirty();
+      toast('Item agregado');
+    }
+
+    function addAuthorizedItem() {
+      const desc = $('authItemDesc').value.trim();
+      if (!desc) { alert('Escribe una descripcion.'); return; }
+      const tipo = $('authItemTipo').value;
+      items.push({
+        id: Date.now(),
+        tipo,
+        desc,
+        cant: isSuggestion(tipo) ? '' : Math.max(1, Number($('authItemCant').value || 1)),
+        asistencia: isSuggestion(tipo) ? '' : $('authItemAsistencia').value,
+        autorizado: true,
+        authOnly: true
+      });
+      $('authItemDesc').value = '';
+      $('authItemCant').value = '1';
+      $('authItemAsistencia').value = '';
+      $('authItemDesc').focus();
+      renderAndMarkDirty();
+      toast('Item autorizado agregado');
+    }
+
+    function updateItem(id, patch) {
+      const idx = items.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      items[idx] = {...items[idx], ...patch};
+      if (isSuggestion(items[idx].tipo)) {
+        items[idx].cant = '';
+        items[idx].asistencia = '';
+      }
+      renderAndMarkDirty();
+    }
+
+    function toggleSuggestionInputs(prefix = '') {
+      const typeId = prefix ? 'authItemTipo' : 'itemTipo';
+      const cantWrapId = prefix ? 'wrapAuthItemCant' : 'wrapItemCant';
+      const asistWrapId = prefix ? 'wrapAuthItemAsistencia' : 'wrapItemAsistencia';
+      const cantId = prefix ? 'authItemCant' : 'itemCant';
+      const asistId = prefix ? 'authItemAsistencia' : 'itemAsistencia';
+      const suggestion = isSuggestion($(typeId)?.value);
+      if (!$(cantWrapId) || !$(asistWrapId)) return;
+      $(cantWrapId).style.display = suggestion ? 'none' : 'grid';
+      $(asistWrapId).style.display = suggestion ? 'none' : 'grid';
+      if (suggestion) {
+        $(cantId).value = '1';
+        $(asistId).value = '';
+      }
+    }
+
+    function itemTypeOptions(selected) {
+      return itemTypes.map(t => `<option ${t === selected ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    }
+
+    function assistanceSelectOptions(selected) {
+      return assistanceOptions.map(t => `<option value="${esc(t)}" ${t === selected ? 'selected' : ''}>${esc(t || '-')}</option>`).join('');
+    }
+
+    function editItem(id) {
+      editingId = id;
+      render();
+    }
+
+    function cancelEdit() {
+      editingId = null;
+      render();
+    }
+
+    function saveEdit(id) {
+      const tipo = $(`editTipo_${id}`)?.value || 'Revision';
+      const desc = ($(`editDesc_${id}`)?.value || '').trim();
+      const cant = isSuggestion(tipo) ? '' : Math.max(1, Number($(`editCant_${id}`)?.value || 1));
+      const asistencia = isSuggestion(tipo) ? '' : ($(`editAsistencia_${id}`)?.value || '');
+      if (!desc) { alert('Escribe una descripcion.'); return; }
+      editingId = null;
+      updateItem(id, { tipo, desc, cant, asistencia });
+    }
+
+    function removeItem(id, mode = '') {
+      if (!confirm('Eliminar este item?')) return;
+      if (mode === 'autorizado') {
+        const idx = authItems.findIndex(x => x.id === id);
+        authItems = authItems.filter(x => x.id !== id);
+        if (idx >= 0) authRepuestos.splice(idx, 1);
+      } else {
+        const visible = sheetSource('ingreso');
+        const idx = visible.findIndex(x => x.id === id);
+        items = items.filter(x => x.id !== id);
+        if (idx >= 0) repuestos.splice(idx, 1);
+      }
+      renderAndMarkDirty();
+    }
+
+    function itemCard(it, idx, mode = 'ingreso') {
+      const inAuthorized = mode === 'autorizado';
+      if (editingId === it.id) {
+        return `
+          <div class="item-card editing">
+            <label style="text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);">Tipo<select id="editTipo_${it.id}">${itemTypeOptions(it.tipo)}</select></label>
+            <label style="text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);">Descripcion<textarea id="editDesc_${it.id}" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences">${esc(it.desc)}</textarea></label>
+            ${isSuggestion(it.tipo) ? '<div class="muted">Cantidad y asistencia no aplican para Sugerencias.</div>' : `<label style="text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);">Cantidad<input id="editCant_${it.id}" type="number" min="1" step="1" value="${esc(it.cant)}"></label>
+            <label style="text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);">Asistencia<select id="editAsistencia_${it.id}"><option value="">-</option><option ${it.asistencia==='Edwin'?'selected':''}>Edwin</option><option ${it.asistencia==='Rafael'?'selected':''}>Rafael</option><option ${it.asistencia==='Cristian'?'selected':''}>Cristian</option><option ${it.asistencia==='Otro'?'selected':''}>Otro</option></select></label>`}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="small primary" onclick="saveEdit(${it.id})">Guardar</button>
+              <button class="small" onclick="cancelEdit()">Cancelar</button>
+            </div>
+          </div>`;
+      }
+      const auth = inAuthorized
+        ? '<span class="pill ok">Autorizado</span>'
+        : `<label class="auth-check"><input type="checkbox" ${it.autorizado ? 'checked' : ''} onchange="updateItem(${it.id},{autorizado:this.checked})">Autorizado</label>`;
+      const controls = `<button class="small" onclick="editItem(${it.id})">Editar</button><button class="small danger" onclick="removeItem(${it.id})">Borrar</button>`;
+      return `
+        <div class="item-card" draggable="true" data-id="${it.id}" data-list="${inAuthorized ? 'autorizado' : 'ingreso'}">
+          <div class="type-line"><span class="pill">${esc(it.tipo)}</span>${auth}</div>
+          <div class="item-desc">${esc(it.desc)}</div>
+          ${isSuggestion(it.tipo) ? '<div class="muted">Sin cantidad</div><div class="muted">Sin asistencia</div>' : `<label style="text-transform:none;letter-spacing:0;font-size:12px;color:var(--muted);">Cantidad<input type="number" min="1" step="1" value="${esc(it.cant)}" onchange="updateItem(${it.id},{cant:Number(this.value||1)})"></label>
+          <div><span class="muted">Asistencia</span><br><strong>${esc(it.asistencia || '-')}</strong></div>`}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">${controls}</div>
+        </div>`;
+    }
+
+    function attachDrag(listId, mode) {
+      const wrap = $(listId);
+      if (!wrap) return;
+      let dragId = null;
+      wrap.querySelectorAll('.item-card[draggable="true"]').forEach(card => {
+        card.addEventListener('dragstart', (ev) => {
+          dragId = Number(card.dataset.id);
+          ev.dataTransfer.effectAllowed = 'move';
+          ev.dataTransfer.dropEffect = 'move';
+          ev.dataTransfer.setData('text/plain', String(dragId));
+          card.classList.add('dragging');
+        });
+        card.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          ev.dataTransfer.dropEffect = 'move';
+          card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          card.classList.remove('drag-over');
+          const fromId = dragId || Number(ev.dataTransfer.getData('text/plain'));
+          const toId = Number(card.dataset.id);
+          if (!fromId || !toId || fromId === toId) return;
+          reorderItems(fromId, toId, mode);
+        });
+        card.addEventListener('dragend', () => {
+          dragId = null;
+          card.classList.remove('drag-over');
+          card.classList.remove('dragging');
+        });
+      });
+    }
+
+    function ensureSheetIndex(mode, index) {
+      const target = Math.max(0, Number(index || 0));
+      while (sheetSource(mode).length <= target) {
+        createSheetItemAt(mode, sheetSource(mode).length, true);
+      }
+      return sheetSource(mode)[target];
+    }
+
+    function reorderItems(fromId, targetIndex, mode, place = 'before') {
+      const store = mode === 'autorizado' ? authItems : items;
+      const moved = store.find(x => x.id === fromId);
+      if (!moved) return;
+      const fromIndex = sheetSource(mode).findIndex(x => x.id === fromId);
+      const target = ensureSheetIndex(mode, targetIndex);
+      if (!target) return;
+      if (target.id === fromId) return;
+      const oldVisible = sheetSource(mode).map(x => x.id);
+      const visibleWithoutMoved = sheetSource(mode).filter(x => x.id !== fromId);
+      let targetPos = visibleWithoutMoved.findIndex(x => x.id === target.id);
+      if (targetPos < 0) targetPos = visibleWithoutMoved.length;
+      if (place === 'after') targetPos += 1;
+      visibleWithoutMoved.splice(Math.min(targetPos, visibleWithoutMoved.length), 0, moved);
+      let cursor = 0;
+      const reorderedStore = store.map(x => {
+        if (!oldVisible.includes(x.id)) return x;
+        const next = visibleWithoutMoved[cursor++];
+        return next || x;
+      });
+      if (mode === 'autorizado') {
+        authItems = reorderedStore;
+        reorderPartsByRowMove('autorizado', fromIndex, targetIndex, place);
+      } else {
+        items = reorderedStore;
+        reorderPartsByRowMove('ingreso', fromIndex, targetIndex, place);
+      }
+      renderAndMarkDirty();
+    }
+
+    function cloneItemForAuth(it) {
+      return {
+        id: newItemId(),
+        sourceId: it.id,
+        tipo: it.tipo || 'Revision',
+        desc: it.desc || '',
+        cant: it.cant || '',
+        asistencia: it.asistencia || '',
+        autorizado: true,
+        authOnly: true,
+        spacer: !!it.spacer && !text(it.desc).trim()
+      };
+    }
+
+    function clonePartForAuth(part, sourceItemId) {
+      return {
+        id: newItemId(),
+        sourceItemId,
+        tipo: 'Repuestos',
+        desc: part?.desc || '',
+        cant: part?.cant || '',
+        spacer: !!part?.spacer && !text(part?.desc).trim(),
+        userEdited: false
+      };
+    }
+
+    function syncAuthorizedCopies() {
+      const ingresoRows = sheetSource('ingreso');
+      const wanted = ingresoRows.filter(x => x.autorizado).map(x => x.id);
+      authItems = authItems.filter(x => !x.sourceId || wanted.includes(x.sourceId));
+      authRepuestos = authRepuestos.filter(x => !x.sourceItemId || wanted.includes(x.sourceItemId));
+      ingresoRows.forEach((it, idx) => {
+        if (!it.autorizado) return;
+        if (!authItems.some(x => x.sourceId === it.id)) authItems.push(cloneItemForAuth(it));
+        const sourcePart = repuestos[idx];
+        const targetPart = authRepuestos.find(x => x.sourceItemId === it.id);
+        if (!targetPart) {
+          authRepuestos.push(clonePartForAuth(sourcePart, it.id));
+        } else if (!targetPart.userEdited && isRealPart(sourcePart)) {
+          targetPart.desc = sourcePart.desc || '';
+          targetPart.cant = sourcePart.cant || '';
+          targetPart.tipo = 'Repuestos';
+          targetPart.spacer = false;
+        }
+      });
+    }
+
+    function newItemId() {
+      return Date.now() + Math.floor(Math.random() * 100000);
+    }
+
+    function sheetSource(mode) {
+      return mode === 'autorizado'
+        ? authItems
+        : items.filter(x => !x.authOnly);
+    }
+
+    function sheetRows(mode) {
+      const current = sheetSource(mode);
+      const minRows = Math.max(current.length + 1, minSheetRows + (extraSheetRows[mode] || 0) - (removedSheetRows[mode] || 0));
+      const blanks = Array.from({ length: Math.max(minRows - current.length, 1) }, (_, i) => ({
+        blank: true,
+        transient: true,
+        index: current.length + i,
+        key: `new-${mode}-${i}`,
+        tipo: 'Revision',
+        desc: '',
+        cant: '',
+        asistencia: '',
+        autorizado: mode === 'autorizado'
+      }));
+      return current.concat(blanks);
+    }
+
+    function createSheetItem(mode, spacer = false) {
+      const it = {
+        id: newItemId(),
+        tipo: 'Revision',
+        desc: '',
+        cant: '',
+        asistencia: '',
+        autorizado: mode === 'autorizado',
+        authOnly: mode === 'autorizado',
+        spacer
+      };
+      items.push(it);
+      return it;
+    }
+
+    function createSheetItemAt(mode, index, spacer = false) {
+      const visible = sheetSource(mode);
+      const it = {
+        id: newItemId(),
+        sourceId: null,
+        tipo: 'Revision',
+        desc: '',
+        cant: '',
+        asistencia: '',
+        autorizado: mode === 'autorizado',
+        authOnly: mode === 'autorizado',
+        spacer
+      };
+      const store = mode === 'autorizado' ? authItems : items;
+      const before = visible[index];
+      if (before) {
+        const insertAt = store.findIndex(x => x.id === before.id);
+        store.splice(insertAt, 0, it);
+      } else if (visible.length) {
+        const last = visible[visible.length - 1];
+        const insertAt = store.findIndex(x => x.id === last.id) + 1;
+        store.splice(insertAt, 0, it);
+      } else {
+        store.push(it);
+      }
+      return it;
+    }
+
+    function bindRowToItem(row, it) {
+      row.dataset.id = String(it.id);
+      row.dataset.key = String(it.id);
+      row.dataset.transient = '';
+      row.querySelectorAll('[data-sheet]').forEach(el => { el.dataset.key = String(it.id); });
+      const del = row.querySelector('.sheet-delete');
+      if (del) {
+        del.dataset.id = String(it.id);
+        del.disabled = false;
+      }
+      row.draggable = true;
+    }
+
+    function ensureSheetItem(row, mode) {
+      const id = Number(row.dataset.id || 0);
+      const store = mode === 'autorizado' ? authItems : items;
+      let it = id ? store.find(x => x.id === id) : null;
+      if (!it) {
+        const targetIndex = Number(row.dataset.index || sheetSource(mode).length);
+        while (sheetSource(mode).length < targetIndex) createSheetItemAt(mode, sheetSource(mode).length, true);
+        it = createSheetItemAt(mode, targetIndex, true);
+        bindRowToItem(row, it);
+      }
+      return it;
+    }
+
+    function fitSheetTextarea(el) {
+      if (!el || el.tagName !== 'TEXTAREA') return;
+      el.style.height = '36px';
+      el.style.height = Math.max(36, el.scrollHeight) + 'px';
+    }
+
+    function sheetPatch(el, mode) {
+      const row = el.closest('.sheet-row');
+      if (!row) return;
+      const field = el.dataset.field;
+      const it = ensureSheetItem(row, mode);
+      let value = el.type === 'checkbox' ? el.checked : el.value;
+      if (field === 'tipo' && !itemTypes.includes(value)) value = 'Revision';
+      it[field] = value;
+      if (field === 'desc') it.spacer = !text(value).trim();
+      if (field !== 'desc' && isRealItem(it)) it.spacer = false;
+      if (field === 'tipo' && isSuggestion(value)) {
+        it.cant = '';
+        it.asistencia = '';
+      }
+      if (mode === 'autorizado') {
+        it.autorizado = true;
+        it.authOnly = !!it.authOnly;
+      }
+      if (field === 'desc') fitSheetTextarea(el);
+      if (field === 'tipo' || field === 'autorizado') {
+        renderAndMarkDirty();
+      } else {
+        renderSummary();
+        markDirty();
+      }
+    }
+
+    function sheetRowHtml(it, idx, mode) {
+      const blank = !!it.blank;
+      const transient = !!it.transient;
+      const id = blank ? '' : String(it.id);
+      const key = blank ? it.key : id;
+      const suggestion = isSuggestion(it.tipo);
+      const authCell = mode === 'ingreso'
+        ? `<td class="sheet-auth"><input data-sheet data-field="autorizado" data-key="${esc(key)}" type="checkbox" ${it.autorizado ? 'checked' : ''} title="Autorizado"></td>`
+        : '';
+      const cantCell = suggestion
+        ? '<td class="sheet-cant sheet-disabled">-</td>'
+        : `<td class="sheet-cant"><input data-sheet data-field="cant" data-key="${esc(key)}" value="${esc(it.cant || '')}" autocomplete="off"></td>`;
+      const asistCell = suggestion
+        ? '<td class="sheet-asist sheet-disabled">-</td>'
+        : `<td class="sheet-asist"><select data-sheet data-field="asistencia" data-key="${esc(key)}">${assistanceSelectOptions(it.asistencia || '')}</select></td>`;
+      return `
+        <tr class="sheet-row" data-mode="${mode}" data-id="${esc(id)}" data-key="${esc(key)}" data-index="${idx}" data-transient="${transient ? '1' : ''}">
+          <td class="sheet-drag sheet-move" title="Arrastrar fila">::</td>
+          <td class="sheet-type"><select data-sheet data-field="tipo" data-key="${esc(key)}">${itemTypeOptions(it.tipo || 'Revision')}</select></td>
+          ${cantCell}
+          <td><textarea data-sheet data-field="desc" data-key="${esc(key)}" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences">${esc(it.desc || '')}</textarea></td>
+          ${asistCell}
+          ${authCell}
+          <td class="sheet-actions"><button class="sheet-delete" data-id="${esc(id)}" data-blank="${blank ? '1' : ''}" data-index="${idx}" title="Borrar fila">X</button></td>
+        </tr>`;
+    }
+
+    function sheetHeader(mode) {
+      const authHead = mode === 'ingreso' ? '<th class="sheet-auth">Autorizado</th>' : '';
+      return `<thead><tr>
+        <th class="sheet-move"></th>
+        <th class="sheet-type">Tipo</th>
+        <th class="sheet-cant">Cant</th>
+        <th>Descripcion</th>
+        <th class="sheet-asist">Asistencia</th>
+        ${authHead}
+        <th class="sheet-actions"></th>
+      </tr></thead>`;
+    }
+
+    function attachSheet(listId, mode) {
+      const wrap = $(listId);
+      if (!wrap) return;
+      wrap.querySelectorAll('[data-sheet]').forEach(el => {
+        const eventName = el.tagName === 'TEXTAREA' ? 'input' : 'change';
+        el.addEventListener(eventName, () => sheetPatch(el, mode));
+        if (el.tagName === 'TEXTAREA') fitSheetTextarea(el);
+      });
+      wrap.querySelectorAll('.sheet-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id || 0);
+          if (id) removeItem(id, mode);
+          else removeBlankSheetRow(mode);
+        });
+      });
+
+      wrap.querySelectorAll('.sheet-drag').forEach(handle => {
+        handle.addEventListener('pointerdown', ev => {
+          const row = handle.closest('.sheet-row');
+          const it = ensureSheetItem(row, mode);
+          const fromId = it.id;
+          row.classList.add('pointer-dragging');
+          handle.setPointerCapture?.(ev.pointerId);
+          ev.preventDefault();
+
+          const moveOver = pointEv => {
+            const target = document.elementFromPoint(pointEv.clientX, pointEv.clientY)?.closest('.sheet-row');
+            wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (target && wrap.contains(target)) target.classList.add('drag-over');
+          };
+
+          const finish = pointEv => {
+            document.removeEventListener('pointermove', moveOver);
+            document.removeEventListener('pointerup', finish);
+            document.removeEventListener('pointercancel', finish);
+            row.classList.remove('pointer-dragging');
+            const target = document.elementFromPoint(pointEv.clientX, pointEv.clientY)?.closest('.sheet-row');
+            wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!target || !wrap.contains(target)) return;
+            const targetIndex = Number(target.dataset.index || 0);
+            reorderItems(fromId, targetIndex, mode, 'before');
+          };
+
+          document.addEventListener('pointermove', moveOver);
+          document.addEventListener('pointerup', finish);
+          document.addEventListener('pointercancel', finish);
+        });
+      });
+    }
+
+    function renderSheet(listId, mode) {
+      const rows = sheetRows(mode).map((it, idx) => sheetRowHtml(it, idx, mode)).join('');
+      $(listId).innerHTML = `<table class="sheet-table">${sheetHeader(mode)}<tbody>${rows}</tbody></table>`;
+      attachSheet(listId, mode);
+    }
+
+    function addSheetRows(mode) {
+      extraSheetRows[mode] = (extraSheetRows[mode] || 0) + 5;
+      if (mode === 'ingreso') extraSheetRows.repuestos = (extraSheetRows.repuestos || 0) + 5;
+      if (mode === 'autorizado') extraSheetRows.authRepuestos = (extraSheetRows.authRepuestos || 0) + 5;
+      renderItems();
+      toast('Renglones agregados');
+    }
+
+    function removeBlankSheetRow(mode) {
+      removedSheetRows[mode] = (removedSheetRows[mode] || 0) + 1;
+      if (mode === 'ingreso') removedSheetRows.repuestos = (removedSheetRows.repuestos || 0) + 1;
+      if (mode === 'autorizado') removedSheetRows.authRepuestos = (removedSheetRows.authRepuestos || 0) + 1;
+      renderItems();
+      markDirty();
+    }
+
+    function partsStore(mode = 'ingreso') {
+      return mode === 'autorizado' ? authRepuestos : repuestos;
+    }
+
+    function setPartsStore(mode, list) {
+      if (mode === 'autorizado') authRepuestos = list;
+      else repuestos = list;
+    }
+
+    function partsExtraKey(mode = 'ingreso') {
+      return mode === 'autorizado' ? 'authRepuestos' : 'repuestos';
+    }
+
+    function partRows(mode = 'ingreso') {
+      const store = partsStore(mode);
+      const linkedRows = sheetSource(mode).length;
+      const extraKey = partsExtraKey(mode);
+      const minRows = Math.max(linkedRows + 1, minSheetRows + (extraSheetRows[extraKey] || 0) - (removedSheetRows[extraKey] || 0));
+      const blanks = Array.from({ length: Math.max(minRows - store.length, 1) }, (_, i) => ({
+        blank: true,
+        transient: true,
+        index: store.length + i,
+        key: `new-${extraKey}-${i}`,
+        desc: '',
+        cant: ''
+      }));
+      return store.concat(blanks);
+    }
+
+    function createPartAt(index, spacer = false, mode = 'ingreso') {
+      const store = partsStore(mode);
+      const it = {
+        id: newItemId(),
+        sourceItemId: null,
+        tipo: 'Repuestos',
+        desc: '',
+        cant: '',
+        spacer
+      };
+      const target = store[index];
+      if (target) {
+        const insertAt = store.findIndex(x => x.id === target.id);
+        store.splice(insertAt, 0, it);
+      } else {
+        store.push(it);
+      }
+      setPartsStore(mode, store);
+      return it;
+    }
+
+    function ensurePartRow(row, mode = 'ingreso') {
+      const store = partsStore(mode);
+      const id = Number(row.dataset.id || 0);
+      let it = id ? store.find(x => x.id === id) : null;
+      if (!it) {
+        const targetIndex = Number(row.dataset.index || store.length);
+        while (partsStore(mode).length < targetIndex) createPartAt(partsStore(mode).length, true, mode);
+        it = createPartAt(targetIndex, true, mode);
+        row.dataset.id = String(it.id);
+        row.dataset.key = String(it.id);
+        row.dataset.transient = '';
+        row.querySelectorAll('[data-part]').forEach(el => { el.dataset.key = String(it.id); });
+        const del = row.querySelector('.sheet-delete');
+        if (del) {
+          del.dataset.id = String(it.id);
+          del.disabled = false;
+        }
+      }
+      return it;
+    }
+
+    function patchPart(el, mode = 'ingreso') {
+      const row = el.closest('.sheet-row');
+      if (!row) return;
+      const it = ensurePartRow(row, mode);
+      const field = el.dataset.field;
+      it.tipo = 'Repuestos';
+      it[field] = el.value;
+      if (mode === 'autorizado') it.userEdited = true;
+      if (field === 'desc') {
+        it.spacer = !text(el.value).trim();
+        fitSheetTextarea(el);
+      }
+      if (mode === 'ingreso') syncAuthorizedCopies();
+      renderSummary();
+      markDirty();
+    }
+
+    function removePart(id, mode = 'ingreso') {
+      if (!confirm('Eliminar este repuesto?')) return;
+      setPartsStore(mode, partsStore(mode).filter(x => x.id !== id));
+      renderAndMarkDirty();
+    }
+
+    function removeBlankPartRow(mode = 'ingreso') {
+      const key = partsExtraKey(mode);
+      removedSheetRows[key] = (removedSheetRows[key] || 0) + 1;
+      renderItems();
+      markDirty();
+    }
+
+    function ensurePartIndex(mode, index) {
+      const target = Math.max(0, Number(index || 0));
+      while (partsStore(mode).length <= target) createPartAt(partsStore(mode).length, true, mode);
+      return partsStore(mode)[target];
+    }
+
+    function reorderPartsByRowMove(mode, fromIndex, targetIndex, place = 'before') {
+      if (fromIndex < 0) return;
+      ensurePartIndex(mode, fromIndex);
+      ensurePartIndex(mode, targetIndex);
+      const store = partsStore(mode);
+      const moved = store[fromIndex];
+      if (!moved) return;
+      const withoutMoved = store.filter((_, idx) => idx !== fromIndex);
+      let targetPos = Number(targetIndex || 0);
+      if (fromIndex < targetPos) targetPos -= 1;
+      if (place === 'after') targetPos += 1;
+      withoutMoved.splice(Math.max(0, Math.min(targetPos, withoutMoved.length)), 0, moved);
+      setPartsStore(mode, withoutMoved);
+    }
+
+    function partRowHtml(it, idx) {
+      const blank = !!it.blank;
+      const transient = !!it.transient;
+      const id = blank ? '' : String(it.id);
+      const key = blank ? it.key : id;
+      return `
+        <tr class="sheet-row" data-id="${esc(id)}" data-key="${esc(key)}" data-index="${idx}" data-transient="${transient ? '1' : ''}">
+          <td class="parts-cant"><input data-part data-field="cant" data-key="${esc(key)}" value="${esc(it.cant || '')}" autocomplete="off"></td>
+          <td><textarea data-part data-field="desc" data-key="${esc(key)}" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences">${esc(it.desc || '')}</textarea></td>
+          <td class="sheet-actions"><button class="sheet-delete" data-id="${esc(id)}" data-blank="${blank ? '1' : ''}" data-index="${idx}" title="Borrar fila">X</button></td>
+        </tr>`;
+    }
+
+    function attachPartsSheet(listId = 'partsItems', mode = 'ingreso') {
+      const wrap = $(listId);
+      if (!wrap) return;
+      wrap.querySelectorAll('[data-part]').forEach(el => {
+        const eventName = el.tagName === 'TEXTAREA' ? 'input' : 'change';
+        el.addEventListener(eventName, () => patchPart(el, mode));
+        if (el.tagName === 'TEXTAREA') fitSheetTextarea(el);
+      });
+      wrap.querySelectorAll('.sheet-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id || 0);
+          if (id) removePart(id, mode);
+          else removeBlankPartRow(mode);
+        });
+      });
+    }
+
+    function renderPartsSheet(listId = 'partsItems', mode = 'ingreso') {
+      const rows = partRows(mode).map((it, idx) => partRowHtml(it, idx)).join('');
+      $(listId).innerHTML = `<table class="sheet-table parts-table"><thead><tr>
+        <th class="parts-cant">Cant</th>
+        <th>Descripcion Rep</th>
+        <th class="sheet-actions"></th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+      attachPartsSheet(listId, mode);
+    }
+
+    function renderItems() {
+      syncAuthorizedCopies();
+      renderSheet('items', 'ingreso');
+      renderPartsSheet('partsItems', 'ingreso');
+      renderSheet('authorizedItems', 'autorizado');
+      renderPartsSheet('authPartsItems', 'autorizado');
+    }
+
+    function renderSummary() {
+      const d = readIngresoValues();
+      const authRows = [
+        ['Fecha de ingreso', d.fecha],
+        ['Hora', d.hora],
+        ['Tecnico', d.tecnico],
+        ['Marca', d.marca],
+        ['Modelo', d.modelo],
+        ['Año', d.anio],
+        ['Color', d.color],
+        ['VIN', d.vin],
+        ['Placa', d.placa],
+        ['Odómetro', d.odometro],
+        ['Unidad', d.odometroUnidad]
+      ];
+      $('authFields').innerHTML = authRows.map(([label, value]) => `<label>${esc(label)}<input readonly value="${esc(value || '')}"></label>`).join('')
+        + `<label>Corrector<button class="spell-check-btn" type="button" onclick="window.automdSpellChecker?.start()">Corrector</button></label>`;
+      $('countAll').textContent = items.filter(x => !x.authOnly && isRealItem(x)).length;
+      $('countAuth').textContent = authItems.filter(isRealItem).length;
+    }
+
+    function refreshAutorizado() {
+      renderSummary();
+      renderItems();
+    }
+
+    const excelSelector = '.sheet-table td';
+    const excelFieldSelector = 'input:not([type="checkbox"]):not([type="file"]):not([type="hidden"]):not([readonly]), textarea:not([readonly]), select:not([disabled])';
+
+    function enableNativeSpellcheck(root = document) {
+      root.querySelectorAll?.('textarea, input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="url"]').forEach(field => {
+        field.setAttribute('spellcheck', 'true');
+        field.setAttribute('lang', 'es');
+        if (!field.autocomplete) field.setAttribute('autocomplete', 'off');
+      });
+    }
+
+    function excelField(cell) {
+      return cell?.querySelector?.(excelFieldSelector) || null;
+    }
+
+    function excelCellFrom(target) {
+      const cell = target?.closest?.(excelSelector);
+      return cell && excelField(cell) ? cell : null;
+    }
+
+    function endExcelEdit(cell) {
+      const field = excelField(cell);
+      if (!field) return;
+      cell.classList.remove('excel-editing-cell');
+    }
+
+    function commitExcelEdit(cell) {
+      const field = excelField(cell);
+      if (!field) return;
+      if (cell.classList.contains('excel-editing-cell')) {
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      endExcelEdit(cell);
+    }
+
+    function setSelectedExcelCell(cell) {
+      document.querySelectorAll('.excel-selected-cell, .excel-editing-cell').forEach(other => {
+        if (other !== cell) commitExcelEdit(other);
+        other.classList.remove('excel-selected-cell');
+      });
+      if (cell) cell.classList.add('excel-selected-cell');
+    }
+
+    function beginExcelEdit(cell, selectText = false) {
+      const field = excelField(cell);
+      if (!field) return;
+      setSelectedExcelCell(cell);
+      cell.classList.add('excel-editing-cell');
+      field.focus({ preventScroll: true });
+      if (selectText && typeof field.select === 'function') field.select();
+    }
+
+    function collapseDoubleClickSelection(cell) {
+      const field = excelField(cell);
+      if (!field || typeof field.selectionStart !== 'number' || typeof field.selectionEnd !== 'number') return;
+      requestAnimationFrame(() => {
+        const end = field.selectionEnd;
+        field.setSelectionRange(end, end);
+      });
+    }
+
+    function excelCells(table) {
+      return Array.from(table?.querySelectorAll('tbody tr') || []).map(row =>
+        Array.from(row.children).filter(cell => excelField(cell) && !cell.classList.contains('sheet-actions'))
+      ).filter(row => row.length);
+    }
+
+    function prepareExcelLikeCells(root = document) {
+      root.querySelectorAll?.(excelSelector).forEach(cell => {
+        const field = excelField(cell);
+        if (!field || field.dataset.excelReady === '1') return;
+        field.dataset.excelReady = '1';
+        cell.tabIndex = 0;
+        field.setAttribute('lang', 'es');
+        field.setAttribute('spellcheck', 'true');
+      });
+    }
+
+    function setupSpellButtons(root = document) {
+      root.querySelectorAll?.('.spell-check-btn').forEach(button => {
+        if (button.dataset.spellReady === '1') return;
+        button.dataset.spellReady = '1';
+        button.addEventListener('click', () => {
+          enableNativeSpellcheck(document);
+          const selected = document.querySelector('.excel-selected-cell');
+          if (selected) beginExcelEdit(selected, false);
+          const active = document.activeElement?.matches?.('input, textarea') ? document.activeElement : document.querySelector('textarea[spellcheck="true"], input[spellcheck="true"]');
+          active?.focus();
+          window.automdSpellChecker?.start?.();
+        });
+      });
+    }
+
+    function afterRenderEnhancements() {
+      enableNativeSpellcheck(document);
+      setupSpellButtons(document);
+      prepareExcelLikeCells(document);
+    }
+
+    function render() {
+      renderItems();
+      renderSummary();
+      afterRenderEnhancements();
+    }
+
+    function docMeta(d) {
+      const rows = [
+        ['Fecha', d.fecha],
+        ['Hora', d.hora],
+        ['Tecnico', d.tecnico],
+        ['Marca', d.marca],
+        ['Modelo', d.modelo],
+        ['Año', d.anio],
+        ['Color', d.color],
+        ['VIN', d.vin],
+        ['Placa', d.placa],
+        ['Odómetro', [d.odometro, d.odometroUnidad].filter(Boolean).join(' ')]
+      ];
+      return rows.map(([k, v]) => `<div class="doc-field"><span class="doc-label">${esc(k)}</span><span class="doc-value">${esc(v || '')}</span></div>`).join('');
+    }
+
+    function printQty(it) {
+      return isSuggestion(it.tipo) ? '' : esc(it.cant || '');
+    }
+
+    function tableFor(list, kind) {
+      const rows = list.map((it, i) => {
+        if (!isRealItem(it)) {
+          return `<div class="print-row spacer">
+            <div class="print-cell print-num">&nbsp;</div>
+            <div class="print-cell print-desc">&nbsp;</div>
+            <div class="print-cell print-qty">&nbsp;</div>
+          </div>`;
+        }
+        return `<div class="print-row">
+          <div class="print-cell print-num">-</div>
+          <div class="print-cell print-desc">${esc(it.desc)}</div>
+          <div class="print-cell print-qty">${printQty(it)}</div>
+        </div>`;
+      }).join('');
+      return `<div class="print-items">
+        <div class="print-row header">
+          <div class="print-cell print-num">#</div>
+          <div class="print-cell print-desc">Descripcion</div>
+          <div class="print-cell print-qty">Cantidad</div>
+        </div>
+        ${rows || '<div class="print-row"><div class="print-cell" style="grid-column:1 / -1;">Sin items.</div></div>'}
+      </div>`;
+    }
+
+    function partsForPrint(list) {
+      const printable = list.filter(isRealPart);
+      if (!printable.length) return '';
+      const rows = printable.map(it => `<div class="print-row">
+        <div class="print-cell print-num">-</div>
+        <div class="print-cell print-desc">${esc(it.desc)}</div>
+        <div class="print-cell print-qty">${esc(it.cant || '')}</div>
+      </div>`).join('');
+      return `
+        <h2>Repuestos</h2>
+        <div class="print-items">
+          <div class="print-row header">
+            <div class="print-cell print-num">#</div>
+            <div class="print-cell print-desc">Descripcion</div>
+            <div class="print-cell print-qty">Cantidad</div>
+          </div>
+          ${rows}
+        </div>`;
+    }
+
+    function buildDoc(kind) {
+      const d = getData();
+      const list = kind === 'autorizado' ? d.authItems : d.items.filter(x => !x.authOnly);
+      const title = kind === 'autorizado' ? 'Trabajo autorizado' : 'Revisión';
+      const sectionTitle = kind === 'autorizado' ? 'Trabajos autorizados' : 'Detalle de revisión';
+      const printParts = kind === 'autorizado' ? d.printAuthRepuestos : d.printRepuestos;
+      const partsList = kind === 'autorizado' ? d.authRepuestos : d.repuestos;
+      return `
+        <article class="doc">
+          <div class="doc-head">
+            <div>
+              <div class="doc-brand">Automotriz Medina SV</div>
+              <div class="doc-subtitle">Carretera Ruta Militar Salida a Santa Rosa de Lima 100 metros al Oriente del Puente Urbina. San Miguel</div>
+            </div>
+            <div class="doc-title">
+              <h1>${esc(title)}</h1>
+            </div>
+          </div>
+          <div class="doc-meta">${docMeta(d)}</div>
+          <h2>${esc(sectionTitle)}</h2>
+          ${tableFor(list, kind)}
+          ${printParts ? partsForPrint(partsList) : ''}
+        </article>`;
+    }
+
+    function printDoc(kind) {
+      if (!validateRequiredVehicleFields()) return;
+      $('printArea').innerHTML = buildDoc(kind);
+      setTimeout(() => window.print(), 50);
+    }
+
+    function htmlWorkbook() {
+      const d = getData();
+      const payload = esc(JSON.stringify(d));
+      return `
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body lang="es" spellcheck="true">
+          <h2>Expediente empleados</h2>
+          <table border="1">
+            ${fields.map(k => `<tr><th>${esc(k)}</th><td>${esc(d[k])}</td></tr>`).join('')}
+          </table>
+          <h2>Items</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Descripcion</th><th>Cantidad</th><th>Asistencia</th><th>Autorizado</th></tr>
+            ${d.items.filter(it => !it.authOnly).map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.tipo)}</td><td>${esc(it.desc)}</td><td>${esc(it.cant)}</td><td>${esc(it.asistencia || '')}</td><td>${it.autorizado ? 'Si' : ''}</td></tr>`).join('')}
+          </table>
+          <h2>Repuestos</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Cantidad</th><th>Descripcion Rep</th></tr>
+            ${d.repuestos.map((it, i) => `<tr><td>${i + 1}</td><td>Repuestos</td><td>${esc(it.cant || '')}</td><td>${esc(it.desc || '')}</td></tr>`).join('')}
+          </table>
+          <h2>Trabajo autorizado</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Descripcion</th><th>Cantidad</th><th>Asistencia</th></tr>
+            ${d.authItems.map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.tipo)}</td><td>${esc(it.desc)}</td><td>${esc(it.cant)}</td><td>${esc(it.asistencia || '')}</td></tr>`).join('')}
+          </table>
+          <h2>Repuestos autorizados</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Cantidad</th><th>Descripcion Rep</th></tr>
+            ${d.authRepuestos.map((it, i) => `<tr><td>${i + 1}</td><td>Repuestos</td><td>${esc(it.cant || '')}</td><td>${esc(it.desc || '')}</td></tr>`).join('')}
+          </table>
+          <h2>Datos internos</h2>
+          <pre id="expediente-json">${payload}</pre>
+        </body>
+        </html>`;
+    }
+
+    function download(name, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function writeWorkbookToHandle(handle, html) {
+      const writable = await handle.createWritable();
+      await writable.write(new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' }));
+      await writable.close();
+    }
+
+    async function saveExcel() {
+      if (!validateRequiredVehicleFields()) return;
+      persistArchiveSnapshot('Archivo rápido guardado internamente');
+      isDirty = false;
+      lastSavedAt = new Date();
+      updateFileStatus(`Guardado interno: ${saveTimeLabel(lastSavedAt)}`);
+      toast('Archivo guardado en el sistema');
+    }
+
+    async function loadExcel(file, handle = null) {
+      const raw = await file.text();
+      let data = null;
+      if (/\.json$/i.test(file.name)) {
+        data = JSON.parse(raw);
+      } else {
+        const doc = new DOMParser().parseFromString(raw, 'text/html');
+        const pre = doc.querySelector('#expediente-json');
+        if (pre && pre.textContent.trim()) data = JSON.parse(pre.textContent);
+        if (!data) {
+          const rows = Array.from(doc.querySelectorAll('table tr'));
+          const extracted = { items: [] };
+          rows.forEach(row => {
+            const cells = Array.from(row.children).map(cell => (cell.textContent || '').trim());
+            if (cells.length === 2 && cells[0]) extracted[cells[0]] = cells[1];
+          });
+          data = normalizeLoadedData(extracted);
+        }
+      }
+      if (!data) throw new Error('Este archivo no fue generado por el modulo de empleados.');
+      setData(data);
+      setFileHandle(handle);
+      isDirty = false;
+      lastSavedAt = null;
+      updateFileStatus('Expediente cargado');
+      persistArchiveSnapshot('Archivo rápido cargado y guardado internamente');
+      toast('Expediente cargado');
+    }
+
+    function isSupportedLoadFile(file) {
+      return !!file && /\.(xls|html|json)$/i.test(file.name || '');
+    }
+
+    async function loadDroppedFile(file) {
+      if (!isSupportedLoadFile(file)) {
+        alert('Solo se pueden cargar archivos .xls, .html o .json.');
+        return;
+      }
+      if (hasPendingChanges() && !confirm('Hay cambios sin guardar. Si cargas otro expediente se reemplazara la informacion actual. Deseas continuar?')) {
+        return;
+      }
+      try {
+        await loadExcel(file, null);
+        updateFileStatus('Expediente cargado por arrastre');
+      } catch (err) {
+        alert('No se pudo abrir el expediente: ' + (err && err.message ? err.message : err));
+      }
+    }
+
+    function setupDropZone() {
+      const zone = $('dropZone');
+      if (!zone) return;
+      const stop = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+      ['dragenter', 'dragover'].forEach(type => zone.addEventListener(type, ev => {
+        stop(ev);
+        zone.classList.add('drag-over');
+      }));
+      ['dragleave', 'drop'].forEach(type => zone.addEventListener(type, ev => {
+        stop(ev);
+        zone.classList.remove('drag-over');
+      }));
+      zone.addEventListener('drop', ev => {
+        const file = ev.dataTransfer && ev.dataTransfer.files ? ev.dataTransfer.files[0] : null;
+        loadDroppedFile(file);
+      });
+      zone.addEventListener('click', openExcel);
+    }
+
+    async function openExcel() {
+      if (window.showOpenFilePicker) {
+        try {
+          const [handle] = await window.showOpenFilePicker({
+            multiple: false,
+            startIn: 'desktop',
+            types: [{ description: 'Expediente Excel', accept: { 'application/vnd.ms-excel': ['.xls'], 'text/html': ['.html'], 'application/json': ['.json'] } }]
+          });
+          const file = await handle.getFile();
+          await loadExcel(file, handle);
+          return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+          alert('No se pudo abrir el archivo: ' + (e && e.message ? e.message : e));
+          return;
+        }
+      }
+      $('loadFile').click();
+    }
+
+    document.querySelectorAll('.nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        $(btn.dataset.section).classList.add('active');
+        if (btn.dataset.section === 'autorizado') refreshAutorizado();
+      });
+    });
+    document.querySelectorAll('[data-print]').forEach(btn => btn.addEventListener('click', () => printDoc(btn.dataset.print)));
+    document.querySelectorAll('[data-add-rows]').forEach(btn => btn.addEventListener('click', () => addSheetRows(btn.dataset.addRows)));
+    fields.forEach(id => {
+      const el = $(id);
+      if (!el) return;
+      const handler = () => {
+        if (uppercaseVehicleFields.includes(id)) forceUppercaseInput(el);
+        if (requiredVehicleFields.includes(id) && text(el.value).trim()) el.classList.remove('required-missing');
+        renderAndMarkDirty();
+      };
+      el.addEventListener('input', handler);
+      el.addEventListener('change', handler);
+    });
+    $('printRepuestos')?.addEventListener('change', markDirty);
+    $('printAuthRepuestos')?.addEventListener('change', markDirty);
+    $('itemTipo')?.addEventListener('change', toggleSuggestionInputs);
+    $('authItemTipo')?.addEventListener('change', () => toggleSuggestionInputs('auth'));
+    $('addItem')?.addEventListener('click', addItem);
+    $('addAuthItem')?.addEventListener('click', addAuthorizedItem);
+    $('autoFillVehicleBtn')?.addEventListener('click', autoFillVehicleFromEmployeeModule);
+    $('itemDesc')?.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addItem(); } });
+    $('authItemDesc')?.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addAuthorizedItem(); } });
+    $('newFile').addEventListener('click', () => { if (confirm('Esta acción borrará todo el expediente interno actual. ¿Desea continuar?')) { setData(blankData()); setFileHandle(null); isDirty = false; lastSavedAt = null; updateFileStatus('Expediente interno reiniciado'); persistArchiveSnapshot('Expediente interno reiniciado'); } });
+    $('saveFile').addEventListener('click', saveExcel);
+    document.addEventListener('mousedown', event => {
+      const cell = excelCellFrom(event.target);
+      if (!cell || cell.classList.contains('excel-editing-cell')) return;
+      if (event.button !== 0) return;
+      event.preventDefault();
+      setSelectedExcelCell(cell);
+      cell.focus({ preventScroll: true });
+    }, true);
+    document.addEventListener('dblclick', event => {
+      const cell = excelCellFrom(event.target);
+      if (!cell) return;
+      event.preventDefault();
+      beginExcelEdit(cell, false);
+      collapseDoubleClickSelection(cell);
+    }, true);
+    document.addEventListener('contextmenu', event => {
+      const cell = excelCellFrom(event.target);
+      if (cell && !cell.classList.contains('excel-editing-cell')) beginExcelEdit(cell, false);
+    }, true);
+    document.addEventListener('blur', event => {
+      const cell = excelCellFrom(event.target);
+      if (!cell) return;
+      const next = event.relatedTarget;
+      if (next && cell.contains(next)) return;
+      setTimeout(() => {
+        if (!cell.contains(document.activeElement)) commitExcelEdit(cell);
+      }, 0);
+    }, true);
+    document.addEventListener('focusin', event => {
+      if (event.target.matches?.('input, textarea')) enableNativeSpellcheck(document);
+    });
+    window.addEventListener('beforeunload', preventUnsafeUnload);
+    window.addEventListener('keydown', preventKeyboardRefresh, true);
+
+    window.updateItem = updateItem;
+    window.editItem = editItem;
+    window.cancelEdit = cancelEdit;
+    window.saveEdit = saveEdit;
+    window.removeItem = removeItem;
+    const initialQuickData = blankDataFromVehicle();
+    const savedQuickArchive = persistedArchive();
+    if (savedQuickArchive && savedQuickArchive.data) {
+      setData(savedQuickArchive.data);
+      lastSavedAt = savedQuickArchive.updatedAt ? new Date(savedQuickArchive.updatedAt) : null;
+      updateFileStatus('Archivo rápido interno cargado');
+    } else {
+      setData(initialQuickData);
+      persistArchiveSnapshot('Archivo rápido interno iniciado');
+    }
+    toggleSuggestionInputs();
+    toggleSuggestionInputs('auth');
+    setFileHandle(null);
+  </script>
+  <script src="corrector-ortografico.js?v=20260630-flechas-texto"></script>
+</body>
+</html>
+

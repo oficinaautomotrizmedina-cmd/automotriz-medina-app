@@ -1,0 +1,4297 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Módulo Máster</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #fff;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d7dde7;
+      --brand: #155e75;
+      --ok: #166534;
+      --ok-bg: #effaf2;
+      --danger: #b91c1c;
+      --soft: #eef6f6;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+    }
+    button, input, select, textarea { font: inherit; }
+    button {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 11px;
+      cursor: pointer;
+    }
+    button:hover { border-color: #9aa7b8; }
+    button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    button.success { background: #0f766e; border-color: #0f766e; color: #fff; }
+    button.notify { background: #2563eb; border-color: #2563eb; color: #fff; }
+    button.print { background: #111827; border-color: #111827; color: #fff; }
+    button.spell-check-btn { background: #16a34a; border-color: #16a34a; color: #fff; }
+    button.spell-check-btn:hover { background: #15803d; border-color: #15803d; }
+    button.danger { color: var(--danger); }
+    button.small { padding: 5px 8px; font-size: 12px; }
+    input, select, textarea {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+      padding: 8px 9px;
+    }
+    input.required-missing, select.required-missing {
+      border-color: #dc2626;
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, .12);
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    .item-form textarea { min-height: 36px; height: 36px; resize: vertical; }
+    .quote-form textarea { min-height: 36px; height: 36px; resize: vertical; }
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #f8fafc; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand h1 { margin: 0; font-size: 18px; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .drop-zone {
+      flex-basis: 100%;
+      border: 1px dashed #cbd5e1;
+      border-radius: var(--radius);
+      background: #f8fafc;
+      color: #475569;
+      min-height: 54px;
+      padding: 16px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .drop-zone.drag-over {
+      background: #ecfdf5;
+      border-color: #16a34a;
+      color: #166534;
+      font-weight: 700;
+    }
+    .file-status {
+      flex-basis: 100%;
+      text-align: right;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .layout {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 200px minmax(0, 1fr);
+      gap: 12px;
+    }
+    .sidebar, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .sidebar { padding: 12px; align-self: start; position: sticky; top: 76px; }
+    .nav { display: grid; gap: 8px; }
+    .nav button {
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav button.active { background: var(--soft); border-color: #9ac6c2; color: #0f766e; font-weight: 700; }
+    .panel { padding: 16px; }
+    .panel + .panel { margin-top: 14px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .section-head h2 { margin: 0; font-size: 20px; }
+    .section-head p { margin: 4px 0 0; color: var(--muted); }
+    .grid { display: grid; gap: 12px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .item-form {
+      display: grid;
+      grid-template-columns: 150px minmax(180px, 1fr) 90px 130px auto;
+      gap: 10px;
+      align-items: end;
+    }
+    .sheet-wrap {
+      width: 100%;
+      overflow-x: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .sheet-table {
+      width: 100%;
+      min-width: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    .sheet-table th,
+    .sheet-table td {
+      border-right: 1px solid #e4e9f1;
+      border-bottom: 1px solid #e4e9f1;
+      padding: 0;
+      height: 38px;
+      vertical-align: middle;
+      background: #fff;
+    }
+    .sheet-table th {
+      height: 34px;
+      padding: 7px 8px;
+      text-align: center;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .sheet-table tr:last-child td { border-bottom: 0; }
+    .sheet-table th:last-child,
+    .sheet-table td:last-child { border-right: 0; }
+    .sheet-row.drag-over td { background: #effaf2; box-shadow: inset 0 2px 0 #0f766e; }
+    .sheet-row.pointer-dragging td { opacity: .45; }
+    .sheet-table .sheet-move { width: 26px; }
+    .sheet-drag {
+      width: 26px;
+      text-align: center;
+      color: #94a3b8;
+      cursor: grab;
+      user-select: none;
+      font-weight: 700;
+      touch-action: none;
+    }
+    .sheet-row:active .sheet-drag { cursor: grabbing; }
+    .sheet-table .sheet-type { width: 118px; }
+    .sheet-table .sheet-cant { width: 58px; }
+    .sheet-table .sheet-auth { width: 82px; }
+    .sheet-table .sheet-asist { width: 104px; }
+    .sheet-table .sheet-actions { width: 32px; }
+    .sheet-table input,
+    .sheet-table select,
+    .sheet-table textarea {
+      width: 100%;
+      min-height: 36px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 7px 6px;
+      outline: none;
+    }
+    .sheet-table textarea {
+      height: 36px;
+      min-height: 36px;
+      resize: vertical;
+      overflow: auto;
+      line-height: 20px;
+    }
+    .sheet-table input:focus,
+    .sheet-table select:focus,
+    .sheet-table textarea:focus {
+      box-shadow: inset 0 0 0 2px #155e75;
+      background: #fff;
+    }
+    .sheet-table input[type="checkbox"] {
+      width: 18px;
+      min-height: 18px;
+      accent-color: #16a34a;
+      margin: 0 auto;
+      display: block;
+      box-shadow: none;
+    }
+    .sheet-delete {
+      width: 100%;
+      height: 36px;
+      min-height: 36px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      color: var(--danger);
+      background: transparent;
+      font-weight: 700;
+    }
+    .sheet-delete:hover { background: #fff1f2; border: 0; }
+    .sheet-disabled { color: #94a3b8; text-align: center; font-size: 12px; }
+    .sheet-tools { display: flex; gap: 8px; justify-content: flex-end; }
+    .sheet-add { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+    .sheet-add:hover { background: #e2e8f0; border-color: #94a3b8; }
+    .dual-sheets {
+      display: grid;
+      grid-template-columns: minmax(560px, 1.85fr) minmax(260px, .65fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .sheet-box { min-width: 0; }
+    .mini-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .mini-head h3 {
+      margin: 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #334155;
+    }
+    .parts-table .parts-cant { width: 62px; }
+    .print-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #334155;
+      font-size: 12px;
+      text-transform: none;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .print-check input { width: 16px; min-height: 16px; accent-color: #155e75; }
+    .quote-form {
+      display: grid;
+      grid-template-columns: 130px minmax(220px, 1fr) 90px 110px 110px 110px auto;
+      gap: 10px;
+      align-items: end;
+    }
+    .quote-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .inline-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 36px;
+      color: var(--ink);
+      font-size: 13px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .inline-check input { width: 16px; min-height: 16px; accent-color: var(--brand); }
+    .quote-options label { min-width: 130px; }
+    .money { text-align: right; }
+    .quote-table-wrap { overflow-x: auto; margin-top: 12px; }
+    .quote-table { table-layout: fixed; }
+    .quote-table th, .quote-table td { white-space: nowrap; }
+    .quote-table td.desc-cell { white-space: normal; min-width: 260px; overflow-wrap: anywhere; }
+    .quote-table input, .quote-table select { min-height: 32px; padding: 6px 7px; }
+    .quote-table textarea {
+      min-height: 36px;
+      resize: vertical;
+      overflow: auto;
+      line-height: 20px;
+    }
+    .quote-sheet-tools { justify-content: flex-end; margin-bottom: 10px; }
+    .quote-sheet .sheet-move { width: 34px; text-align: center; }
+    .quote-sheet .quote-type { width: 142px; }
+    .quote-sheet .quote-cant { width: 82px; }
+    .quote-sheet .quote-price,
+    .quote-sheet .quote-total { width: 112px; }
+    .quote-sheet .quote-actions { width: 52px; text-align: center; }
+    .quote-sheet textarea { min-height: 34px; height: 34px; resize: vertical; overflow: auto; }
+    .quote-sheet .quote-total-text { display: block; text-align: right; font-weight: 800; }
+    .quote-sheet input[type="number"]::-webkit-outer-spin-button,
+    .quote-sheet input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .quote-sheet input[type="number"] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+    .calc-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .calc-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .calc-table {
+      min-width: 920px;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .calc-table th,
+    .calc-table td {
+      border-right: 1px solid #e4e9f1;
+      border-bottom: 1px solid #e4e9f1;
+      padding: 0;
+      vertical-align: middle;
+      background: #fff;
+    }
+    .calc-table th {
+      padding: 7px 8px;
+      text-align: center;
+      background: #f8fafc;
+      color: #334155;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .calc-table th:last-child,
+    .calc-table td:last-child { border-right: 0; }
+    .calc-table tr:last-child td { border-bottom: 0; }
+    .calc-table .calc-cant { width: 72px; }
+    .calc-table .calc-desc { width: 330px; }
+    .calc-table .calc-company { width: 145px; }
+    .calc-table input,
+    .calc-table textarea {
+      width: 100%;
+      min-height: 36px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 7px 6px;
+      outline: none;
+    }
+    .calc-table textarea {
+      min-height: 36px;
+      resize: vertical;
+      overflow: auto;
+      line-height: 20px;
+    }
+    .calc-table input:focus,
+    .calc-table textarea:focus {
+      box-shadow: inset 0 0 0 2px #155e75;
+      background: #fff;
+    }
+    .calc-price.best {
+      background: #eefaf2;
+      box-shadow: inset 0 0 0 1px #9ad0aa;
+    }
+    .calc-total-row td {
+      padding: 9px 8px;
+      font-weight: 800;
+      background: #fbfcfe;
+    }
+    .calc-total-row .best-total {
+      color: #0f766e;
+      background: #eefaf2;
+    }
+    .calc-hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .ticket-wrap { overflow-x: auto; background: #fff; }
+    .ticket-table {
+      width: 376px;
+      min-width: 376px;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      color: #000;
+    }
+    .ticket-table caption {
+      caption-side: top;
+      padding: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #000;
+      font-size: 16px;
+    }
+    .ticket-table th,
+    .ticket-table td {
+      border-right: 1px solid #d7dde7;
+      border-bottom: 1px solid #d7dde7;
+      padding: 0;
+      background: #fff;
+      vertical-align: middle;
+      height: 26px;
+    }
+    .ticket-table th {
+      padding: 7px 8px;
+      text-align: center;
+      color: #000;
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: none;
+    }
+    .ticket-table tr:last-child td { border-bottom: 0; }
+    .ticket-table th:last-child,
+    .ticket-table td:last-child { border-right: 0; }
+    .ticket-table input {
+      border: 0;
+      border-radius: 0;
+      min-height: 24px;
+      padding: 2px 7px;
+      background: transparent;
+      color: #000;
+    }
+    .ticket-table input:focus {
+      box-shadow: inset 0 0 0 2px #155e75;
+      background: #fff;
+    }
+    .ticket-desc { width: 122px; font-style: italic; font-weight: 700; }
+    .ticket-cant { width: 66px; text-align: center; }
+    .ticket-money { width: 99px; }
+    .ticket-money-inner { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 4px; padding: 0 8px; }
+    .ticket-money-symbol { text-align: left; color: #000; }
+    .ticket-money-value { text-align: right; color: #000; }
+    .ticket-money input { text-align: right; padding: 2px 0; }
+    .ticket-total-row td { font-weight: 800; }
+    .ticket-spacer td { height: 22px; background: #fff; }
+    .excel-selected-cell {
+      box-shadow: inset 0 0 0 2px #155e75;
+      background: #eef7f8 !important;
+      outline: none;
+    }
+    .excel-selected-cell input,
+    .excel-selected-cell textarea,
+    .excel-selected-cell select {
+      background: transparent;
+      cursor: default;
+    }
+    .excel-editing-cell {
+      box-shadow: inset 0 0 0 2px #16a34a;
+      background: #fff !important;
+      outline: none;
+    }
+    .excel-editing-cell input,
+    .excel-editing-cell textarea,
+    .excel-editing-cell select {
+      background: #fff;
+      caret-color: auto;
+      cursor: text;
+    }
+    .excel-selected-cell select,
+    .excel-editing-cell select {
+      cursor: pointer;
+    }
+    .quote-row.spacer-row input,
+    .quote-row.spacer-row textarea {
+      background: #fff;
+      color: transparent;
+    }
+    .quote-row.spacer-row .quote-total-text { color: transparent; }
+    .totals-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 14px;
+      margin-top: 14px;
+      align-items: start;
+    }
+    .totals-box {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px;
+      background: #fff;
+    }
+    .total-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #eef2f7;
+    }
+    .total-line.grand {
+      margin-top: 6px;
+      padding: 8px 0 0;
+      border-bottom: 0;
+      font-weight: 800;
+      color: var(--brand);
+    }
+    .print-totals {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0;
+    }
+    .print-totals .totals-box {
+      width: 285px;
+      border-radius: 0;
+      border-color: #111827;
+    }
+    .print-totals .total-line {
+      font-size: 12px;
+      padding: 3px 6px;
+    }
+    .print-totals .total-line.grand {
+      background: #3b3838;
+      color: #fff;
+      margin: 6px -10px -10px;
+      padding: 8px 10px;
+    }
+    .doc .quote-table {
+      table-layout: fixed;
+      width: 100%;
+      border: 1px solid #111827;
+      font-size: 12px;
+    }
+    .doc .quote-table th {
+      background: #3b3838;
+      color: #fff;
+      border-bottom: 1px solid #111827;
+      text-align: center;
+    }
+    .doc .quote-table th,
+    .doc .quote-table td {
+      padding: 5px 6px;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      vertical-align: top;
+    }
+    .doc .quote-table .col-num { width: 34px; }
+    .doc .quote-table .col-type { width: 72px; }
+    .doc .quote-table .col-desc { width: auto; }
+    .doc .quote-table .col-qty { width: 78px; }
+    .doc .quote-table .col-price,
+    .doc .quote-table .col-total { width: 92px; }
+    .estimate-doc {
+      padding: .48in .55in;
+      font-size: 14px;
+    }
+    .estimate-top {
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      gap: 30px;
+      align-items: start;
+    }
+    .estimate-logo {
+      width: 156px;
+      height: auto;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .estimate-business {
+      line-height: 1.32;
+    }
+    .estimate-non-fiscal {
+      margin: 0 0 8px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .estimate-business strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+    .estimate-business div {
+      overflow-wrap: anywhere;
+    }
+    .estimate-box {
+      border: 1px solid #cfd5dd;
+      border-top: 5px solid #155e75;
+      border-radius: 8px;
+      padding: 22px 24px 16px;
+      min-height: 96px;
+      text-align: center;
+    }
+    .estimate-box h1 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .estimate-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 42px;
+      text-align: left;
+      font-size: 14px;
+    }
+    .estimate-side {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+    .estimate-qr-block {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .estimate-qr-img {
+      width: 112px;
+      height: 112px;
+      object-fit: contain;
+      border: 0;
+      outline: 0;
+      background: transparent;
+    }
+    .estimate-vehicle {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 18px;
+      margin: 26px 0 26px;
+      padding: 16px;
+      border: 1px solid #cfd5dd;
+      border-radius: 8px;
+      background: #fbfbfc;
+    }
+    .estimate-vehicle span {
+      display: block;
+      color: #4b5563;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .estimate-vehicle strong {
+      display: block;
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+    }
+    .estimate-doc .quote-table {
+      border: 0;
+      font-size: 14px;
+    }
+    .estimate-doc .quote-table th {
+      padding: 7px 8px;
+      background: #155e75;
+      color: #fff;
+      border: 0;
+      font-size: 13px;
+    }
+    .estimate-doc .quote-table td {
+      padding: 4px 8px;
+      border-bottom: 0;
+      line-height: 1.22;
+    }
+    .estimate-doc .quote-table .col-type { width: 92px; }
+    .estimate-doc .quote-table .col-qty { width: 96px; }
+    .estimate-doc .quote-table .col-price,
+    .estimate-doc .quote-table .col-total { width: 110px; }
+    .estimate-summary {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      min-height: 168px;
+      border-bottom: 1px solid #cfd5dd;
+    }
+    .estimate-validity {
+      padding: 12px 12px 0;
+      color: #4b5563;
+      border-top: 1px solid #e8edf3;
+    }
+    .estimate-summary .print-totals {
+      display: block;
+      margin: 0;
+      border-left: 1px solid #cfd5dd;
+      padding: 12px 12px 0;
+    }
+    .estimate-summary .print-totals .totals-box {
+      width: auto;
+      border: 0;
+      padding: 0;
+    }
+    .estimate-summary .print-totals .total-line {
+      font-size: 14px;
+      padding: 4px 0;
+    }
+    .estimate-summary .print-totals .total-line.grand {
+      margin: 12px -12px 0;
+      padding: 12px;
+      font-size: 16px;
+    }
+    .item-list { display: grid; gap: 8px; margin-top: 12px; }
+    .item-card {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr) 90px 130px 95px;
+      gap: 10px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      padding: 10px;
+      cursor: grab;
+    }
+    .item-card:active { cursor: grabbing; }
+    .item-card.drag-over { outline: 2px dashed #0f766e; background: #f0fdfa; }
+    .item-card.dragging { opacity: .55; }
+    .item-card.editing { cursor: default; }
+    .type-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .auth-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--ok);
+      font-size: 12px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .auth-check input { width: 16px; min-height: 16px; accent-color: #16a34a; }
+    .pill {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: #fff;
+    }
+    .pill.ok { border-color: #a7d7b5; color: var(--ok); background: var(--ok-bg); }
+    .item-desc { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .muted { color: var(--muted); }
+    .vehicle-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .summary-box { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; background: #fff; }
+    .summary-box span { display: block; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .summary-box strong { display: block; margin-top: 3px; overflow-wrap: anywhere; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: #111827;
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 9px 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s;
+      z-index: 20;
+    }
+    .toast.show { opacity: 1; }
+    .print-area { display: none; }
+    .doc {
+      width: 8.5in;
+      min-height: 11in;
+      margin: 0 auto;
+      padding: .5in;
+      background: #fff;
+      color: #111827;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .doc-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      border-bottom: 3px solid #155e75;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .doc-brand { font-size: 20px; font-weight: 800; letter-spacing: .02em; color: #155e75; }
+    .doc-subtitle { margin-top: 6px; color: #4b5563; font-size: 11px; line-height: 1.35; max-width: 360px; }
+    .doc-title { text-align: right; }
+    .doc h1 { margin: 0; font-size: 24px; letter-spacing: .04em; text-transform: uppercase; }
+    .doc h2 { margin: 20px 0 8px; font-size: 14px; color: #155e75; text-transform: uppercase; letter-spacing: .04em; }
+    .doc p { margin: 3px 0; }
+    .doc-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; font-size: 12px; }
+    .doc-field { min-height: 38px; padding: 0; }
+    .doc-label { display: block; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .doc-value { display: block; margin-top: 3px; font-weight: 700; overflow-wrap: anywhere; }
+    .print-items { width: 100%; max-width: 100%; overflow: hidden; }
+    .print-row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) 96px;
+      align-items: start;
+      border-bottom: 1px solid #edf2f7;
+      font-size: 12px;
+    }
+    .print-row.header {
+      border-bottom: 1px solid #cbd5e1;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .print-cell { min-width: 0; padding: 10px; }
+    .print-num { text-align: center; }
+    .print-desc {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      white-space: normal;
+      line-height: 1.35;
+    }
+    .print-qty { text-align: right; padding-right: 14px; white-space: nowrap; }
+    .doc.estimate-doc {
+      width: 8.5in;
+      min-height: 11in;
+      padding: .36in .46in;
+      font-size: 13px;
+      color: #111827;
+    }
+    .doc.estimate-doc .estimate-top {
+      display: grid;
+      grid-template-columns: 285px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    .doc.estimate-doc .estimate-logo {
+      width: 132px;
+      height: auto;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .doc.estimate-doc .estimate-business {
+      line-height: 1.32;
+    }
+    .doc.estimate-doc .estimate-non-fiscal {
+      margin: 0 0 8px;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .doc.estimate-doc .estimate-business strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+    .doc.estimate-doc .estimate-box {
+      border: 1px solid #cfd5dd;
+      border-top: 5px solid #155e75;
+      border-radius: 8px;
+      padding: 18px 22px 14px;
+      min-height: 90px;
+      text-align: center;
+    }
+    .doc.estimate-doc .estimate-box h1 {
+      margin: 0 0 14px;
+      font-size: 22px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #111827;
+    }
+    .doc.estimate-doc .estimate-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px 34px;
+      text-align: left;
+      font-size: 14px;
+    }
+    .doc.estimate-doc .estimate-qr-block {
+      margin-top: 2px;
+      font-size: 11px;
+      gap: 5px;
+    }
+    .doc.estimate-doc .estimate-qr-img {
+      width: 104px;
+      height: 104px;
+      border: 0;
+      outline: 0;
+    }
+    .doc.estimate-doc .estimate-vehicle {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px 14px;
+      margin: 18px 0 18px;
+      padding: 12px 14px;
+      border: 1px solid #cfd5dd;
+      border-radius: 8px;
+      background: #fbfbfc;
+    }
+    .doc.estimate-doc .estimate-vehicle span {
+      display: block;
+      color: #4b5563;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .doc.estimate-doc .estimate-vehicle strong {
+      display: block;
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+    }
+    .doc.estimate-doc .quote-table {
+      table-layout: fixed;
+      width: 100%;
+      border: 0;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .doc.estimate-doc .quote-table th {
+      padding: 6px 7px;
+      background: #155e75;
+      color: #fff;
+      border: 0;
+      font-size: 13px;
+      text-align: center;
+    }
+    .doc.estimate-doc .quote-table td {
+      padding: 4px 7px;
+      border-bottom: 0;
+      line-height: 1.22;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      vertical-align: top;
+    }
+    .doc.estimate-doc .quote-table .col-type { width: 92px; }
+    .doc.estimate-doc .quote-table .col-desc { width: auto; }
+    .doc.estimate-doc .quote-table .col-qty { width: 96px; }
+    .doc.estimate-doc .quote-table .col-price,
+    .doc.estimate-doc .quote-table .col-total { width: 110px; }
+    .doc.estimate-doc .estimate-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      border: 0;
+      font-size: 14px;
+    }
+    .doc.estimate-doc .estimate-table th {
+      padding: 7px 8px;
+      background: #155e75 !important;
+      color: #fff !important;
+      border: 0;
+      font-size: 13px;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .doc.estimate-doc .estimate-table td {
+      padding: 4px 8px;
+      border-bottom: 0;
+      line-height: 1.22;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      vertical-align: top;
+    }
+    .doc.estimate-doc .estimate-table tr.print-spacer td {
+      height: 22px;
+      padding: 0;
+      border-top: 0;
+      border-bottom: 0;
+    }
+    .doc.estimate-doc .estimate-table tr.print-spacer-start td,
+    .doc.estimate-doc .estimate-table tr.print-spacer-single td {
+      border-top: 0;
+    }
+    .doc.estimate-doc .estimate-table tr.print-spacer-end td,
+    .doc.estimate-doc .estimate-table tr.print-spacer-single td {
+      border-bottom: 0;
+    }
+    .doc.estimate-doc .estimate-col-type { width: 126px; }
+    .doc.estimate-doc .estimate-col-desc { width: auto; }
+    .doc.estimate-doc .estimate-col-qty { width: 88px; }
+    .doc.estimate-doc .estimate-col-price,
+    .doc.estimate-doc .estimate-col-total { width: 104px; }
+    .doc.estimate-doc .estimate-table td:first-child {
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      font-size: 13px;
+    }
+    .doc.estimate-doc .estimate-table td.estimate-qty {
+      text-align: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .doc.estimate-doc .estimate-summary {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      min-height: 0;
+      border-bottom: 1px solid #cfd5dd;
+    }
+    .doc.estimate-doc .estimate-summary + .estimate-summary {
+      display: none !important;
+    }
+    .doc.estimate-doc .estimate-validity {
+      padding: 10px 12px 0;
+      color: #4b5563;
+      border-top: 1px solid #e8edf3;
+    }
+    .doc.estimate-doc .estimate-summary .print-totals {
+      display: block;
+      margin: 0;
+      border-left: 1px solid #cfd5dd;
+      padding: 8px 10px 0;
+    }
+    .doc.estimate-doc .estimate-summary .totals-box {
+      width: auto;
+      border: 0;
+      padding: 0;
+    }
+    .doc.estimate-doc .estimate-summary .total-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      font-size: 13px;
+      padding: 2px 0;
+    }
+    .doc.estimate-doc .estimate-summary .total-line.grand {
+      margin: 8px -10px 0;
+      padding: 9px 10px;
+      background: #3b3838;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .doc.estimate-doc .estimate-total-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      font-size: 12px;
+      padding: 1px 0;
+      line-height: 1.25;
+    }
+    .doc.estimate-doc .estimate-total-line.estimate-sub {
+      margin-top: 3px;
+      padding-top: 5px;
+      border-top: 1px solid #d9dee6;
+    }
+    .doc.estimate-doc .estimate-total-line.estimate-final {
+      margin: 7px -10px 0;
+      padding: 8px 10px;
+      background: #3b3838 !important;
+      color: #fff !important;
+      font-weight: 800;
+      font-size: 14px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @media (max-width: 1180px) {
+      .dual-sheets { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 920px) {
+      .topbar-inner { align-items: flex-start; flex-direction: column; }
+      .toolbar { justify-content: flex-start; }
+      .file-status { text-align: left; }
+      .layout { grid-template-columns: 1fr; padding: 8px; }
+      .panel { padding: 10px; }
+      .sidebar { position: static; }
+      .sheet-wrap { overflow-x: auto; }
+      .sheet-table { min-width: 720px; }
+      .parts-table { min-width: 420px; }
+      .grid.cols-4, .vehicle-summary { grid-template-columns: 1fr; }
+      .item-form, .quote-form, .item-card, .totals-grid { grid-template-columns: 1fr; }
+    }
+    @media print {
+      @page { size: letter; margin: 0; }
+      body { background: #fff; }
+      .app-shell, .toast { display: none !important; }
+      .print-area { display: block; }
+      .doc { width: auto; min-height: auto; margin: 0; padding: .5in; }
+      .doc.ticket-print-doc {
+        padding: 0;
+        width: 100%;
+        color: #000;
+      }
+      .doc.ticket-print-doc .ticket-table,
+      .doc.ticket-print-doc .ticket-table th,
+      .doc.ticket-print-doc .ticket-table td {
+        border: 0 !important;
+      }
+      .doc.ticket-print-doc .ticket-table {
+        width: 376px;
+        min-width: 0;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      .doc.ticket-print-doc .ticket-table caption {
+        padding: 14px 0 10px;
+      }
+      .doc.ticket-print-doc .ticket-table th {
+        padding: 8px 10px;
+      }
+      .doc.ticket-print-doc .ticket-table td {
+        padding: 6px 10px;
+      }
+    }
+  </style>
+</head>
+<body lang="es" spellcheck="true">
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <h1>Módulo Máster</h1>
+        </div>
+        <div class="toolbar">
+          <button id="newFile">Crear nuevo expediente / borrar todo</button>
+          <button id="saveFile" class="primary">Guardar</button>
+          <input id="loadFile" type="file" accept=".xls,.html,.json" hidden>
+          <div id="fileStatus" class="file-status">Sin archivo vinculado</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <nav class="nav">
+          <button data-section="ingreso" class="active">Ingreso <span id="countAll">0</span></button>
+          <button data-section="autorizado">Autorizado <span id="countAuth">0</span></button>
+          <button data-section="presupuesto">Presupuesto <span id="countPresupuesto">0</span></button>
+          <button data-section="cotizacion">Cotizacion <span id="countCotizacion">0</span></button>
+          <button data-section="ticket">Ticket <span id="countTicket">0</span></button>
+          <button data-section="repuestos">Repuestos <span id="countRepuestos">0</span></button>
+          <button data-section="calculador">Calculador <span id="countCalculador">0</span></button>
+        </nav>
+      </aside>
+
+      <section>
+        <section id="ingreso" class="section active">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Ingreso</h2>
+              </div>
+              <div class="actions">
+                <button class="notify" onclick="openNotify()">Notificar</button>
+                <button class="print" data-print="ingreso">Imprimir ingreso</button>
+              </div>
+            </div>
+            <div class="grid cols-4">
+              <label>Fecha de ingreso<input id="fecha" type="date" required></label>
+              <label>Hora<input id="hora" type="time" required></label>
+              <label>Tecnico<select id="tecnico" required><option>Edwin</option><option>Rafael</option><option>Cristian</option><option>Otro</option></select></label>
+              <label>Marca<input id="marca" required></label>
+              <label>Modelo<input id="modelo" required></label>
+              <label>Año<input id="anio" required></label>
+              <label>Color<input id="color" required></label>
+              <label>VIN<input id="vin" required></label>
+              <label>Placa<input id="placa" required></label>
+              <label>Odometro<input id="odometro" type="number" min="0" step="1" required></label>
+              <label>Unidad<select id="odometroUnidad"><option value="mi">Millas</option><option value="km">Kilometros</option></select></label>
+              <label>Corrector<button id="spellCheckBtn" class="spell-check-btn" type="button">Corrector</button></label>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="dual-sheets">
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>ITEMS DE TRABAJO</h3>
+                  <div class="sheet-tools">
+                    <button class="small sheet-add" data-add-rows="ingreso">Agregar renglones</button>
+                  </div>
+                </div>
+                <div id="items" class="sheet-wrap"></div>
+              </div>
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>REPUESTOS</h3>
+                  <div class="sheet-tools">
+                    <label class="print-check"><input id="printRepuestos" type="checkbox">Agregar a impresión</label>
+                  </div>
+                </div>
+                <div id="partsItems" class="sheet-wrap"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="autorizado" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Trabajo autorizado</h2>
+              </div>
+              <div class="actions">
+                <button class="notify" onclick="openNotify()">Notificar</button>
+                <button class="print" data-print="autorizado">Imprimir autorizado</button>
+              </div>
+            </div>
+            <div id="authFields" class="grid cols-4"></div>
+          </div>
+          <div class="panel">
+            <div class="dual-sheets">
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>ITEMS AUTORIZADOS</h3>
+                  <div class="sheet-tools">
+                    <button class="small sheet-add" data-add-rows="autorizado">Agregar renglones</button>
+                  </div>
+                </div>
+                <div id="authorizedItems" class="sheet-wrap"></div>
+              </div>
+              <div class="sheet-box">
+                <div class="mini-head">
+                  <h3>REPUESTOS</h3>
+                  <div class="sheet-tools">
+                    <label class="print-check"><input id="printAuthRepuestos" type="checkbox">Agregar a impresión</label>
+                  </div>
+                </div>
+                <div id="authPartsItems" class="sheet-wrap"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="presupuesto" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div><h2>Presupuesto</h2></div>
+              <div class="actions">
+                <button class="primary" onclick="importAuthorizedToQuote('presupuesto')">Importar autorizados</button>
+                <button class="print" data-print="presupuesto">Imprimir presupuesto</button>
+              </div>
+            </div>
+            <div id="presupuestoFields" class="grid cols-4"></div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><div><h2>ITEMS DE PRESUPUESTO</h2></div></div>
+            <div class="quote-options">
+              <label class="inline-check"><input id="presupuestoIvaMode" type="checkbox">Con IVA</label>
+              <label>Tipo descuento<select id="presupuestoDescuentoTipo"><option value="porcentaje">Porcentaje</option><option value="dinero">Dinero</option></select></label>
+              <label>Descuento<input id="presupuestoDescuento" class="money" type="number" min="0" step="0.01" value="0"></label>
+            </div>
+            <div class="sheet-tools quote-sheet-tools">
+              <button class="small spell-check-btn" type="button">Corrector</button>
+              <button class="small sheet-add" data-add-quote-rows="presupuesto">Agregar renglones</button>
+            </div>
+            <div id="presupuestoItems"></div>
+          </div>
+        </section>
+
+        <section id="cotizacion" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div><h2>Cotizacion</h2></div>
+              <div class="actions">
+                <button class="primary" onclick="importAuthorizedToQuote('cotizacion')">Importar autorizados</button>
+                <button class="success" onclick="copyCotizacionToClipboard()">Guardar al portapapeles</button>
+                <button class="print" data-print="cotizacion">Imprimir cotizacion</button>
+              </div>
+            </div>
+            <div id="cotizacionFields" class="grid cols-4"></div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><div><h2>ITEMS DE COTIZACION</h2></div></div>
+            <div class="quote-options">
+              <label class="inline-check"><input id="cotizacionIvaMode" type="checkbox">Con IVA</label>
+              <label>Tipo descuento<select id="cotizacionDescuentoTipo"><option value="porcentaje">Porcentaje</option><option value="dinero">Dinero</option></select></label>
+              <label>Descuento<input id="cotizacionDescuento" class="money" type="number" min="0" step="0.01" value="0"></label>
+            </div>
+            <div class="sheet-tools quote-sheet-tools">
+              <button class="small spell-check-btn" type="button">Corrector</button>
+              <button class="small sheet-add" data-add-quote-rows="cotizacion">Agregar renglones</button>
+            </div>
+            <div id="cotizacionItems"></div>
+          </div>
+        </section>
+
+        <section id="ticket" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Ticket</h2>
+                <p>Precuenta editable cargada desde cotizacion.</p>
+              </div>
+              <div class="actions">
+                <button class="primary" onclick="importCotizacionToTicket()">Cargar desde cotizacion</button>
+                <button class="success" onclick="copyTicketToClipboard()">Guardar al portapapeles</button>
+                <button class="print" data-print="ticket">Imprimir ticket</button>
+              </div>
+            </div>
+            <div id="ticketItems"></div>
+          </div>
+        </section>
+
+        <section id="repuestos" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div><h2>Repuestos</h2></div>
+              <div class="actions">
+                <button class="primary" onclick="importIngresoToParts()">Importar ingreso</button>
+                <button class="spell-check-btn" type="button">Corrector</button>
+                <button class="print" data-print="repuestos">Imprimir repuestos</button>
+              </div>
+            </div>
+            <div id="repuestosFields" class="grid cols-4"></div>
+          </div>
+          <div class="panel">
+            <div class="section-head"><div><h2>COTIZADOR DE REPUESTOS</h2></div></div>
+            <div class="quote-form">
+              <label>Tipo<select id="repuestosTipo"></select></label>
+              <label>Descripcion<textarea id="repuestosDesc" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences"></textarea></label>
+              <label>Cantidad<input id="repuestosCant" type="number" min="1" step="1" value="1"></label>
+              <label>Precio<input id="repuestosPrecio" class="money" type="number" min="0" step="0.01" value="0.00"></label>
+              <label>Total<input id="repuestosTotal" class="money" readonly></label>
+              <button id="addRepuestos" class="primary">Agregar</button>
+            </div>
+            <div id="repuestosItems"></div>
+          </div>
+        </section>
+
+        <section id="calculador" class="section">
+          <div class="panel">
+            <div class="section-head">
+              <div>
+                <h2>Calculador de cotizacion</h2>
+              </div>
+              <div class="actions">
+                <button class="primary" onclick="importPartsToCalculator()">Importar repuestos</button>
+                <button onclick="addCalculatorCompany()">Agregar empresa</button>
+              </div>
+            </div>
+            <div class="calc-actions">
+              <button class="small sheet-add" onclick="addCalculatorRow()">Agregar renglon</button>
+            </div>
+            <div id="calculatorItems"></div>
+            <p class="calc-hint">Los precios mas bajos por repuesto se marcan en verde suave. Los totales comparan cuanto saldria comprar todo en cada empresa.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="printArea" class="print-area"></div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const text = (v) => String(v == null ? '' : v);
+    const esc = (v) => text(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const today = () => new Date().toISOString().slice(0, 10);
+    const nowTime = () => new Date().toTimeString().slice(0, 5);
+    const fields = ['fecha','hora','tecnico','marca','modelo','anio','color','vin','placa','odometro','odometroUnidad'];
+    const uppercaseVehicleFields = ['marca','modelo','anio','color','vin','placa','odometro'];
+    const requiredVehicleFields = ['fecha','hora','tecnico','marca','modelo','anio','color','vin','placa','odometro'];
+    const MASTER_ARCHIVE_KEY = 'am_master_taller_archives_v1';
+    const MASTER_VEHICLE_AUTOFILL_KEY = 'am_quick_vehicle_autofill';
+    const requiredVehicleLabels = {
+      fecha: 'Fecha de ingreso',
+      hora: 'Hora',
+      tecnico: 'Tecnico',
+      marca: 'Marca',
+      modelo: 'Modelo',
+      anio: 'Año',
+      color: 'Color',
+      vin: 'VIN',
+      placa: 'Placa',
+      odometro: 'Odometro'
+    };
+    let expedienteId = Date.now();
+    let items = [];
+    let repuestosIngreso = [];
+    let authItems = [];
+    let authRepuestos = [];
+    let currentFileHandle = null;
+    let currentFileName = '';
+    let editingId = null;
+    let isDirty = false;
+    let autoSaveTimer = null;
+    let isAutoSaving = false;
+    let lastSavedAt = null;
+    let allowUnloadOnce = false;
+    const UNSAVED_CHANGES_MESSAGE = 'Hay cambios sin guardar. Si actualiza o cierra esta ventana se pueden perder datos. Por favor, asegurese de guardar el archivo antes de continuar.';
+    const minSheetRows = 15;
+    const extraSheetRows = { ingreso: 0, autorizado: 0, repuestos: 0, authRepuestos: 0 };
+    const extraQuoteRows = { presupuesto: 0, cotizacion: 0 };
+    const removedSheetRows = { ingreso: 0, autorizado: 0, repuestos: 0, authRepuestos: 0 };
+    const removedQuoteRows = { presupuesto: 0, cotizacion: 0 };
+    const itemTypes = ['Revision','Diagnostico','Reparacion','Mantenimiento','Repuestos','Laboratorio','Programacion','Torno','Combustibles','Sugerencias','Otros'];
+    const assistanceOptions = ['', 'Edwin', 'Rafael', 'Cristian', 'Otro'];
+    const pricedKinds = ['presupuesto', 'cotizacion', 'repuestos'];
+    const ivaKinds = ['presupuesto', 'cotizacion'];
+    const IVA_RATE = 0.13;
+    const quoteVehicleFields = ['fecha','cliente','marca','modelo','anio','color','vin','placa','odometro','odometroUnidad'];
+    const quoteUppercaseVehicleFields = ['marca','modelo','anio','color','vin','placa','odometro'];
+    let masterDocs = {
+      presupuesto: null,
+      cotizacion: null,
+      repuestos: null
+    };
+    let quoteCalculator = null;
+    let ticketDoc = null;
+
+    const ticketRows = [
+      { key: 'laboratorios', label: 'Laboratorios:', source: ['Laboratorio'] },
+      { key: 'mantenimientos', label: 'Mantenimientos:', source: ['Mantenimiento'] },
+      { key: 'reparaciones', label: 'Reparaciones:', source: ['Reparacion'] },
+      { key: 'diagnosticos', label: 'Diagnosticos:', source: ['Diagnostico'] },
+      { key: 'revisiones', label: 'Revisiones:', source: ['Revision'] },
+      { key: 'programaciones', label: 'Programaciones:', source: ['Programacion'] },
+      { key: 'torno', label: 'Torno:', source: ['Torno'] },
+      { key: 'partes', label: 'Partes:', source: ['Repuestos'] },
+      { key: 'otros', label: 'Otros:', source: ['Otros'] },
+      { key: 'repuestosTitulo', label: 'Repuestos', source: [], labelOnly: true },
+      { key: 'repuestosExternos', label: 'Externos:', source: [] },
+      { key: 'serviciosTitulo', label: 'Servicios', source: [], labelOnly: true },
+      { key: 'serviciosExternos', label: 'Externos:', source: [] },
+      { key: 'combustiblesTitulo', label: 'Combustibles y', source: [], labelOnly: true },
+      { key: 'suministros', label: 'otros suministros:', source: ['Combustibles'] }
+    ];
+
+    function isSuggestion(tipo) {
+      return String(tipo || '').toLowerCase() === 'sugerencias';
+    }
+
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 1500);
+    }
+
+    function upperText(value) {
+      return text(value).toLocaleUpperCase('es-SV');
+    }
+
+    function forceUppercaseInput(el) {
+      if (!el) return;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const upper = upperText(el.value);
+      if (el.value !== upper) {
+        el.value = upper;
+        if (typeof start === 'number' && typeof end === 'number') {
+          el.setSelectionRange(start, end);
+        }
+      }
+    }
+
+    function validateRequiredVehicleFields() {
+      const missing = [];
+      requiredVehicleFields.forEach(id => {
+        const el = $(id);
+        const empty = !text(el && el.value).trim();
+        if (el) el.classList.toggle('required-missing', empty);
+        if (empty) missing.push(id);
+      });
+      if (missing.length) {
+        const labels = missing.map(id => requiredVehicleLabels[id] || id).join(', ');
+        alert('Debe completar estos campos obligatorios: ' + labels + '.');
+        const first = $(missing[0]);
+        if (first) {
+          first.focus();
+          first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
+      }
+      return true;
+    }
+
+    function openNotify() {
+      window.location.href = 'https://automdsv-svg.github.io/notificaciones/';
+    }
+
+    function saveTimeLabel(date = new Date()) {
+      return date.toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function updateFileStatus(note = '') {
+      const base = currentFileName ? `Archivo abierto: ${currentFileName}` : 'Sin archivo vinculado';
+      const status = note || (lastSavedAt ? `Ultimo guardado: ${saveTimeLabel(lastSavedAt)}` : '');
+      $('fileStatus').textContent = status ? `${base} | ${status}` : base;
+    }
+
+    function setFileHandle(handle) {
+      currentFileHandle = handle || null;
+      currentFileName = handle && handle.name ? handle.name : '';
+      updateFileStatus();
+    }
+
+    function decodeVehiclePayload(value) {
+      if (!value) return null;
+      try { return JSON.parse(decodeURIComponent(escape(atob(value)))); }
+      catch (err) { return null; }
+    }
+
+    function initialVehiclePayload() {
+      const params = new URLSearchParams(location.search);
+      let data = decodeVehiclePayload(params.get('vehicle'));
+      try { data = data || JSON.parse(localStorage.getItem(MASTER_VEHICLE_AUTOFILL_KEY) || 'null'); }
+      catch (err) { data = data || null; }
+      return data || {};
+    }
+
+    const initialVehicleData = initialVehiclePayload();
+    const archiveReception = new URLSearchParams(location.search).get('rec') || initialVehicleData.rec || '';
+
+    function archiveStore() {
+      try { return JSON.parse(localStorage.getItem(MASTER_ARCHIVE_KEY) || '{}') || {}; }
+      catch (err) { return {}; }
+    }
+
+    function quickArchiveStore() {
+      try { return JSON.parse(localStorage.getItem('am_quick_taller_archives_v1') || '{}') || {}; }
+      catch (err) { return {}; }
+    }
+
+    function saveArchiveStore(store) {
+      const compact = {};
+      Object.values(store || {}).forEach(archive => {
+        const data = archive?.data || {};
+        const key = archiveNorm(archive?.rec || data.rec || data.vin || data.placa || '');
+        if (!key) return;
+        const next = {
+          rec: archive?.rec || data.rec || key,
+          updatedAt: archive?.updatedAt || new Date().toISOString(),
+          data,
+          html: archive?.html || ''
+        };
+        const existing = compact[key];
+        if (!existing || Date.parse(next.updatedAt || 0) >= Date.parse(existing.updatedAt || 0)) compact[key] = next;
+      });
+      localStorage.removeItem(MASTER_ARCHIVE_KEY);
+      localStorage.setItem(MASTER_ARCHIVE_KEY, JSON.stringify(compact));
+    }
+
+    function currentArchiveKey() {
+      return String(archiveReception || $('placa')?.value || expedienteId || '').trim();
+    }
+
+    function archiveNorm(value) {
+      return String(value || '').trim().toUpperCase();
+    }
+
+    function archiveVehicleKey(data = {}) {
+      return [data.marca, data.modelo, data.anio].map(archiveNorm).filter(Boolean).join('|');
+    }
+
+    function archiveAliasKeys(data = {}) {
+      return [
+        currentArchiveKey(),
+        archiveReception,
+        initialVehicleData.rec,
+        data.rec,
+        data.vin,
+        data.placa,
+        initialVehicleData.vin,
+        initialVehicleData.placa
+      ].map(archiveNorm).filter(Boolean);
+    }
+
+    function archiveMatchesVehicle(archive, currentData = {}) {
+      const saved = archive?.data || {};
+      const currentKeys = archiveAliasKeys(currentData);
+      const savedKeys = [archive?.rec, saved.rec, saved.vin, saved.placa].map(archiveNorm).filter(Boolean);
+      if (savedKeys.some(key => currentKeys.includes(key))) return true;
+      const currentVehicleKey = archiveVehicleKey(currentData);
+      return !!currentVehicleKey && currentVehicleKey === archiveVehicleKey(saved);
+    }
+
+    function archiveContentScore(archive) {
+      const data = archive?.data || {};
+      let score = 0;
+      ['items', 'repuestos', 'authItems', 'authRepuestos'].forEach(key => {
+        if (Array.isArray(data[key])) score += data[key].length * 5;
+      });
+      ['marca', 'modelo', 'anio', 'color', 'vin', 'placa', 'odometro', 'tecnico'].forEach(key => {
+        if (String(data[key] || '').trim()) score += 1;
+      });
+      if (archive?.html) score += 1;
+      return score;
+    }
+
+    function newestUsefulArchive(candidates) {
+      return [...new Set(candidates)].sort((a, b) => {
+        const scoreDiff = archiveContentScore(b) - archiveContentScore(a);
+        if (scoreDiff) return scoreDiff;
+        return Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0);
+      })[0] || null;
+    }
+
+    function persistedArchive() {
+      const key = currentArchiveKey();
+      if (!key) return null;
+      const master = archiveStore();
+      const quick = quickArchiveStore();
+      const currentData = blankDataFromVehicle();
+      const exactKeys = archiveAliasKeys(currentData);
+      const candidates = exactKeys.flatMap(alias => [master[alias], quick[alias]]).filter(Boolean);
+      Object.values(master).forEach(archive => {
+        if (archiveMatchesVehicle(archive, currentData)) candidates.push(archive);
+      });
+      Object.values(quick).forEach(archive => {
+        if (archiveMatchesVehicle(archive, currentData)) candidates.push(archive);
+      });
+      if (!candidates.length) return null;
+      return newestUsefulArchive(candidates);
+    }
+
+    function persistArchiveSnapshot(note = '') {
+      const key = currentArchiveKey();
+      if (!key) return;
+      try {
+        const store = archiveStore();
+        const data = getData();
+        const snapshot = {
+          rec: key,
+          updatedAt: new Date().toISOString(),
+          data,
+          html: htmlWorkbook()
+        };
+        store[archiveNorm(key)] = snapshot;
+        saveArchiveStore(store);
+        if (note) updateFileStatus(note);
+      } catch (err) {
+        console.warn('No se pudo guardar archivo maestro local', err);
+        try {
+          localStorage.removeItem(MASTER_ARCHIVE_KEY);
+          localStorage.setItem(MASTER_ARCHIVE_KEY, JSON.stringify({ [archiveNorm(key)]: { rec: key, updatedAt: new Date().toISOString(), data: getData(), html: htmlWorkbook() } }));
+          if (note) updateFileStatus(note);
+        } catch (innerErr) {
+          console.warn('No se pudo compactar archivo maestro local', innerErr);
+        }
+      }
+    }
+
+    function blankDataFromVehicle() {
+      return {
+        ...blankData(),
+        fecha: initialVehicleData.fecha || today(),
+        hora: initialVehicleData.hora || nowTime(),
+        tecnico: initialVehicleData.tecnico || 'Edwin',
+        marca: initialVehicleData.marca || '',
+        modelo: initialVehicleData.modelo || '',
+        anio: initialVehicleData.anio || '',
+        color: initialVehicleData.color || '',
+        vin: initialVehicleData.vin || '',
+        placa: initialVehicleData.placa || '',
+        odometro: initialVehicleData.odometro || '',
+        odometroUnidad: initialVehicleData.odometroUnidad || 'mi',
+        rec: archiveReception || initialVehicleData.rec || ''
+      };
+    }
+
+    function markDirty() {
+      isDirty = true;
+      updateFileStatus(currentFileHandle ? 'Cambios pendientes de autoguardado' : 'Cambios sin guardar');
+      persistArchiveSnapshot('Cambios guardados localmente en el expediente');
+      scheduleAutoSave();
+    }
+
+    function hasPendingChanges() {
+      return !!isDirty;
+    }
+
+    function preventUnsafeUnload(ev) {
+      if (!hasPendingChanges() || allowUnloadOnce) return;
+      ev.preventDefault();
+      ev.returnValue = UNSAVED_CHANGES_MESSAGE;
+      return ev.returnValue;
+    }
+
+    function preventKeyboardRefresh(ev) {
+      const key = String(ev.key || '').toLowerCase();
+      const isRefresh = key === 'f5' || ((ev.ctrlKey || ev.metaKey) && key === 'r');
+      if (!isRefresh || !hasPendingChanges()) return;
+      const ok = confirm(UNSAVED_CHANGES_MESSAGE);
+      if (!ok) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        updateFileStatus('Actualizacion cancelada. Guarde el archivo para no perder informacion.');
+        return;
+      }
+      allowUnloadOnce = true;
+      setTimeout(() => { allowUnloadOnce = false; }, 1500);
+    }
+
+    function renderAndMarkDirty() {
+      render();
+      markDirty();
+    }
+
+    function scheduleAutoSave() {
+      clearTimeout(autoSaveTimer);
+      if (!currentFileHandle) return;
+      autoSaveTimer = setTimeout(autoSaveExcel, 700);
+    }
+
+    async function autoSaveExcel() {
+      if (!currentFileHandle || isAutoSaving) return;
+      isAutoSaving = true;
+      try {
+        await writeWorkbookToHandle(currentFileHandle, htmlWorkbook());
+        isDirty = false;
+        lastSavedAt = new Date();
+        updateFileStatus(`Autoguardado: ${saveTimeLabel(lastSavedAt)}`);
+      } catch (e) {
+        isDirty = true;
+        updateFileStatus('No se pudo autoguardar. Guarde manualmente.');
+      } finally {
+        isAutoSaving = false;
+      }
+    }
+
+    function blankData() {
+      return {
+        id: Date.now(),
+        fecha: today(),
+        hora: nowTime(),
+        tecnico: 'Edwin',
+        odometroUnidad: 'mi',
+        items: [],
+        repuestosIngreso: [],
+        authItems: [],
+        authRepuestos: [],
+        printRepuestos: false,
+        printAuthRepuestos: false,
+        masterDocs: blankMasterDocs(),
+        quoteCalculator: blankQuoteCalculator(),
+        ticketDoc: blankTicketDoc()
+      };
+    }
+
+    function defaultCalculatorCompanies() {
+      return [
+        { id: 'super_repuestos', name: 'Súper Repuestos' },
+        { id: 'econo_parts', name: 'Econo Parts' },
+        { id: 'la_casa_del_repuesto', name: 'La casa del repuesto' },
+        { id: 'empresa_repuestos', name: 'Empresa repuestos' }
+      ];
+    }
+
+    function blankQuoteCalculator() {
+      return {
+        companies: defaultCalculatorCompanies(),
+        rows: []
+      };
+    }
+
+    function blankQuoteDoc(kind = 'presupuesto') {
+      const d = readIngresoValues();
+      return {
+        fecha: today(),
+        cliente: '',
+        marca: d.marca || '',
+        modelo: d.modelo || '',
+        anio: d.anio || '',
+        color: d.color || '',
+        vin: d.vin || '',
+        placa: d.placa || '',
+        odometro: d.odometro || '',
+        odometroUnidad: d.odometroUnidad || 'mi',
+        ivaMode: false,
+        descuento: 0,
+        descuentoTipo: 'porcentaje',
+        lines: []
+      };
+    }
+
+    function blankTicketDoc() {
+      return {
+        rows: ticketRows.map(row => ({ key: row.key, label: row.label, labelOnly: !!row.labelOnly, cant: '', subtotal: '', total: '' })),
+        descuento: 0,
+        neto: 0,
+        totalPagar: 0
+      };
+    }
+
+    function blankMasterDocs() {
+      return {
+        presupuesto: blankQuoteDoc('presupuesto'),
+        cotizacion: blankQuoteDoc('cotizacion'),
+        repuestos: blankQuoteDoc('repuestos')
+      };
+    }
+
+    function isRealItem(it) {
+      return !!text(it && it.desc).trim();
+    }
+
+    function isRealPart(it) {
+      return !!text(it && it.desc).trim();
+    }
+
+    function cleanSheetList(list) {
+      const out = (list || []).map(x => ({...x}));
+      while (out.length && !isRealItem(out[out.length - 1])) out.pop();
+      return out;
+    }
+
+    function cleanItemsForSave() {
+      const ingreso = cleanSheetList(items.filter(x => !x.authOnly));
+      const used = new Set(ingreso.map(x => x.id));
+      return items.filter(x => used.has(x.id)).map(x => ({...x}));
+    }
+
+    function partsStore(mode = 'ingreso') {
+      return mode === 'autorizado' ? authRepuestos : repuestosIngreso;
+    }
+
+    function setPartsStore(mode, list) {
+      if (mode === 'autorizado') authRepuestos = list;
+      else repuestosIngreso = list;
+    }
+
+    function cleanPartsForSave(mode = 'ingreso') {
+      return cleanSheetList(partsStore(mode)).map(x => ({...x, tipo: 'Repuestos'}));
+    }
+
+    function getData() {
+      syncAuthorizedCopies();
+      const data = {
+        id: expedienteId,
+        rec: currentArchiveKey(),
+        items: cleanItemsForSave(),
+        repuestosIngreso: cleanPartsForSave('ingreso'),
+        authItems: cleanSheetList(authItems).map(x => ({...x})),
+        authRepuestos: cleanPartsForSave('autorizado'),
+        printRepuestos: !!$('printRepuestos')?.checked,
+        printAuthRepuestos: !!$('printAuthRepuestos')?.checked,
+        masterDocs: getMasterDocs(),
+        quoteCalculator: getQuoteCalculator(),
+        ticketDoc: getTicketDoc(),
+        updatedAt: Date.now()
+      };
+      fields.forEach(id => data[id] = $(id)?.value || '');
+      return data;
+    }
+
+    function getMasterDocs() {
+      pricedKinds.forEach(kind => syncQuoteFields(kind));
+      return {
+        presupuesto: cloneQuoteDoc(masterDocs.presupuesto || blankQuoteDoc('presupuesto')),
+        cotizacion: cloneQuoteDoc(masterDocs.cotizacion || blankQuoteDoc('cotizacion')),
+        repuestos: cloneQuoteDoc(masterDocs.repuestos || blankQuoteDoc('repuestos'))
+      };
+    }
+
+    function getQuoteCalculator() {
+      return normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+    }
+
+    function getTicketDoc() {
+      syncTicketFromDom();
+      return normalizeTicketDoc(ticketDoc || blankTicketDoc());
+    }
+
+    function cloneQuoteDoc(doc) {
+      const lines = cleanPricedLines(doc.lines || []).map(x => ({...x, total: lineTotal(x)}));
+      return {...doc, lines};
+    }
+
+    function readIngresoValues() {
+      const fieldValue = (id) => uppercaseVehicleFields.includes(id) ? upperText($(id)?.value || '') : ($(id)?.value || '');
+      return {
+        fecha: fieldValue('fecha'),
+        hora: fieldValue('hora'),
+        tecnico: fieldValue('tecnico'),
+        marca: fieldValue('marca'),
+        modelo: fieldValue('modelo'),
+        anio: fieldValue('anio'),
+        color: fieldValue('color'),
+        vin: fieldValue('vin'),
+        placa: fieldValue('placa'),
+        odometro: fieldValue('odometro'),
+        odometroUnidad: fieldValue('odometroUnidad')
+      };
+    }
+
+    function normalizeLoadedData(data) {
+      const out = {...(data || {})};
+      const aliases = {
+        fecha: ['fecha', 'Fecha de ingreso', 'Fecha ingreso', 'Fecha de recepcion', 'Fecha de recepción'],
+        hora: ['hora', 'Hora', 'Hora de ingreso', 'Hora recepcion', 'Hora recepción'],
+        tecnico: ['tecnico', 'Tecnico', 'Técnico'],
+        marca: ['marca', 'Marca'],
+        modelo: ['modelo', 'Modelo'],
+        anio: ['anio', 'Año', 'ano', 'Anio'],
+        color: ['color', 'Color'],
+        vin: ['vin', 'VIN'],
+        placa: ['placa', 'Placa'],
+        odometro: ['odometro', 'Odometro', 'Odómetro', 'Odometro (valor)', 'Odómetro (valor)'],
+        odometroUnidad: ['odometroUnidad', 'Unidad', 'Odometro (unidad)', 'Odómetro (unidad)']
+      };
+      Object.entries(aliases).forEach(([key, names]) => {
+        if (out[key]) return;
+        for (const name of names) {
+          if (out[name] != null && out[name] !== '') {
+            out[key] = out[name];
+            return;
+          }
+        }
+      });
+      return out;
+    }
+
+    function setData(data) {
+      data = normalizeLoadedData(data);
+      expedienteId = data.id || Date.now();
+      fields.forEach(id => { if ($(id)) $(id).value = data[id] || ''; });
+      items = (data.items || []).map((it, i) => ({
+        id: it.id || Date.now() + i,
+        tipo: it.tipo || 'Revision',
+        desc: it.desc || '',
+        cant: isSuggestion(it.tipo) ? '' : (it.cant || ''),
+        asistencia: isSuggestion(it.tipo) ? '' : (it.asistencia || ''),
+        autorizado: !!it.autorizado,
+        authOnly: !!it.authOnly,
+        spacer: !!it.spacer && !text(it.desc).trim()
+      }));
+      repuestosIngreso = (data.repuestosIngreso || data.repuestos || []).map((it, i) => ({
+        id: it.id || Date.now() + 50000 + i,
+        tipo: 'Repuestos',
+        desc: it.desc || '',
+        cant: it.cant || '',
+        spacer: !!it.spacer && !text(it.desc).trim(),
+        userEdited: !!it.userEdited
+      }));
+      authItems = (data.authItems || []).map((it, i) => ({
+        id: it.id || Date.now() + 70000 + i,
+        sourceId: it.sourceId || null,
+        tipo: it.tipo || 'Revision',
+        desc: it.desc || '',
+        cant: isSuggestion(it.tipo) ? '' : (it.cant || ''),
+        asistencia: isSuggestion(it.tipo) ? '' : (it.asistencia || ''),
+        autorizado: true,
+        authOnly: true,
+        spacer: !!it.spacer && !text(it.desc).trim()
+      }));
+      authRepuestos = (data.authRepuestos || []).map((it, i) => ({
+        id: it.id || Date.now() + 90000 + i,
+        sourceItemId: it.sourceItemId || null,
+        tipo: 'Repuestos',
+        desc: it.desc || '',
+        cant: it.cant || '',
+        spacer: !!it.spacer && !text(it.desc).trim()
+      }));
+      if ($('printRepuestos')) $('printRepuestos').checked = !!data.printRepuestos;
+      if ($('printAuthRepuestos')) $('printAuthRepuestos').checked = !!data.printAuthRepuestos;
+      masterDocs = {
+        ...blankMasterDocs(),
+        ...(data.masterDocs || {})
+      };
+      pricedKinds.forEach(kind => {
+        masterDocs[kind] = normalizeQuoteDoc(masterDocs[kind], kind);
+      });
+      quoteCalculator = normalizeQuoteCalculator(data.quoteCalculator || blankQuoteCalculator());
+      ticketDoc = normalizeTicketDoc(data.ticketDoc || data.ticket || blankTicketDoc());
+      editingId = null;
+      extraSheetRows.ingreso = 0;
+      extraSheetRows.autorizado = 0;
+      extraSheetRows.repuestos = 0;
+      extraSheetRows.authRepuestos = 0;
+      removedSheetRows.ingreso = 0;
+      removedSheetRows.autorizado = 0;
+      removedSheetRows.repuestos = 0;
+      removedSheetRows.authRepuestos = 0;
+      removedQuoteRows.presupuesto = 0;
+      removedQuoteRows.cotizacion = 0;
+      if (!data.ticketDoc && !data.ticket) ticketDoc = buildTicketFromCotizacion(false);
+      syncAuthorizedCopies();
+      render();
+    }
+
+    function normalizeQuoteDoc(doc, kind) {
+      const base = blankQuoteDoc(kind);
+      const out = {...base, ...(doc || {})};
+      out.ivaMode = !!out.ivaMode;
+      out.descuento = Math.max(0, Number(out.descuento || 0));
+      out.descuentoTipo = out.descuentoTipo === 'dinero' ? 'dinero' : 'porcentaje';
+      out.lines = (out.lines || []).map((line, i) => normalizePricedLine(line, i));
+      return out;
+    }
+
+    function normalizeQuoteCalculator(calc) {
+      const fallback = blankQuoteCalculator();
+      const rawCompanies = Array.isArray(calc && calc.companies) ? calc.companies : fallback.companies;
+      const companies = rawCompanies.map((company, index) => {
+        if (typeof company === 'string') {
+          return { id: calculatorCompanyId(company, index), name: company || `Empresa ${index + 1}` };
+        }
+        return {
+          id: company.id || calculatorCompanyId(company.name, index),
+          name: company.name || `Empresa ${index + 1}`
+        };
+      });
+      const seen = new Set();
+      const uniqueCompanies = companies.map((company, index) => {
+        let id = company.id;
+        while (seen.has(id)) id = `${company.id}_${index + 1}`;
+        seen.add(id);
+        return { ...company, id };
+      });
+      const rows = (Array.isArray(calc && calc.rows) ? calc.rows : []).map((row, index) => ({
+        id: row.id || Date.now() + 300000 + index,
+        desc: row.desc || '',
+        cant: row.cant === '' || row.cant == null ? '' : Math.max(0, Number(row.cant || 0)),
+        prices: { ...(row.prices || {}) }
+      }));
+      return { companies: uniqueCompanies.length ? uniqueCompanies : fallback.companies, rows };
+    }
+
+    function normalizeTicketDoc(doc) {
+      const rawRows = Array.isArray(doc && doc.rows) ? doc.rows : [];
+      const rows = ticketRows.map(def => {
+        const found = rawRows.find(row => row.key === def.key || row.label === def.label) || {};
+        if (def.labelOnly) return { key: def.key, label: def.label, labelOnly: true, cant: '', subtotal: '', total: '' };
+        const subtotal = found.subtotal === '' || found.subtotal == null ? '' : Math.max(0, Number(found.subtotal || 0));
+        const total = found.total === '' || found.total == null ? subtotal : Math.max(0, Number(found.total || 0));
+        return {
+          key: def.key,
+          label: found.label || def.label,
+          cant: found.cant === '' || found.cant == null ? '' : found.cant,
+          subtotal,
+          total
+        };
+      });
+      const neto = rows.reduce((sum, row) => sum + Number(row.total || row.subtotal || 0), 0);
+      const descuento = Math.max(0, Number(doc?.descuento || 0));
+      return {
+        rows,
+        descuento,
+        neto: Math.max(0, Number(doc?.neto || neto || 0)),
+        totalPagar: Math.max(0, Number(doc?.totalPagar || (neto - descuento) || 0))
+      };
+    }
+
+    function buildTicketFromCotizacion(preserveManual = true) {
+      syncQuoteFields('cotizacion');
+      const doc = masterDocs.cotizacion || blankQuoteDoc('cotizacion');
+      const sourceLines = (doc.lines || []).filter(line => text(line.desc).trim() && !line.spacer && !isSuggestion(line.tipo));
+      const previous = preserveManual ? normalizeTicketDoc(ticketDoc || blankTicketDoc()) : blankTicketDoc();
+      const rows = ticketRows.map(def => {
+        if (def.labelOnly) return { key: def.key, label: def.label, labelOnly: true, cant: '', subtotal: '', total: '' };
+        const matched = sourceLines.filter(line => (def.source || []).includes(line.tipo));
+        const subtotal = matched.reduce((sum, line) => sum + lineTotal(line), 0);
+        const cant = matched.reduce((sum, line) => sum + Number(line.cant || 0), 0);
+        const old = previous.rows.find(row => row.key === def.key) || {};
+        const hadManual = old.subtotal !== '' || old.total !== '' || old.cant !== '';
+        return {
+          key: def.key,
+          label: def.label,
+          cant: subtotal ? (cant || '-') : (preserveManual && hadManual ? old.cant : '-'),
+          subtotal: subtotal || (preserveManual && hadManual ? old.subtotal : ''),
+          total: subtotal || (preserveManual && hadManual ? old.total : '')
+        };
+      });
+      const subtotal = rows.reduce((sum, row) => sum + Number(row.total || row.subtotal || 0), 0);
+      const discount = discountInfo('cotizacion', sourceLines.reduce((sum, line) => sum + lineTotal(line), 0));
+      const descuento = preserveManual && previous.descuento ? previous.descuento : discount.amount;
+      return normalizeTicketDoc({
+        rows,
+        descuento,
+        neto: subtotal,
+        totalPagar: Math.max(0, subtotal - descuento)
+      });
+    }
+
+    function ticketTotals(doc = ticketDoc) {
+      const normalized = normalizeTicketDoc(doc || blankTicketDoc());
+      const neto = normalized.rows.reduce((sum, row) => sum + Number(row.total || row.subtotal || 0), 0);
+      const descuento = Math.max(0, Number(normalized.descuento || 0));
+      return { neto, descuento, totalPagar: Math.max(0, neto - descuento) };
+    }
+
+    function calculatorCompanyId(name, index = 0) {
+      const base = text(name || `empresa_${index + 1}`)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '') || `empresa_${index + 1}`;
+      return base;
+    }
+
+    function normalizePricedLine(line, i = 0) {
+      const tipo = line.spacer ? '' : (line.tipo || 'Repuestos');
+      const cant = isSuggestion(tipo) ? '' : (line.cant === '' || line.cant == null ? '' : Math.max(0, Number(line.cant || 0)));
+      const precio = line.precio === '' || line.precio == null ? '' : Math.max(0, Number(line.precio || 0));
+      const precioSinIva = line.precioSinIva === '' || line.precioSinIva == null ? '' : Math.max(0, Number(line.precioSinIva || 0));
+      return {
+        id: line.id || Date.now() + i,
+        tipo,
+        desc: line.desc || '',
+        cant,
+        precioSinIva,
+        precio,
+        total: lineTotal({ cant, precio }),
+        spacer: !!line.spacer,
+        printHeight: Math.max(0, Number(line.printHeight || 0))
+      };
+    }
+
+    function vehicleTitle(d = getData()) {
+      return [d.marca, d.modelo, d.anio, d.placa ? 'Placa ' + d.placa : ''].filter(Boolean).join(' - ');
+    }
+
+    function fileBaseName(kind) {
+      const d = getData();
+      const clean = (s) => text(s).trim().replace(/[^a-z0-9-_]+/gi, '_').replace(/^_+|_+$/g, '');
+      const tecnico = clean(d.tecnico).toUpperCase();
+      return [clean(d.marca), clean(d.modelo), clean(d.anio), clean(d.color), clean(d.placa), tecnico].filter(Boolean).join('_') || 'SIN_DATOS';
+    }
+
+    function itemTypeOptions(selected) {
+      return itemTypes.map(t => `<option ${t === selected ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    }
+
+    function quoteTypeOptions(line) {
+      const selected = line && line.spacer ? '__blank__' : (line?.tipo || 'Revision');
+      return `<option value="__blank__" ${selected === '__blank__' ? 'selected' : ''}>-</option>` +
+        itemTypes.map(t => `<option value="${esc(t)}" ${t === selected ? 'selected' : ''}>${esc(t)}</option>`).join('');
+    }
+
+    function assistanceSelectOptions(selected) {
+      return assistanceOptions.map(t => `<option value="${esc(t)}" ${t === selected ? 'selected' : ''}>${esc(t || '-')}</option>`).join('');
+    }
+
+    function sheetSource(mode) {
+      return mode === 'autorizado' ? authItems : items.filter(x => !x.authOnly);
+    }
+
+    function sheetRows(mode) {
+      const current = sheetSource(mode);
+      const minRows = Math.max(current.length + 1, minSheetRows + (extraSheetRows[mode] || 0) - (removedSheetRows[mode] || 0));
+      const blanks = Array.from({ length: Math.max(minRows - current.length, 1) }, (_, i) => ({
+        blank: true,
+        transient: true,
+        index: current.length + i,
+        key: `new-${mode}-${i}`,
+        tipo: 'Revision',
+        desc: '',
+        cant: '',
+        asistencia: '',
+        autorizado: mode === 'autorizado'
+      }));
+      return current.concat(blanks);
+    }
+
+    function newItemId() {
+      return Date.now() + Math.floor(Math.random() * 100000);
+    }
+
+    function createSheetItemAt(mode, index, spacer = false) {
+      const visible = sheetSource(mode);
+      const it = {
+        id: newItemId(),
+        sourceId: null,
+        tipo: 'Revision',
+        desc: '',
+        cant: '',
+        asistencia: '',
+        autorizado: mode === 'autorizado',
+        authOnly: mode === 'autorizado',
+        spacer
+      };
+      const store = mode === 'autorizado' ? authItems : items;
+      const before = visible[index];
+      if (before) {
+        const insertAt = store.findIndex(x => x.id === before.id);
+        store.splice(insertAt, 0, it);
+      } else if (visible.length) {
+        const last = visible[visible.length - 1];
+        const insertAt = store.findIndex(x => x.id === last.id) + 1;
+        store.splice(insertAt, 0, it);
+      } else {
+        store.push(it);
+      }
+      return it;
+    }
+
+    function bindRowToItem(row, it) {
+      row.dataset.id = String(it.id);
+      row.dataset.key = String(it.id);
+      row.dataset.transient = '';
+      row.querySelectorAll('[data-sheet]').forEach(el => { el.dataset.key = String(it.id); });
+      const del = row.querySelector('.sheet-delete');
+      if (del) {
+        del.dataset.id = String(it.id);
+        del.disabled = false;
+      }
+      row.draggable = true;
+    }
+
+    function ensureSheetItem(row, mode) {
+      const id = Number(row.dataset.id || 0);
+      const store = mode === 'autorizado' ? authItems : items;
+      let it = id ? store.find(x => x.id === id) : null;
+      if (!it) {
+        const targetIndex = Number(row.dataset.index || sheetSource(mode).length);
+        while (sheetSource(mode).length < targetIndex) createSheetItemAt(mode, sheetSource(mode).length, true);
+        it = createSheetItemAt(mode, targetIndex, true);
+        bindRowToItem(row, it);
+      }
+      return it;
+    }
+
+    function fitSheetTextarea(el) {
+      if (!el || el.tagName !== 'TEXTAREA') return;
+      el.style.height = '34px';
+      el.style.height = Math.max(34, el.scrollHeight) + 'px';
+    }
+
+    function updateItem(id, patch, mode = 'ingreso') {
+      const store = mode === 'autorizado' ? authItems : items;
+      const idx = store.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      store[idx] = {...store[idx], ...patch};
+      if (isSuggestion(store[idx].tipo)) {
+        store[idx].cant = '';
+        store[idx].asistencia = '';
+      }
+      renderAndMarkDirty();
+    }
+
+    function sheetPatch(el, mode) {
+      const row = el.closest('.sheet-row');
+      if (!row) return;
+      const field = el.dataset.field;
+      const it = ensureSheetItem(row, mode);
+      let value = el.type === 'checkbox' ? el.checked : el.value;
+      if (field === 'tipo' && !itemTypes.includes(value)) value = 'Revision';
+      it[field] = value;
+      if (field === 'desc') it.spacer = !text(value).trim();
+      if (field !== 'desc' && isRealItem(it)) it.spacer = false;
+      if (field === 'tipo' && isSuggestion(value)) {
+        it.cant = '';
+        it.asistencia = '';
+      }
+      if (mode === 'autorizado') {
+        it.autorizado = true;
+        it.authOnly = true;
+      }
+      if (field === 'desc') fitSheetTextarea(el);
+      if (field === 'tipo' || field === 'autorizado') renderAndMarkDirty();
+      else { renderSummary(); markDirty(); }
+    }
+
+    function removeItem(id, mode = 'ingreso') {
+      if (!confirm('Eliminar este item?')) return;
+      if (mode === 'autorizado') {
+        const idx = authItems.findIndex(x => x.id === id);
+        authItems = authItems.filter(x => x.id !== id);
+        if (idx >= 0) authRepuestos.splice(idx, 1);
+      } else {
+        const visible = sheetSource('ingreso');
+        const idx = visible.findIndex(x => x.id === id);
+        items = items.filter(x => x.id !== id);
+        if (idx >= 0) repuestosIngreso.splice(idx, 1);
+      }
+      renderAndMarkDirty();
+    }
+
+    function removeBlankSheetRow(mode) {
+      removedSheetRows[mode] = (removedSheetRows[mode] || 0) + 1;
+      if (mode === 'ingreso') removedSheetRows.repuestos = (removedSheetRows.repuestos || 0) + 1;
+      if (mode === 'autorizado') removedSheetRows.authRepuestos = (removedSheetRows.authRepuestos || 0) + 1;
+      renderItems();
+      markDirty();
+    }
+
+    function sheetRowHtml(it, idx, mode) {
+      const blank = !!it.blank;
+      const transient = !!it.transient;
+      const id = blank ? '' : String(it.id);
+      const key = blank ? it.key : id;
+      const suggestion = isSuggestion(it.tipo);
+      const authCell = mode === 'ingreso'
+        ? `<td class="sheet-auth"><input data-sheet data-field="autorizado" data-key="${esc(key)}" type="checkbox" ${it.autorizado ? 'checked' : ''} title="Autorizado"></td>`
+        : '';
+      const cantCell = suggestion
+        ? '<td class="sheet-cant sheet-disabled">-</td>'
+        : `<td class="sheet-cant"><input data-sheet data-field="cant" data-key="${esc(key)}" value="${esc(it.cant || '')}" autocomplete="off"></td>`;
+      const asistCell = suggestion
+        ? '<td class="sheet-asist sheet-disabled">-</td>'
+        : `<td class="sheet-asist"><select data-sheet data-field="asistencia" data-key="${esc(key)}">${assistanceSelectOptions(it.asistencia || '')}</select></td>`;
+      return `
+        <tr class="sheet-row" data-mode="${mode}" data-id="${esc(id)}" data-key="${esc(key)}" data-index="${idx}" data-transient="${transient ? '1' : ''}">
+          <td class="sheet-drag sheet-move" title="Arrastrar fila">::</td>
+          <td class="sheet-type"><select data-sheet data-field="tipo" data-key="${esc(key)}">${itemTypeOptions(it.tipo || 'Revision')}</select></td>
+          ${cantCell}
+          <td><textarea data-sheet data-field="desc" data-key="${esc(key)}" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences">${esc(it.desc || '')}</textarea></td>
+          ${asistCell}
+          ${authCell}
+          <td class="sheet-actions"><button class="sheet-delete" data-id="${esc(id)}" data-blank="${blank ? '1' : ''}" data-index="${idx}" title="Borrar fila">X</button></td>
+        </tr>`;
+    }
+
+    function sheetHeader(mode) {
+      const authHead = mode === 'ingreso' ? '<th class="sheet-auth">Autorizado</th>' : '';
+      return `<thead><tr>
+        <th class="sheet-move"></th>
+        <th class="sheet-type">Tipo</th>
+        <th class="sheet-cant">Cant</th>
+        <th>Descripcion</th>
+        <th class="sheet-asist">Asistencia</th>
+        ${authHead}
+        <th class="sheet-actions"></th>
+      </tr></thead>`;
+    }
+
+    function ensureSheetIndex(mode, index) {
+      const target = Math.max(0, Number(index || 0));
+      while (sheetSource(mode).length <= target) createSheetItemAt(mode, sheetSource(mode).length, true);
+      return sheetSource(mode)[target];
+    }
+
+    function reorderItems(fromId, targetIndex, mode, place = 'before') {
+      const store = mode === 'autorizado' ? authItems : items;
+      const moved = store.find(x => x.id === fromId);
+      if (!moved) return;
+      const fromIndex = sheetSource(mode).findIndex(x => x.id === fromId);
+      const target = ensureSheetIndex(mode, targetIndex);
+      if (!target || target.id === fromId) return;
+      const visibleIds = sheetSource(mode).map(x => x.id);
+      const visibleWithoutMoved = sheetSource(mode).filter(x => x.id !== fromId);
+      let targetPos = visibleWithoutMoved.findIndex(x => x.id === target.id);
+      if (targetPos < 0) targetPos = visibleWithoutMoved.length;
+      if (place === 'after') targetPos += 1;
+      visibleWithoutMoved.splice(Math.min(targetPos, visibleWithoutMoved.length), 0, moved);
+      let cursor = 0;
+      const reorderedStore = store.map(x => {
+        if (!visibleIds.includes(x.id)) return x;
+        return visibleWithoutMoved[cursor++] || x;
+      });
+      if (mode === 'autorizado') {
+        authItems = reorderedStore;
+        reorderPartsByRowMove('autorizado', fromIndex, targetIndex, place);
+      } else {
+        items = reorderedStore;
+        reorderPartsByRowMove('ingreso', fromIndex, targetIndex, place);
+      }
+      renderAndMarkDirty();
+    }
+
+    function cloneItemForAuth(it) {
+      return {
+        id: newItemId(),
+        sourceId: it.id,
+        tipo: it.tipo || 'Revision',
+        desc: it.desc || '',
+        cant: it.cant || '',
+        asistencia: it.asistencia || '',
+        autorizado: true,
+        authOnly: true,
+        spacer: !!it.spacer && !text(it.desc).trim()
+      };
+    }
+
+    function clonePartForAuth(part, sourceItemId) {
+      return {
+        id: newItemId(),
+        sourceItemId,
+        tipo: 'Repuestos',
+        desc: part?.desc || '',
+        cant: part?.cant || '',
+        spacer: !!part?.spacer && !text(part?.desc).trim(),
+        userEdited: false
+      };
+    }
+
+    function syncAuthorizedCopies() {
+      const ingresoRows = sheetSource('ingreso');
+      const wanted = ingresoRows.filter(x => x.autorizado).map(x => x.id);
+      authItems = authItems.filter(x => !x.sourceId || wanted.includes(x.sourceId));
+      authRepuestos = authRepuestos.filter(x => !x.sourceItemId || wanted.includes(x.sourceItemId));
+      ingresoRows.forEach((it, idx) => {
+        if (!it.autorizado) return;
+        if (!authItems.some(x => x.sourceId === it.id)) authItems.push(cloneItemForAuth(it));
+        const sourcePart = repuestosIngreso[idx];
+        const targetPart = authRepuestos.find(x => x.sourceItemId === it.id);
+        if (!targetPart) {
+          authRepuestos.push(clonePartForAuth(sourcePart, it.id));
+        } else if (!targetPart.userEdited && isRealPart(sourcePart)) {
+          targetPart.desc = sourcePart.desc || '';
+          targetPart.cant = sourcePart.cant || '';
+          targetPart.tipo = 'Repuestos';
+          targetPart.spacer = false;
+        }
+      });
+    }
+
+    function attachSheet(listId, mode) {
+      const wrap = $(listId);
+      if (!wrap) return;
+      wrap.querySelectorAll('[data-sheet]').forEach(el => {
+        const eventName = el.tagName === 'TEXTAREA' ? 'input' : 'change';
+        el.addEventListener(eventName, () => sheetPatch(el, mode));
+        if (el.tagName === 'TEXTAREA') fitSheetTextarea(el);
+      });
+      wrap.querySelectorAll('.sheet-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id || 0);
+          if (id) removeItem(id, mode);
+          else removeBlankSheetRow(mode);
+        });
+      });
+      wrap.querySelectorAll('.sheet-drag').forEach(handle => {
+        handle.addEventListener('pointerdown', ev => {
+          const row = handle.closest('.sheet-row');
+          const it = ensureSheetItem(row, mode);
+          const fromId = it.id;
+          row.classList.add('pointer-dragging');
+          handle.setPointerCapture?.(ev.pointerId);
+          ev.preventDefault();
+          const moveOver = pointEv => {
+            const target = document.elementFromPoint(pointEv.clientX, pointEv.clientY)?.closest('.sheet-row');
+            wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (target && wrap.contains(target)) target.classList.add('drag-over');
+          };
+          const finish = pointEv => {
+            document.removeEventListener('pointermove', moveOver);
+            document.removeEventListener('pointerup', finish);
+            document.removeEventListener('pointercancel', finish);
+            row.classList.remove('pointer-dragging');
+            const target = document.elementFromPoint(pointEv.clientX, pointEv.clientY)?.closest('.sheet-row');
+            wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!target || !wrap.contains(target)) return;
+            reorderItems(fromId, Number(target.dataset.index || 0), mode, 'before');
+          };
+          document.addEventListener('pointermove', moveOver);
+          document.addEventListener('pointerup', finish);
+          document.addEventListener('pointercancel', finish);
+        });
+      });
+    }
+
+    function renderSheet(listId, mode) {
+      const rows = sheetRows(mode).map((it, idx) => sheetRowHtml(it, idx, mode)).join('');
+      $(listId).innerHTML = `<table class="sheet-table">${sheetHeader(mode)}<tbody>${rows}</tbody></table>`;
+      attachSheet(listId, mode);
+    }
+
+    function partsStore(mode = 'ingreso') {
+      return mode === 'autorizado' ? authRepuestos : repuestosIngreso;
+    }
+
+    function setPartsStore(mode, list) {
+      if (mode === 'autorizado') authRepuestos = list;
+      else repuestosIngreso = list;
+    }
+
+    function partsExtraKey(mode = 'ingreso') {
+      return mode === 'autorizado' ? 'authRepuestos' : 'repuestos';
+    }
+
+    function partRows(mode = 'ingreso') {
+      const store = partsStore(mode);
+      const linkedRows = sheetSource(mode).length;
+      const extraKey = partsExtraKey(mode);
+      const minRows = Math.max(linkedRows + 1, minSheetRows + (extraSheetRows[extraKey] || 0) - (removedSheetRows[extraKey] || 0));
+      const blanks = Array.from({ length: Math.max(minRows - store.length, 1) }, (_, i) => ({
+        blank: true,
+        transient: true,
+        index: store.length + i,
+        key: `new-${partsExtraKey(mode)}-${i}`,
+        desc: '',
+        cant: ''
+      }));
+      return store.concat(blanks);
+    }
+
+    function createPartAt(index, spacer = false, mode = 'ingreso') {
+      const store = partsStore(mode);
+      const it = { id: newItemId(), sourceItemId: null, tipo: 'Repuestos', desc: '', cant: '', spacer };
+      const target = store[index];
+      if (target) store.splice(store.findIndex(x => x.id === target.id), 0, it);
+      else store.push(it);
+      setPartsStore(mode, store);
+      return it;
+    }
+
+    function ensurePartRow(row, mode = 'ingreso') {
+      const store = partsStore(mode);
+      const id = Number(row.dataset.id || 0);
+      let it = id ? store.find(x => x.id === id) : null;
+      if (!it) {
+        const targetIndex = Number(row.dataset.index || store.length);
+        while (partsStore(mode).length < targetIndex) createPartAt(partsStore(mode).length, true, mode);
+        it = createPartAt(targetIndex, true, mode);
+        row.dataset.id = String(it.id);
+        row.dataset.key = String(it.id);
+        row.dataset.transient = '';
+        row.querySelectorAll('[data-part]').forEach(el => { el.dataset.key = String(it.id); });
+        const del = row.querySelector('.sheet-delete');
+        if (del) {
+          del.dataset.id = String(it.id);
+          del.disabled = false;
+        }
+      }
+      return it;
+    }
+
+    function patchPart(el, mode = 'ingreso') {
+      const row = el.closest('.sheet-row');
+      if (!row) return;
+      const it = ensurePartRow(row, mode);
+      const field = el.dataset.field;
+      it.tipo = 'Repuestos';
+      it[field] = el.value;
+      if (mode === 'autorizado') it.userEdited = true;
+      if (field === 'desc') {
+        it.spacer = !text(el.value).trim();
+        fitSheetTextarea(el);
+      }
+      if (mode === 'ingreso') syncAuthorizedCopies();
+      renderSummary();
+      markDirty();
+    }
+
+    function removePart(id, mode = 'ingreso') {
+      if (!confirm('Eliminar este repuesto?')) return;
+      setPartsStore(mode, partsStore(mode).filter(x => x.id !== id));
+      renderAndMarkDirty();
+    }
+
+    function removeBlankPartRow(mode = 'ingreso') {
+      const key = partsExtraKey(mode);
+      removedSheetRows[key] = (removedSheetRows[key] || 0) + 1;
+      renderItems();
+      markDirty();
+    }
+
+    function ensurePartIndex(mode, index) {
+      const target = Math.max(0, Number(index || 0));
+      while (partsStore(mode).length <= target) createPartAt(partsStore(mode).length, true, mode);
+      return partsStore(mode)[target];
+    }
+
+    function reorderPartsByRowMove(mode, fromIndex, targetIndex, place = 'before') {
+      if (fromIndex < 0) return;
+      ensurePartIndex(mode, fromIndex);
+      ensurePartIndex(mode, targetIndex);
+      const store = partsStore(mode);
+      const moved = store[fromIndex];
+      if (!moved) return;
+      const withoutMoved = store.filter((_, idx) => idx !== fromIndex);
+      let targetPos = Number(targetIndex || 0);
+      if (fromIndex < targetPos) targetPos -= 1;
+      if (place === 'after') targetPos += 1;
+      withoutMoved.splice(Math.max(0, Math.min(targetPos, withoutMoved.length)), 0, moved);
+      setPartsStore(mode, withoutMoved);
+    }
+
+    function partRowHtml(it, idx) {
+      const blank = !!it.blank;
+      const transient = !!it.transient;
+      const id = blank ? '' : String(it.id);
+      const key = blank ? it.key : id;
+      return `
+        <tr class="sheet-row" data-id="${esc(id)}" data-key="${esc(key)}" data-index="${idx}" data-transient="${transient ? '1' : ''}">
+          <td class="parts-cant"><input data-part data-field="cant" data-key="${esc(key)}" value="${esc(it.cant || '')}" autocomplete="off"></td>
+          <td><textarea data-part data-field="desc" data-key="${esc(key)}" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences">${esc(it.desc || '')}</textarea></td>
+          <td class="sheet-actions"><button class="sheet-delete" data-id="${esc(id)}" data-blank="${blank ? '1' : ''}" data-index="${idx}" title="Borrar fila">X</button></td>
+        </tr>`;
+    }
+
+    function attachPartsSheet(listId = 'partsItems', mode = 'ingreso') {
+      const wrap = $(listId);
+      if (!wrap) return;
+      wrap.querySelectorAll('[data-part]').forEach(el => {
+        const eventName = el.tagName === 'TEXTAREA' ? 'input' : 'change';
+        el.addEventListener(eventName, () => patchPart(el, mode));
+        if (el.tagName === 'TEXTAREA') fitSheetTextarea(el);
+      });
+      wrap.querySelectorAll('.sheet-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id || 0);
+          if (id) removePart(id, mode);
+          else removeBlankPartRow(mode);
+        });
+      });
+    }
+
+    function renderPartsSheet(listId = 'partsItems', mode = 'ingreso') {
+      const rows = partRows(mode).map((it, idx) => partRowHtml(it, idx)).join('');
+      $(listId).innerHTML = `<table class="sheet-table parts-table"><thead><tr>
+        <th class="parts-cant">Cant</th>
+        <th>Descripcion Rep</th>
+        <th class="sheet-actions"></th>
+      </tr></thead><tbody>${rows}</tbody></table>`;
+      attachPartsSheet(listId, mode);
+    }
+
+    function addSheetRows(mode) {
+      extraSheetRows[mode] = (extraSheetRows[mode] || 0) + 5;
+      if (mode === 'ingreso') extraSheetRows.repuestos = (extraSheetRows.repuestos || 0) + 5;
+      if (mode === 'autorizado') extraSheetRows.authRepuestos = (extraSheetRows.authRepuestos || 0) + 5;
+      renderItems();
+      toast('Renglones agregados');
+    }
+
+    function renderItems() {
+      syncAuthorizedCopies();
+      renderSheet('items', 'ingreso');
+      renderPartsSheet('partsItems', 'ingreso');
+      renderSheet('authorizedItems', 'autorizado');
+      renderPartsSheet('authPartsItems', 'autorizado');
+    }
+
+    function money(n) {
+      return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function quoteTitle(kind) {
+      return kind === 'cotizacion' ? 'Cotizacion' : kind === 'repuestos' ? 'Repuestos' : 'Presupuesto';
+    }
+
+    function syncQuoteFields(kind) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      quoteVehicleFields.forEach(field => {
+        const el = $(`${kind}_${field}`);
+        if (el) {
+          if (quoteUppercaseVehicleFields.includes(field)) forceUppercaseInput(el);
+          masterDocs[kind][field] = quoteUppercaseVehicleFields.includes(field) ? upperText(el.value || '') : (el.value || '');
+        }
+      });
+      if (ivaKinds.includes(kind)) {
+        masterDocs[kind].ivaMode = !!$(`${kind}IvaMode`)?.checked;
+        masterDocs[kind].descuento = Math.max(0, Number($(`${kind}Descuento`)?.value || 0));
+        masterDocs[kind].descuentoTipo = $(`${kind}DescuentoTipo`)?.value === 'dinero' ? 'dinero' : 'porcentaje';
+      }
+    }
+
+    function discountInfo(kind, subtotal) {
+      const doc = masterDocs[kind] || {};
+      const value = Math.max(0, Number(doc.descuento || 0));
+      const type = doc.descuentoTipo === 'dinero' ? 'dinero' : 'porcentaje';
+      const amount = type === 'dinero' ? Math.min(value, subtotal) : subtotal * (value / 100);
+      return { value, type, amount, finalTotal: Math.max(0, subtotal - amount) };
+    }
+
+    function fillQuoteDefaultsFromIngreso(kind) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      const ingreso = readIngresoValues();
+      const defaults = {
+        marca: ingreso.marca,
+        modelo: ingreso.modelo,
+        anio: ingreso.anio,
+        color: ingreso.color,
+        vin: ingreso.vin,
+        placa: ingreso.placa,
+        odometro: ingreso.odometro,
+        odometroUnidad: ingreso.odometroUnidad || 'mi'
+      };
+      Object.entries(defaults).forEach(([field, value]) => {
+        if (!masterDocs[kind][field] && value) masterDocs[kind][field] = value;
+      });
+      if (!masterDocs[kind].fecha) masterDocs[kind].fecha = today();
+    }
+
+    function updateQuoteTotals(kind, fromPrecioSinIva = false) {
+      const cant = Math.max(1, Number($(`${kind}Cant`)?.value || 1));
+      let precio = Math.max(0, Number($(`${kind}Precio`)?.value || 0));
+      if (fromPrecioSinIva) {
+        const precioSinIva = Math.max(0, Number($(`${kind}PrecioSinIva`)?.value || 0));
+        precio = precioSinIva * (1 + IVA_RATE);
+        if ($(`${kind}Precio`)) $(`${kind}Precio`).value = precio.toFixed(2);
+      }
+      if ($(`${kind}Total`)) $(`${kind}Total`).value = money(cant * precio);
+    }
+
+    function toggleIvaMode(kind, resetDiscount = false) {
+      const ivaMode = ivaKinds.includes(kind) && !!$(`${kind}IvaMode`)?.checked;
+      const wrap = $(`${kind}PrecioSinIvaWrap`);
+      if (wrap) wrap.style.display = ivaMode ? 'grid' : 'none';
+      syncQuoteFields(kind);
+      updateQuoteTotals(kind, ivaMode);
+    }
+
+    function quoteFieldHtml(kind) {
+      const d = masterDocs[kind] || blankQuoteDoc(kind);
+      const rows = [
+        ['Fecha', 'fecha', 'date'],
+        ['Cliente', 'cliente', 'text'],
+        ['Marca', 'marca', 'text'],
+        ['Modelo', 'modelo', 'text'],
+        ['Año', 'anio', 'text'],
+        ['Color', 'color', 'text'],
+        ['VIN', 'vin', 'text'],
+        ['Placa', 'placa', 'text'],
+        ['Odometro', 'odometro', 'number']
+      ];
+      const html = rows.map(([label, field, type]) => `<label>${esc(label)}<input id="${kind}_${field}" type="${type}" value="${esc(d[field] || '')}"></label>`).join('');
+      return html + `<label>Unidad<select id="${kind}_odometroUnidad"><option value="mi" ${d.odometroUnidad === 'mi' ? 'selected' : ''}>Millas</option><option value="km" ${d.odometroUnidad === 'km' ? 'selected' : ''}>Kilometros</option></select></label>`;
+    }
+
+    function lineTotal(line) {
+      if (line && line.spacer) return 0;
+      return Math.max(0, Number(line.cant || 0)) * Math.max(0, Number(line.precio || 0));
+    }
+
+    function categoryTotals(lines) {
+      const totals = {};
+      itemTypes.filter(t => !isSuggestion(t)).forEach(t => totals[t] = 0);
+      (lines || []).forEach(line => {
+        if (line.spacer || isSuggestion(line.tipo)) return;
+        const key = itemTypes.includes(line.tipo) ? line.tipo : 'Otros';
+        totals[key] = (totals[key] || 0) + lineTotal(line);
+      });
+      return totals;
+    }
+
+    function renderTotals(lines, kind = '') {
+      if (kind === 'repuestos') {
+        const totalRepuestos = (lines || []).reduce((sum, line) => sum + lineTotal(line), 0);
+        return `<div class="totals-grid">
+          <div class="muted">Este modulo solo suma repuestos.</div>
+          <div class="totals-box">
+            <div class="total-line grand"><span>Repuestos</span><strong>$ ${money(totalRepuestos)}</strong></div>
+          </div>
+        </div>`;
+      }
+      const totals = categoryTotals(lines);
+      const subtotal = Object.values(totals).reduce((sum, value) => sum + value, 0);
+      const discount = discountInfo(kind, subtotal);
+      const rows = Object.entries(totals).map(([tipo, total]) => `<div class="total-line"><span>${esc(tipo)}</span><strong>$ ${total ? money(total) : '-'}</strong></div>`).join('');
+      return `<div class="totals-grid">
+        <div class="muted">Sugerencias no se suman en los totales.</div>
+        <div class="totals-box">
+          ${rows}
+          <div class="total-line"><span>Sub-total</span><strong>$ ${money(subtotal)}</strong></div>
+          ${discount.amount ? `<div class="total-line"><span>Descuento</span><strong>$ ${money(discount.amount)}</strong></div>` : ''}
+          <div class="total-line grand"><span>Total</span><strong>$ ${money(discount.finalTotal)}</strong></div>
+        </div>
+      </div>`;
+    }
+
+    function renderPrintTotals(lines, kind = '') {
+      if (kind === 'repuestos') {
+        const totalRepuestos = (lines || []).reduce((sum, line) => sum + lineTotal(line), 0);
+        return `<div class="print-totals"><div class="totals-box">
+          <div class="total-line grand"><span>TOTAL</span><strong>$ ${money(totalRepuestos)}</strong></div>
+        </div></div>`;
+      }
+      const totals = categoryTotals(lines);
+      const subtotal = Object.values(totals).reduce((sum, value) => sum + value, 0);
+      const discount = discountInfo(kind, subtotal);
+      const rows = Object.entries(totals).map(([tipo, total]) => `<div class="total-line"><span>${esc(tipo)}</span><strong>$ ${total ? money(total) : '-'}</strong></div>`).join('');
+      return `<div class="print-totals"><div class="totals-box">
+        ${rows}
+        <div class="total-line"><span>SUB-TOTAL</span><strong>$ ${money(subtotal)}</strong></div>
+        <div class="total-line"><span>DESCUENTO</span><strong>${discount.amount ? '$ ' + money(discount.amount) : '-'}</strong></div>
+        <div class="total-line grand"><span>TOTAL</span><strong>$ ${money(discount.finalTotal)}</strong></div>
+      </div></div>`;
+    }
+
+    function pricedLineRow(kind, line, idx) {
+      const doc = masterDocs[kind] || {};
+      const ivaMode = ivaKinds.includes(kind) && !!doc.ivaMode;
+      const total = lineTotal(line);
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td><select ${kind === 'repuestos' ? 'disabled' : ''} onchange="updatePricedLine('${kind}',${line.id},{tipo:this.value})">${kind === 'repuestos' ? '<option selected>Repuestos</option>' : itemTypeOptions(line.tipo)}</select></td>
+        <td class="desc-cell"><textarea spellcheck="true" lang="es" onchange="updatePricedLine('${kind}',${line.id},{desc:this.value})">${esc(line.desc)}</textarea></td>
+        <td><input class="money" type="number" min="0" step="1" value="${esc(line.cant)}" onchange="updatePricedLine('${kind}',${line.id},{cant:Number(this.value||0)})"></td>
+        ${ivaMode ? `<td><input class="money" type="number" min="0" step="0.01" value="${esc(line.precioSinIva)}" onchange="updatePricedLine('${kind}',${line.id},{precioSinIva:Number(this.value||0)})"></td>` : ''}
+        <td><input class="money" type="number" min="0" step="0.01" value="${esc(Number(line.precio || 0).toFixed(2))}" onchange="updatePricedLine('${kind}',${line.id},{precio:Number(this.value||0)})"></td>
+        <td class="money">$ ${money(total)}</td>
+        <td><button class="small danger" onclick="removePricedLine('${kind}',${line.id})">Borrar</button></td>
+      </tr>`;
+    }
+
+    function isRealPricedLine(line) {
+      return !!line && (!!line.spacer || !!text(line.desc).trim());
+    }
+
+    function hasNumericPrintValue(value) {
+      if (value === '' || value == null) return false;
+      const n = Number(value);
+      return Number.isFinite(n) && n !== 0;
+    }
+
+    function isFilledPricedLine(line) {
+      if (!line || line.spacer) return false;
+      return !!text(line.desc).trim();
+    }
+
+    function printablePricedLines(lines) {
+      const source = Array.isArray(lines) ? lines : [];
+      const first = source.findIndex(isFilledPricedLine);
+      if (first < 0) return [];
+      let last = source.length - 1;
+      while (last >= first && !isFilledPricedLine(source[last])) last -= 1;
+      return source
+        .slice(first, last + 1)
+        .filter(line => line.spacer || isFilledPricedLine(line));
+    }
+
+    function cleanPricedLines(lines) {
+      const source = Array.isArray(lines) ? lines : [];
+      const first = source.findIndex(isFilledPricedLine);
+      if (first < 0) return [];
+      let last = source.length - 1;
+      while (last >= first && !isFilledPricedLine(source[last])) last -= 1;
+      return source
+        .slice(first, last + 1)
+        .filter(line => line.spacer || isFilledPricedLine(line));
+    }
+
+    function cleanQuoteDoc(kind) {
+      if (!masterDocs[kind]) return;
+      masterDocs[kind].lines = cleanPricedLines(masterDocs[kind].lines || []);
+    }
+
+    function isPrintablePricedLine(line) {
+      return !!line && (!!line.spacer || isFilledPricedLine(line));
+    }
+
+    function numberInputValue(value) {
+      return value === '' || value == null ? '' : esc(value);
+    }
+
+    function moneyInputValue(value) {
+      return value === '' || value == null ? '' : esc(Number(value || 0).toFixed(2));
+    }
+
+    function spacerPrintHeight(line) {
+      const saved = Math.max(0, Number(line && line.printHeight || 0));
+      if (saved) return Math.max(22, saved);
+      const raw = text(line && line.desc);
+      const lineCount = Math.max(1, raw.split(/\r?\n/).length);
+      return 22 + ((lineCount - 1) * 16);
+    }
+
+    function pricedLinePrintHeight(line) {
+      const saved = Math.max(0, Number(line && line.printHeight || 0));
+      if (saved) return Math.max(26, saved);
+      const raw = text(line && line.desc);
+      const lineCount = Math.max(1, raw.split(/\r?\n/).length);
+      return 26 + ((lineCount - 1) * 16);
+    }
+
+    function quoteSheetRows(kind) {
+      const doc = masterDocs[kind] || blankQuoteDoc(kind);
+      const lines = doc.lines || [];
+      const minRows = Math.max(lines.length + 1, minSheetRows + (extraQuoteRows[kind] || 0) - (removedQuoteRows[kind] || 0));
+      const blanks = Array.from({ length: Math.max(minRows - lines.length, 1) }, (_, i) => ({
+        blank: true,
+        transient: true,
+        index: lines.length + i,
+        key: `new-${kind}-${i}`,
+        tipo: 'Revision',
+        desc: '',
+        cant: '',
+        precioSinIva: '',
+        precio: ''
+      }));
+      return lines.concat(blanks);
+    }
+
+    function createPricedLineAt(kind, index, spacer = false) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      const doc = masterDocs[kind];
+      const line = {
+        id: newItemId(),
+        tipo: kind === 'repuestos' ? 'Repuestos' : 'Revision',
+        desc: '',
+        cant: '',
+        precioSinIva: '',
+        precio: '',
+        total: 0,
+        spacer
+      };
+      const target = doc.lines[index];
+      if (target) doc.lines.splice(doc.lines.findIndex(x => x.id === target.id), 0, line);
+      else doc.lines.push(line);
+      return line;
+    }
+
+    function bindQuoteRow(row, line) {
+      row.dataset.id = String(line.id);
+      row.dataset.key = String(line.id);
+      row.dataset.transient = '';
+      row.querySelectorAll('[data-quote]').forEach(el => { el.dataset.key = String(line.id); });
+      const del = row.querySelector('.sheet-delete');
+      if (del) {
+        del.dataset.id = String(line.id);
+        del.disabled = false;
+      }
+    }
+
+    function ensurePricedLine(row, kind) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      const id = Number(row.dataset.id || 0);
+      let line = id ? masterDocs[kind].lines.find(x => x.id === id) : null;
+      if (!line) {
+        const targetIndex = Number(row.dataset.index || masterDocs[kind].lines.length);
+        while (masterDocs[kind].lines.length < targetIndex) createPricedLineAt(kind, masterDocs[kind].lines.length, true);
+        line = createPricedLineAt(kind, targetIndex, true);
+        bindQuoteRow(row, line);
+      }
+      return line;
+    }
+
+    function quoteLineTotalText(line) {
+      return '$ ' + money(lineTotal(line));
+    }
+
+    function updateQuoteRowTotal(row, line) {
+      const total = row?.querySelector('[data-quote-total]');
+      if (total) total.textContent = quoteLineTotalText(line);
+    }
+
+    function renderQuoteTotalsOnly(kind) {
+      const box = $(`${kind}Totals`);
+      if (box) box.innerHTML = renderTotals(masterDocs[kind]?.lines || [], kind);
+      const count = $(`count${kind[0].toUpperCase() + kind.slice(1)}`);
+      if (count) count.textContent = (masterDocs[kind]?.lines || []).filter(line => text(line && line.desc).trim()).length;
+    }
+
+    function patchQuoteCell(el, kind) {
+      const row = el.closest('.quote-row');
+      if (!row) return;
+      const line = ensurePricedLine(row, kind);
+      const field = el.dataset.field;
+      let value = el.value;
+      if (field === 'tipo' && value === '__blank__') {
+        line.spacer = true;
+        line.tipo = '';
+        line.desc = line.desc || '';
+        line.cant = '';
+        line.precioSinIva = '';
+        line.precio = '';
+        renderAndMarkDirty();
+        return;
+      }
+      if (field === 'tipo') {
+        if (!itemTypes.includes(value)) value = 'Revision';
+        line.spacer = false;
+      }
+      if (field === 'cant') value = value === '' ? '' : Math.max(0, Number(value || 0));
+      if (field === 'precio' || field === 'precioSinIva') value = value === '' ? '' : Math.max(0, Number(value || 0));
+      if (['cant', 'precio', 'precioSinIva'].includes(field) && hasNumericPrintValue(value)) line.spacer = false;
+      line[field] = value;
+      if (field === 'precioSinIva') {
+        line.precio = line.precioSinIva === '' ? '' : Number(line.precioSinIva || 0) * (1 + IVA_RATE);
+        const priceInput = row.querySelector('[data-field="precio"]');
+        if (priceInput) priceInput.value = line.precio === '' ? '' : Number(line.precio || 0).toFixed(2);
+      }
+      if (field === 'desc') {
+        if (text(value).trim()) line.spacer = false;
+        fitSheetTextarea(el);
+        line.printHeight = Math.max(0, Math.round(el.getBoundingClientRect().height || el.offsetHeight || 0));
+      }
+      line.total = lineTotal(line);
+      updateQuoteRowTotal(row, line);
+      renderQuoteTotalsOnly(kind);
+      markDirty();
+    }
+
+    function rememberQuoteTextareaHeight(el, kind) {
+      const row = el.closest('.quote-row');
+      if (!row) return;
+      if (!row.dataset.id) return;
+      const line = ensurePricedLine(row, kind);
+      const height = Math.round(el.getBoundingClientRect().height || el.offsetHeight || 0);
+      if (!height || Math.abs(Number(line.printHeight || 0) - height) < 2) return;
+      line.printHeight = height;
+      markDirty();
+    }
+
+    function removeQuoteLine(kind, id) {
+      if (!confirm('Eliminar este item?')) return;
+      const doc = masterDocs[kind];
+      if (!doc) return;
+      doc.lines = doc.lines.filter(x => x.id !== id);
+      cleanQuoteDoc(kind);
+      renderAndMarkDirty();
+    }
+
+    function removeBlankQuoteRow(kind) {
+      removedQuoteRows[kind] = (removedQuoteRows[kind] || 0) + 1;
+      renderPricedDoc(kind);
+      markDirty();
+    }
+
+    function reorderQuoteLines(kind, fromId, targetIndex, place = 'before') {
+      const doc = masterDocs[kind];
+      if (!doc) return;
+      const moved = doc.lines.find(x => x.id === fromId);
+      if (!moved) return;
+      while (doc.lines.length <= targetIndex) createPricedLineAt(kind, doc.lines.length, true);
+      const target = doc.lines[targetIndex];
+      if (!target || target.id === fromId) return;
+      const withoutMoved = doc.lines.filter(x => x.id !== fromId);
+      let targetPos = withoutMoved.findIndex(x => x.id === target.id);
+      if (targetPos < 0) targetPos = withoutMoved.length;
+      if (place === 'after') targetPos += 1;
+      withoutMoved.splice(Math.max(0, Math.min(targetPos, withoutMoved.length)), 0, moved);
+      doc.lines = withoutMoved;
+      renderAndMarkDirty();
+    }
+
+    function quoteSheetRowHtml(kind, line, idx) {
+      const doc = masterDocs[kind] || {};
+      const ivaMode = ivaKinds.includes(kind) && !!doc.ivaMode;
+      const blank = !!line.blank;
+      const spacer = !!line.spacer && !blank;
+      const id = blank ? '' : String(line.id);
+      const key = blank ? line.key : id;
+      const ivaCell = ivaMode
+        ? `<td class="quote-price"><input data-quote data-field="precioSinIva" data-key="${esc(key)}" class="money" type="number" inputmode="decimal" min="0" step="0.01" value="${moneyInputValue(line.precioSinIva)}"></td>`
+        : '';
+      return `
+        <tr class="quote-row sheet-row ${spacer ? 'spacer-row' : ''}" data-kind="${kind}" data-id="${esc(id)}" data-key="${esc(key)}" data-index="${idx}" data-transient="${line.transient ? '1' : ''}">
+          <td class="sheet-drag sheet-move" title="Arrastrar fila">::</td>
+          <td class="quote-type"><select data-quote data-field="tipo" data-key="${esc(key)}">${quoteTypeOptions(line)}</select></td>
+          <td class="desc-cell"><textarea data-quote data-field="desc" data-key="${esc(key)}" spellcheck="true" lang="es" autocomplete="off" autocapitalize="sentences">${esc(line.desc || '')}</textarea></td>
+          <td class="quote-cant"><input data-quote data-field="cant" data-key="${esc(key)}" class="money" type="number" inputmode="numeric" min="0" step="1" value="${numberInputValue(line.cant)}"></td>
+          ${ivaCell}
+          <td class="quote-price"><input data-quote data-field="precio" data-key="${esc(key)}" class="money" type="number" inputmode="decimal" min="0" step="0.01" value="${moneyInputValue(line.precio)}"></td>
+          <td class="quote-total"><span class="quote-total-text" data-quote-total>${quoteLineTotalText(line)}</span></td>
+          <td class="quote-actions"><button class="sheet-delete" data-id="${esc(id)}" data-blank="${blank ? '1' : ''}" data-index="${idx}" title="Borrar fila">X</button></td>
+        </tr>`;
+    }
+
+    function attachQuoteSheet(kind) {
+      const wrap = $(`${kind}Items`);
+      if (!wrap) return;
+      wrap.querySelectorAll('[data-quote]').forEach(el => {
+        const eventName = el.tagName === 'TEXTAREA' ? 'input' : 'change';
+        el.addEventListener(eventName, () => patchQuoteCell(el, kind));
+        if (el.tagName === 'TEXTAREA') {
+          fitSheetTextarea(el);
+          rememberQuoteTextareaHeight(el, kind);
+          if (typeof ResizeObserver !== 'undefined') {
+            const observer = new ResizeObserver(() => rememberQuoteTextareaHeight(el, kind));
+            observer.observe(el);
+          }
+          el.addEventListener('mouseup', () => rememberQuoteTextareaHeight(el, kind));
+          el.addEventListener('blur', () => rememberQuoteTextareaHeight(el, kind));
+        }
+      });
+      wrap.querySelectorAll('.sheet-delete').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.id || 0);
+          if (id) removeQuoteLine(kind, id);
+          else removeBlankQuoteRow(kind);
+        });
+      });
+      wrap.querySelectorAll('.sheet-drag').forEach(handle => {
+        handle.addEventListener('pointerdown', ev => {
+          const row = handle.closest('.quote-row');
+          const line = ensurePricedLine(row, kind);
+          const fromId = line.id;
+          row.classList.add('pointer-dragging');
+          handle.setPointerCapture?.(ev.pointerId);
+          ev.preventDefault();
+          const moveOver = pointEv => {
+            const target = document.elementFromPoint(pointEv.clientX, pointEv.clientY)?.closest('.quote-row');
+            wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (target && wrap.contains(target)) target.classList.add('drag-over');
+          };
+          const finish = pointEv => {
+            document.removeEventListener('pointermove', moveOver);
+            document.removeEventListener('pointerup', finish);
+            document.removeEventListener('pointercancel', finish);
+            row.classList.remove('pointer-dragging');
+            const target = document.elementFromPoint(pointEv.clientX, pointEv.clientY)?.closest('.quote-row');
+            wrap.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            if (!target || !wrap.contains(target)) return;
+            reorderQuoteLines(kind, fromId, Number(target.dataset.index || 0), 'before');
+          };
+          document.addEventListener('pointermove', moveOver);
+          document.addEventListener('pointerup', finish);
+          document.addEventListener('pointercancel', finish);
+        });
+      });
+    }
+
+    function renderQuoteSheet(kind) {
+      const doc = masterDocs[kind] || blankQuoteDoc(kind);
+      const ivaMode = ivaKinds.includes(kind) && !!doc.ivaMode;
+      const ivaHeader = ivaMode ? '<th class="quote-price">Precio sin IVA</th>' : '';
+      const rows = quoteSheetRows(kind).map((line, idx) => quoteSheetRowHtml(kind, line, idx)).join('');
+      $(`${kind}Items`).innerHTML = `
+        <div class="quote-table-wrap">
+          <table class="quote-table quote-sheet">
+            <thead><tr>
+              <th class="sheet-move"></th>
+              <th class="quote-type">Tipo</th>
+              <th>Descripcion</th>
+              <th class="quote-cant">Cantidad</th>
+              ${ivaHeader}
+              <th class="quote-price">Precio</th>
+              <th class="quote-total">Total</th>
+              <th class="quote-actions"></th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div id="${kind}Totals">${renderTotals(doc.lines || [], kind)}</div>
+      `;
+      attachQuoteSheet(kind);
+    }
+
+    function addQuoteRows(kind) {
+      extraQuoteRows[kind] = (extraQuoteRows[kind] || 0) + 5;
+      renderPricedDoc(kind);
+      toast('Renglones agregados');
+    }
+
+    function renderPricedDoc(kind) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      fillQuoteDefaultsFromIngreso(kind);
+      $(`${kind}Fields`).innerHTML = quoteFieldHtml(kind);
+      if (ivaKinds.includes(kind)) {
+        if ($(`${kind}IvaMode`)) $(`${kind}IvaMode`).checked = !!masterDocs[kind].ivaMode;
+        if ($(`${kind}Descuento`)) $(`${kind}Descuento`).value = masterDocs[kind].descuento || 0;
+        if ($(`${kind}DescuentoTipo`)) $(`${kind}DescuentoTipo`).value = masterDocs[kind].descuentoTipo || 'porcentaje';
+        toggleIvaMode(kind, false);
+      }
+      const lines = masterDocs[kind].lines || [];
+      if (ivaKinds.includes(kind)) {
+        renderQuoteSheet(kind);
+        $(`count${kind[0].toUpperCase() + kind.slice(1)}`).textContent = lines.filter(line => text(line && line.desc).trim()).length;
+        quoteVehicleFields.forEach(field => {
+          const el = $(`${kind}_${field}`);
+          if (el) {
+            el.addEventListener('input', () => { syncQuoteFields(kind); markDirty(); });
+            el.addEventListener('change', () => { syncQuoteFields(kind); markDirty(); });
+          }
+        });
+        return;
+      }
+      const ivaHeader = ivaKinds.includes(kind) && masterDocs[kind].ivaMode ? '<th>Precio sin IVA</th>' : '';
+      const emptyCols = ivaHeader ? 8 : 7;
+      $(`${kind}Items`).innerHTML = `
+        <div class="quote-table-wrap">
+          <table class="quote-table">
+            <thead><tr><th>#</th><th>Tipo</th><th>Descripcion</th><th>Cantidad</th>${ivaHeader}<th>Precio</th><th>Total</th><th></th></tr></thead>
+            <tbody>${lines.length ? lines.map((line, idx) => pricedLineRow(kind, line, idx)).join('') : `<tr><td colspan="${emptyCols}" class="muted">Todavia no hay items agregados.</td></tr>`}</tbody>
+          </table>
+        </div>
+        ${renderTotals(lines, kind)}
+      `;
+      $(`count${kind[0].toUpperCase() + kind.slice(1)}`).textContent = lines.length;
+      quoteVehicleFields.forEach(field => {
+        const el = $(`${kind}_${field}`);
+        if (el) {
+          el.addEventListener('input', () => { syncQuoteFields(kind); markDirty(); });
+          el.addEventListener('change', () => { syncQuoteFields(kind); markDirty(); });
+        }
+      });
+      updateQuoteTotals(kind);
+    }
+
+    function syncTicketFromDom() {
+      if (!$('ticketItems')) return;
+      if (!ticketDoc) ticketDoc = blankTicketDoc();
+      const rows = ticketRows.map(def => {
+        if (def.labelOnly) return { key: def.key, label: def.label, labelOnly: true, cant: '', subtotal: '', total: '' };
+        const cant = $(`ticket_${def.key}_cant`)?.value || '';
+        const subtotalRaw = $(`ticket_${def.key}_subtotal`)?.value;
+        const totalRaw = $(`ticket_${def.key}_total`)?.value;
+        const subtotal = subtotalRaw === '' || subtotalRaw == null ? '' : Math.max(0, Number(subtotalRaw || 0));
+        const total = totalRaw === '' || totalRaw == null ? '' : Math.max(0, Number(totalRaw || 0));
+        return { key: def.key, label: def.label, cant, subtotal, total };
+      });
+      const descuento = Math.max(0, Number($('ticketDescuento')?.value || ticketDoc.descuento || 0));
+      const totals = ticketTotals({ rows, descuento });
+      ticketDoc = { rows, descuento, neto: totals.neto, totalPagar: totals.totalPagar };
+    }
+
+    function updateTicketTotalsOnly() {
+      syncTicketFromDom();
+      const totals = ticketTotals(ticketDoc);
+      if ($('ticketNeto')) $('ticketNeto').value = totals.neto ? money(totals.neto) : '';
+      if ($('ticketTotalPagar')) $('ticketTotalPagar').value = totals.totalPagar ? money(totals.totalPagar) : '';
+      if ($('countTicket')) $('countTicket').textContent = (ticketDoc.rows || []).filter(row => Number(row.total || row.subtotal || 0) > 0).length;
+    }
+
+    function ticketRowHtml(row) {
+      if (row.labelOnly) {
+        return `<tr>
+          <td class="ticket-desc">${esc(row.label)}</td>
+          <td class="ticket-cant"></td>
+          <td class="ticket-money"></td>
+          <td class="ticket-money"></td>
+        </tr>`;
+      }
+      const subtotal = row.subtotal === '' ? '' : Number(row.subtotal || 0).toFixed(2);
+      const total = row.total === '' ? '' : Number(row.total || 0).toFixed(2);
+      return `<tr>
+        <td class="ticket-desc">${esc(row.label)}</td>
+        <td class="ticket-cant"><input id="ticket_${row.key}_cant" value="${esc(row.cant || '-')}" inputmode="decimal"></td>
+        <td class="ticket-money"><div class="ticket-money-inner"><span class="ticket-money-symbol">$</span><input id="ticket_${row.key}_subtotal" class="money ticket-money-value" type="number" min="0" step="0.01" value="${esc(subtotal)}" placeholder="-"></div></td>
+        <td class="ticket-money"><div class="ticket-money-inner"><span class="ticket-money-symbol">$</span><input id="ticket_${row.key}_total" class="money ticket-money-value" type="number" min="0" step="0.01" value="${esc(total)}" placeholder="-"></div></td>
+      </tr>`;
+    }
+
+    function renderTicket() {
+      if (!ticketDoc) ticketDoc = buildTicketFromCotizacion(false);
+      ticketDoc = normalizeTicketDoc(ticketDoc);
+      const totals = ticketTotals(ticketDoc);
+      $('ticketItems').innerHTML = `
+        <div class="ticket-wrap">
+          <table class="ticket-table">
+            <caption>PRE-CUENTA</caption>
+            <thead><tr><th>Descripción</th><th>Cant</th><th>Subtotal</th><th>TOTAL</th></tr></thead>
+            <tbody>
+              ${(ticketDoc.rows || []).map(ticketRowHtml).join('')}
+              <tr class="ticket-spacer"><td></td><td></td><td></td><td></td></tr>
+              <tr class="ticket-total-row"><td>PRECIO NETO:</td><td></td><td class="ticket-money"><div class="ticket-money-inner"><span class="ticket-money-symbol">$</span><input id="ticketNeto" class="money ticket-money-value" readonly value="${totals.neto ? money(totals.neto) : ''}" placeholder="-"></div></td><td></td></tr>
+              <tr class="ticket-total-row"><td>DESCUENTOS</td><td></td><td class="ticket-money"><div class="ticket-money-inner"><span class="ticket-money-symbol">$</span><input id="ticketDescuento" class="money ticket-money-value" type="number" min="0" step="0.01" value="${totals.descuento ? Number(totals.descuento).toFixed(2) : ''}" placeholder="-"></div></td><td></td></tr>
+              <tr class="ticket-total-row"><td>TOTAL A PAGAR:</td><td></td><td class="ticket-money"><div class="ticket-money-inner"><span class="ticket-money-symbol">$</span><input id="ticketTotalPagar" class="money ticket-money-value" readonly value="${totals.totalPagar ? money(totals.totalPagar) : ''}" placeholder="-"></div></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>`;
+      ticketRows.forEach(def => {
+        [`ticket_${def.key}_cant`, `ticket_${def.key}_subtotal`, `ticket_${def.key}_total`].forEach(id => {
+          $(id)?.addEventListener('input', () => { updateTicketTotalsOnly(); markDirty(); });
+          $(id)?.addEventListener('change', () => { updateTicketTotalsOnly(); markDirty(); });
+        });
+      });
+      $('ticketDescuento')?.addEventListener('input', () => { updateTicketTotalsOnly(); markDirty(); });
+      $('ticketDescuento')?.addEventListener('change', () => { updateTicketTotalsOnly(); markDirty(); });
+      updateTicketTotalsOnly();
+    }
+
+    function addPricedLine(kind) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      const desc = ($(`${kind}Desc`)?.value || '').trim();
+      if (!desc) { alert('Escribe una descripcion.'); return; }
+      const tipo = kind === 'repuestos' ? 'Repuestos' : ($(`${kind}Tipo`)?.value || 'Repuestos');
+      const line = normalizePricedLine({
+        id: Date.now(),
+        tipo,
+        desc,
+        cant: Math.max(1, Number($(`${kind}Cant`)?.value || 1)),
+        precioSinIva: Math.max(0, Number($(`${kind}PrecioSinIva`)?.value || 0)),
+        precio: Math.max(0, Number($(`${kind}Precio`)?.value || 0))
+      });
+      masterDocs[kind].lines.push(line);
+      $(`${kind}Desc`).value = '';
+      $(`${kind}Cant`).value = '1';
+      if ($(`${kind}PrecioSinIva`)) $(`${kind}PrecioSinIva`).value = '0.00';
+      $(`${kind}Precio`).value = '0.00';
+      renderAndMarkDirty();
+      toast(`${quoteTitle(kind)} actualizado`);
+    }
+
+    function updatePricedLine(kind, id, patch) {
+      const doc = masterDocs[kind];
+      if (!doc) return;
+      const idx = doc.lines.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      const next = {...doc.lines[idx], ...patch};
+      if (Object.prototype.hasOwnProperty.call(patch, 'precioSinIva')) {
+        next.precio = Math.max(0, Number(next.precioSinIva || 0)) * (1 + IVA_RATE);
+      }
+      doc.lines[idx] = normalizePricedLine(next);
+      renderAndMarkDirty();
+    }
+
+    function removePricedLine(kind, id) {
+      if (!confirm('Eliminar este item?')) return;
+      const doc = masterDocs[kind];
+      if (!doc) return;
+      doc.lines = doc.lines.filter(x => x.id !== id);
+      cleanQuoteDoc(kind);
+      renderAndMarkDirty();
+    }
+
+    function importAuthorizedToQuote(kind) {
+      if (!masterDocs[kind]) masterDocs[kind] = blankQuoteDoc(kind);
+      syncQuoteFields(kind);
+      syncAuthorizedCopies();
+      const workLines = authItems.filter(isRealItem).map((it, i) => normalizePricedLine({
+        id: Date.now() + i,
+        tipo: it.tipo,
+        desc: it.desc,
+        cant: it.cant || 1,
+        precioSinIva: '',
+        precio: ''
+      }));
+      const partLines = authRepuestos.filter(isRealPart).map((it, i) => normalizePricedLine({
+        id: Date.now() + 50000 + i,
+        tipo: 'Repuestos',
+        desc: it.desc,
+        cant: it.cant || 1,
+        precioSinIva: '',
+        precio: ''
+      }));
+      const imported = workLines.concat(partLines);
+      masterDocs[kind].lines = imported;
+      renderAndMarkDirty();
+      toast('Items autorizados importados');
+    }
+
+    function cotizacionClipboardText() {
+      syncQuoteFields('cotizacion');
+      const doc = masterDocs.cotizacion || blankQuoteDoc('cotizacion');
+      const lines = (doc.lines || []).filter(line => text(line.desc).trim() && !line.spacer);
+      const rows = [['Descripcion', 'Cantidad', 'Precio', 'Total']];
+      lines.forEach(line => {
+        rows.push([
+          text(line.desc).replace(/\r?\n/g, ' '),
+          line.cant || '',
+          Number(line.precio || 0).toFixed(2),
+          lineTotal(line).toFixed(2)
+        ]);
+      });
+      return rows.map(row => row.join('\t')).join('\n');
+    }
+
+    async function copyTextToClipboard(value, okMessage) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const area = document.createElement('textarea');
+        area.value = value;
+        area.style.position = 'fixed';
+        area.style.left = '-9999px';
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      toast(okMessage || 'Copiado al portapapeles');
+    }
+
+    function copyCotizacionToClipboard() {
+      const value = cotizacionClipboardText();
+      if (!value.trim()) {
+        alert('No hay datos de cotizacion para copiar.');
+        return;
+      }
+      copyTextToClipboard(value, 'Cotizacion copiada al portapapeles');
+    }
+
+    function importCotizacionToTicket() {
+      ticketDoc = buildTicketFromCotizacion(false);
+      renderAndMarkDirty();
+      toast('Ticket cargado desde cotizacion');
+    }
+
+    function ticketClipboardText() {
+      syncTicketFromDom();
+      const totals = ticketTotals(ticketDoc);
+      const rows = [['PRE-CUENTA'], ['Descripcion', 'Cant', 'Subtotal', 'TOTAL']];
+      (ticketDoc.rows || []).forEach(row => {
+        rows.push([
+          row.label || '',
+          row.cant || '-',
+          row.subtotal === '' ? '-' : Number(row.subtotal || 0).toFixed(2),
+          row.total === '' ? '-' : Number(row.total || 0).toFixed(2)
+        ]);
+      });
+      rows.push([''], ['PRECIO NETO:', '', totals.neto.toFixed(2), ''], ['DESCUENTOS', '', totals.descuento.toFixed(2), ''], ['TOTAL A PAGAR:', '', totals.totalPagar.toFixed(2), '']);
+      return rows.map(row => row.join('\t')).join('\n');
+    }
+
+    function copyTicketToClipboard() {
+      copyTextToClipboard(ticketClipboardText(), 'Ticket copiado al portapapeles');
+    }
+
+    function importIngresoToParts() {
+      if (!masterDocs.repuestos) masterDocs.repuestos = blankQuoteDoc('repuestos');
+      syncQuoteFields('repuestos');
+      masterDocs.repuestos.lines = repuestosIngreso.filter(isRealPart).map((it, i) => normalizePricedLine({
+        id: Date.now() + i,
+        tipo: 'Repuestos',
+        desc: it.desc,
+        cant: it.cant || 1,
+        precio: ''
+      }));
+      renderAndMarkDirty();
+      toast('Items de ingreso importados');
+    }
+
+    function calculatorSourceRows() {
+      const repDocRows = (masterDocs.repuestos && masterDocs.repuestos.lines || []).filter(line => text(line.desc).trim());
+      if (repDocRows.length) {
+        return repDocRows.map(line => ({ desc: line.desc || '', cant: line.cant || '' }));
+      }
+      return repuestosIngreso.filter(isRealPart).map(part => ({ desc: part.desc || '', cant: part.cant || '' }));
+    }
+
+    function importPartsToCalculator() {
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      const source = calculatorSourceRows();
+      const oldRows = quoteCalculator.rows || [];
+      quoteCalculator.rows = source.map((part, index) => {
+        const previous = oldRows.find(row => text(row.desc).trim().toLowerCase() === text(part.desc).trim().toLowerCase()) || oldRows[index];
+        return {
+          id: previous?.id || newItemId(),
+          desc: part.desc || '',
+          cant: part.cant || '',
+          prices: { ...(previous?.prices || {}) }
+        };
+      });
+      renderAndMarkDirty();
+      toast('Repuestos importados al calculador');
+    }
+
+    function addCalculatorCompany() {
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      const name = prompt('Nombre de la empresa:');
+      if (!name || !name.trim()) return;
+      let id = calculatorCompanyId(name, quoteCalculator.companies.length);
+      const existing = new Set(quoteCalculator.companies.map(company => company.id));
+      let suffix = 2;
+      while (existing.has(id)) id = `${calculatorCompanyId(name)}_${suffix++}`;
+      quoteCalculator.companies.push({ id, name: name.trim() });
+      renderAndMarkDirty();
+    }
+
+    function addCalculatorRow() {
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      quoteCalculator.rows.push({ id: newItemId(), desc: '', cant: '', prices: {} });
+      renderAndMarkDirty();
+    }
+
+    function updateCalculatorCell(rowId, field, value, companyId = '') {
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      const row = quoteCalculator.rows.find(item => item.id === rowId);
+      if (!row) return;
+      if (field === 'desc') row.desc = value;
+      if (field === 'cant') row.cant = value === '' ? '' : Math.max(0, Number(value || 0));
+      if (field === 'price' && companyId) {
+        row.prices = row.prices || {};
+        row.prices[companyId] = value === '' ? '' : Math.max(0, Number(value || 0));
+      }
+      refreshCalculatorVisuals();
+      markDirty();
+    }
+
+    function removeCalculatorRow(rowId) {
+      if (!confirm('Eliminar este repuesto del calculador?')) return;
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      quoteCalculator.rows = quoteCalculator.rows.filter(row => row.id !== rowId);
+      renderAndMarkDirty();
+    }
+
+    function calculatorCompanyTotals() {
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      const totals = {};
+      quoteCalculator.companies.forEach(company => totals[company.id] = 0);
+      quoteCalculator.rows.forEach(row => {
+        const cant = Math.max(0, Number(row.cant || 0));
+        quoteCalculator.companies.forEach(company => {
+          const price = row.prices && row.prices[company.id] !== '' ? Number(row.prices[company.id] || 0) : 0;
+          totals[company.id] += cant * Math.max(0, price);
+        });
+      });
+      return totals;
+    }
+
+    function bestPriceCompanyIds(row) {
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      const priced = quoteCalculator.companies
+        .map(company => ({ id: company.id, value: Number(row.prices && row.prices[company.id] || 0) }))
+        .filter(item => item.value > 0);
+      if (!priced.length) return new Set();
+      const min = Math.min(...priced.map(item => item.value));
+      return new Set(priced.filter(item => item.value === min).map(item => item.id));
+    }
+
+    function refreshCalculatorVisuals() {
+      const table = $('calculatorItems')?.querySelector('.calc-table');
+      if (!table) return;
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      quoteCalculator.rows.forEach(row => {
+        const tr = table.querySelector(`[data-calc-row="${row.id}"]`);
+        if (!tr) return;
+        const bestIds = bestPriceCompanyIds(row);
+        tr.querySelectorAll('.calc-price').forEach(input => {
+          input.classList.toggle('best', bestIds.has(input.dataset.calcCompany));
+        });
+      });
+      const totals = calculatorCompanyTotals();
+      const totalValues = Object.values(totals).filter(value => value > 0);
+      const minTotal = totalValues.length ? Math.min(...totalValues) : null;
+      table.querySelectorAll('[data-calc-total]').forEach(cell => {
+        const id = cell.dataset.calcTotal;
+        const total = totals[id] || 0;
+        cell.textContent = `$ ${money(total)}`;
+        cell.classList.toggle('best-total', minTotal != null && total > 0 && total === minTotal);
+      });
+      if ($('countCalculador')) $('countCalculador').textContent = quoteCalculator.rows.filter(row => text(row.desc).trim()).length;
+    }
+
+    function renderCalculator() {
+      if (!$('calculatorItems')) return;
+      quoteCalculator = normalizeQuoteCalculator(quoteCalculator || blankQuoteCalculator());
+      const totals = calculatorCompanyTotals();
+      const totalValues = Object.values(totals).filter(value => value > 0);
+      const minTotal = totalValues.length ? Math.min(...totalValues) : null;
+      const headerCompanies = quoteCalculator.companies.map(company => `<th class="calc-company">${esc(company.name)}</th>`).join('');
+      const rows = quoteCalculator.rows.map((row, index) => {
+        const bestIds = bestPriceCompanyIds(row);
+        const companyCells = quoteCalculator.companies.map(company => {
+          const value = row.prices && row.prices[company.id] != null ? row.prices[company.id] : '';
+          const best = bestIds.has(company.id) ? ' best' : '';
+          return `<td><input class="money calc-price${best}" data-calc-company="${esc(company.id)}" type="number" inputmode="decimal" min="0" step="0.01" value="${moneyInputValue(value)}" oninput="updateCalculatorCell(${row.id},'price',this.value,'${esc(company.id)}')" onchange="renderCalculator()"></td>`;
+        }).join('');
+        return `<tr data-calc-row="${row.id}">
+          <td class="calc-cant"><input type="number" inputmode="numeric" min="0" step="1" value="${numberInputValue(row.cant)}" oninput="updateCalculatorCell(${row.id},'cant',this.value)" onchange="renderCalculator()"></td>
+          <td class="calc-desc"><textarea spellcheck="true" lang="es" oninput="updateCalculatorCell(${row.id},'desc',this.value)" onchange="renderCalculator()">${esc(row.desc || '')}</textarea></td>
+          ${companyCells}
+          <td class="sheet-actions"><button class="sheet-delete" type="button" onclick="removeCalculatorRow(${row.id})">X</button></td>
+        </tr>`;
+      }).join('');
+      const totalCells = quoteCalculator.companies.map(company => {
+        const total = totals[company.id] || 0;
+        const best = minTotal != null && total > 0 && total === minTotal ? ' best-total' : '';
+        return `<td data-calc-total="${esc(company.id)}" class="${best}">$ ${money(total)}</td>`;
+      }).join('');
+      $('calculatorItems').innerHTML = `<div class="calc-wrap">
+        <table class="calc-table">
+          <thead><tr><th class="calc-cant">Cant</th><th class="calc-desc">Descripcion repuesto</th>${headerCompanies}<th class="sheet-actions"></th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="${quoteCalculator.companies.length + 3}" class="muted" style="padding:12px;">Importe repuestos o agregue un renglon para empezar.</td></tr>`}
+          <tr class="calc-total-row"><td></td><td>Total por empresa</td>${totalCells}<td></td></tr></tbody>
+        </table>
+      </div>`;
+      $('countCalculador').textContent = quoteCalculator.rows.filter(row => text(row.desc).trim()).length;
+      $('calculatorItems').querySelectorAll('textarea').forEach(fitSheetTextarea);
+    }
+
+    const excelSelector = '.sheet-table td, .quote-table td, .calc-table td, .ticket-table td';
+    const excelFieldSelector = 'input:not([type="checkbox"]):not([type="file"]):not([type="hidden"]):not([readonly]), textarea:not([readonly]), select:not([disabled])';
+
+    function enableNativeSpellcheck(root = document) {
+      root.querySelectorAll?.('textarea, input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="tel"], input[type="url"]').forEach(field => {
+        field.setAttribute('spellcheck', 'true');
+        field.setAttribute('lang', 'es');
+        if (!field.autocomplete) field.setAttribute('autocomplete', 'off');
+      });
+    }
+
+    function excelField(cell) {
+      return cell?.querySelector?.(excelFieldSelector) || null;
+    }
+
+    function excelEditableDescriptionCell(cell) {
+      const field = excelField(cell);
+      if (!field || field.tagName !== 'TEXTAREA' || field.dataset.field !== 'desc') return false;
+      const sheetRow = cell.closest('.sheet-row');
+      if (sheetRow) {
+        if (cell.closest('.parts-table')) return false;
+        return ['ingreso', 'autorizado'].includes(sheetRow.dataset.mode || '');
+      }
+      const quoteRow = cell.closest('.quote-row');
+      if (quoteRow) return ['presupuesto', 'cotizacion'].includes(quoteRow.dataset.kind || '');
+      return false;
+    }
+
+    function excelCellFrom(target) {
+      const cell = target?.closest?.(excelSelector);
+      return cell && excelEditableDescriptionCell(cell) ? cell : null;
+    }
+
+    function endExcelEdit(cell) {
+      const field = excelField(cell);
+      if (!field) return;
+      cell.classList.remove('excel-editing-cell');
+    }
+
+    function commitExcelEdit(cell) {
+      const field = excelField(cell);
+      if (!field) return;
+      if (cell.classList.contains('excel-editing-cell')) {
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      endExcelEdit(cell);
+    }
+
+    function setSelectedExcelCell(cell) {
+      document.querySelectorAll('.excel-selected-cell, .excel-editing-cell').forEach(other => {
+        if (other !== cell) commitExcelEdit(other);
+        other.classList.remove('excel-selected-cell');
+      });
+      if (cell) cell.classList.add('excel-selected-cell');
+    }
+
+    function beginExcelEdit(cell, selectText = false) {
+      const field = excelField(cell);
+      if (!field) return;
+      setSelectedExcelCell(cell);
+      cell.classList.add('excel-editing-cell');
+      field.focus({ preventScroll: true });
+      if (selectText && typeof field.select === 'function') field.select();
+    }
+
+    function collapseDoubleClickSelection(cell) {
+      const field = excelField(cell);
+      if (!field || typeof field.selectionStart !== 'number' || typeof field.selectionEnd !== 'number') return;
+      requestAnimationFrame(() => {
+        const end = field.selectionEnd;
+        field.setSelectionRange(end, end);
+      });
+    }
+
+    function excelCells(table) {
+      return Array.from(table?.querySelectorAll('tbody tr') || []).map(row =>
+        Array.from(row.children).filter(cell => excelEditableDescriptionCell(cell) && !cell.classList.contains('sheet-actions') && !cell.classList.contains('quote-actions'))
+      ).filter(row => row.length);
+    }
+
+    function prepareExcelLikeCells(root = document) {
+      root.querySelectorAll?.(excelSelector).forEach(cell => {
+        const field = excelField(cell);
+        if (!field || field.dataset.excelReady === '1') return;
+        field.dataset.excelReady = '1';
+        if (excelEditableDescriptionCell(cell)) cell.tabIndex = 0;
+        field.setAttribute('lang', 'es');
+        field.setAttribute('spellcheck', 'true');
+      });
+    }
+
+    function setupSpellButtons(root = document) {
+      root.querySelectorAll?.('.spell-check-btn').forEach(button => {
+        if (button.dataset.spellReady === '1') return;
+        button.dataset.spellReady = '1';
+        button.addEventListener('click', () => {
+          enableNativeSpellcheck(document);
+          const selected = document.querySelector('.excel-selected-cell');
+          if (selected) beginExcelEdit(selected, false);
+          const active = document.activeElement?.matches?.('input, textarea') ? document.activeElement : document.querySelector('textarea[spellcheck="true"], input[spellcheck="true"]');
+          active?.focus();
+          window.automdSpellChecker?.start?.();
+        });
+      });
+    }
+
+    function afterRenderEnhancements() {
+      enableNativeSpellcheck(document);
+      setupSpellButtons(document);
+      prepareExcelLikeCells(document);
+    }
+
+    function renderSummary() {
+      const d = readIngresoValues();
+      const authRows = [
+        ['Fecha de ingreso', d.fecha],
+        ['Hora', d.hora],
+        ['Tecnico', d.tecnico],
+        ['Marca', d.marca],
+        ['Modelo', d.modelo],
+        ['Año', d.anio],
+        ['Color', d.color],
+        ['VIN', d.vin],
+        ['Placa', d.placa],
+        ['Odometro', d.odometro],
+        ['Unidad', d.odometroUnidad]
+      ];
+      $('authFields').innerHTML = authRows.map(([label, value]) => `<label>${esc(label)}<input readonly value="${esc(value || '')}"></label>`).join('')
+        + `<label>Corrector<button class="spell-check-btn" type="button" onclick="window.automdSpellChecker?.start()">Corrector</button></label>`;
+      $('countAll').textContent = items.filter(x => !x.authOnly && isRealItem(x)).length;
+      $('countAuth').textContent = authItems.filter(isRealItem).length;
+      if ($('countCalculador')) $('countCalculador').textContent = (quoteCalculator?.rows || []).filter(row => text(row.desc).trim()).length;
+    }
+
+    function refreshAutorizado() {
+      renderSummary();
+      renderItems();
+    }
+
+    function render() {
+      renderItems();
+      renderSummary();
+      pricedKinds.forEach(renderPricedDoc);
+      renderTicket();
+      renderCalculator();
+      afterRenderEnhancements();
+    }
+
+    function docMeta(d) {
+      const rows = [
+        ['Fecha', d.fecha],
+        ['Hora', d.hora],
+        ['Tecnico', d.tecnico],
+        ['Marca', d.marca],
+        ['Modelo', d.modelo],
+        ['Año', d.anio],
+        ['Color', d.color],
+        ['VIN', d.vin],
+        ['Placa', d.placa],
+        ['Odometro', [d.odometro, d.odometroUnidad].filter(Boolean).join(' ')]
+      ];
+      return rows.map(([k, v]) => `<div class="doc-field"><span class="doc-label">${esc(k)}</span><span class="doc-value">${esc(v || '')}</span></div>`).join('');
+    }
+
+    function printQty(it) {
+      return isSuggestion(it.tipo) ? '' : esc(it.cant || '');
+    }
+
+    function tableFor(list, kind) {
+      const rows = list.map((it, i) => {
+        return `<div class="print-row">
+          <div class="print-cell print-num">-</div>
+          <div class="print-cell print-desc">${esc(it.desc)}</div>
+          <div class="print-cell print-qty">${printQty(it)}</div>
+        </div>`;
+      }).join('');
+      return `<div class="print-items">
+        <div class="print-row header">
+          <div class="print-cell print-num">#</div>
+          <div class="print-cell print-desc">Descripcion</div>
+          <div class="print-cell print-qty">Cantidad</div>
+        </div>
+        ${rows || '<div class="print-row"><div class="print-cell" style="grid-column:1 / -1;">Sin items.</div></div>'}
+      </div>`;
+    }
+
+    function partsForPrint(list) {
+      const printable = (list || []).filter(isRealPart);
+      if (!printable.length) return '';
+      const rows = printable.map(it => `<div class="print-row">
+        <div class="print-cell print-num">-</div>
+        <div class="print-cell print-desc">${esc(it.desc)}</div>
+        <div class="print-cell print-qty">${esc(it.cant || '')}</div>
+      </div>`).join('');
+      return `
+        <h2>Repuestos</h2>
+        <div class="print-items">
+          <div class="print-row header">
+            <div class="print-cell print-num">#</div>
+            <div class="print-cell print-desc">Descripcion</div>
+            <div class="print-cell print-qty">Cantidad</div>
+          </div>
+          ${rows}
+        </div>`;
+    }
+
+    function pricedPrintTable(lines) {
+      const rows = (lines || []).map((line, i) => `<tr>
+        <td>${esc(line.tipo)}</td>
+        <td>${esc(line.desc)}</td>
+        <td class="money">${esc(line.cant || '')}</td>
+        <td class="money">$ ${money(line.precio)}</td>
+        <td class="money">$ ${money(lineTotal(line))}</td>
+      </tr>`).join('');
+      return `<table class="quote-table">
+        <colgroup>
+          <col class="col-type">
+          <col class="col-desc">
+          <col class="col-qty">
+          <col class="col-price">
+          <col class="col-total">
+        </colgroup>
+        <thead><tr><th>Tipo</th><th>Descripcion</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5">Sin items.</td></tr>'}</tbody>
+      </table>`;
+    }
+
+    function estimateTotalsBox(lines, kind = '') {
+      if (kind === 'repuestos') {
+        const totalRepuestos = (lines || []).reduce((sum, line) => sum + lineTotal(line), 0);
+        return `<div class="estimate-total-line estimate-final"><span>Total</span><b>$ ${money(totalRepuestos)}</b></div>`;
+      }
+      const totals = categoryTotals(lines);
+      const subtotal = Object.values(totals).reduce((sum, value) => sum + value, 0);
+      const discount = discountInfo(kind, subtotal);
+      const totalOrder = ['Revision','Diagnostico','Reparacion','Mantenimiento','Repuestos','Laboratorio','Programacion','Torno','Combustibles','Otros'];
+      const rows = totalOrder
+        .map(tipo => {
+          const total = totals[tipo] || 0;
+          return `<div class="estimate-total-line"><span>${esc(tipo)}</span><b>${total ? '$ ' + money(total) : '$ -'}</b></div>`;
+        })
+        .join('');
+      return `${rows}
+        <div class="estimate-total-line estimate-sub"><span>Sub-total</span><b>$ ${money(subtotal)}</b></div>
+        <div class="estimate-total-line"><span>Descuento</span><b>${discount.amount ? '$ ' + money(discount.amount) : '-'}</b></div>
+        <div class="estimate-total-line estimate-final"><span>Total</span><b>$ ${money(discount.finalTotal)}</b></div>`;
+    }
+
+    function estimatePrintTable(lines, kind = '') {
+      const printable = lines || [];
+      const rows = printable.map((line, idx) => {
+        if (line.spacer) {
+          return `<tr class="print-spacer"><td colspan="5" style="height:${spacerPrintHeight(line)}px"></td></tr>`;
+        }
+        return `<tr style="height:${pricedLinePrintHeight(line)}px">
+          <td>${esc(line.tipo)}</td>
+          <td>${esc(line.desc)}</td>
+          <td class="estimate-qty">${esc(line.cant || '')}</td>
+          <td class="money">${line.precio === '' || line.precio == null ? '' : '$ ' + money(line.precio)}</td>
+          <td class="money">${line.precio === '' || line.precio == null ? '' : '$ ' + money(lineTotal(line))}</td>
+        </tr>`;
+      }).join('');
+      return `<table class="estimate-table">
+        <colgroup>
+          <col class="estimate-col-type">
+          <col class="estimate-col-desc">
+          <col class="estimate-col-qty">
+          <col class="estimate-col-price">
+          <col class="estimate-col-total">
+        </colgroup>
+        <thead><tr><th>Tipo</th><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5">Sin items.</td></tr>'}</tbody>
+      </table>
+      <div class="estimate-summary">
+        <div class="estimate-validity">V&aacute;lido por 15 d&iacute;as.</div>
+        <div class="estimate-totals">${estimateTotalsBox(lines, kind)}</div>
+      </div>`;
+    }
+
+    function pricedDocMeta(doc) {
+      const rows = [
+        ['Fecha', doc.fecha],
+        ['Cliente', doc.cliente],
+        ['Marca', doc.marca],
+        ['Modelo', doc.modelo],
+        ['Año', doc.anio],
+        ['Color', doc.color],
+        ['VIN', doc.vin],
+        ['Placa', doc.placa],
+        ['Odometro', [doc.odometro, doc.odometroUnidad].filter(Boolean).join(' ')]
+      ];
+      return rows.map(([k, v]) => `<div class="doc-field"><span class="doc-label">${esc(k)}</span><span class="doc-value">${esc(v || '')}</span></div>`).join('');
+    }
+
+    function buildPricedDoc(kind) {
+      syncQuoteFields(kind);
+      fillQuoteDefaultsFromIngreso(kind);
+      const doc = masterDocs[kind] || blankQuoteDoc(kind);
+      const title = kind === 'cotizacion' ? 'Cotización' : kind === 'repuestos' ? 'Repuestos' : 'Presupuesto';
+      return `<article class="doc">
+        <div class="doc-head">
+          <div>
+            <div class="doc-brand">Automotriz Medina SV</div>
+            <div class="doc-subtitle">Carretera Ruta Militar Salida a Santa Rosa de Lima 100 metros al Oriente del Puente Urbina. San Miguel</div>
+          </div>
+          <div class="doc-title"><h1>${esc(title)}</h1></div>
+        </div>
+        <div class="doc-meta">${pricedDocMeta(doc)}</div>
+        <h2>Detalle</h2>
+        ${estimatePrintTable(doc.lines || [], kind)}
+        ${renderPrintTotals(doc.lines || [], kind)}
+      </article>`;
+    }
+
+    function estimateVehicleCard(doc) {
+      const vehicle = [doc.marca, doc.modelo].filter(Boolean).join(' ');
+      const rows = [
+        ['Cliente', doc.cliente],
+        ['Vehiculo', vehicle],
+        ['Placa', doc.placa],
+        ['VIN', doc.vin],
+        ['Año', doc.anio],
+        ['Color', doc.color],
+        ['Odometro', [doc.odometro, doc.odometroUnidad].filter(Boolean).join(' ')]
+      ];
+      return rows.map(([label, value]) => `<div><span>${esc(label)}</span><strong>${esc(value || '')}</strong></div>`).join('');
+    }
+
+    function buildPricedDoc(kind) {
+      syncQuoteFields(kind);
+      cleanQuoteDoc(kind);
+      const doc = masterDocs[kind] || blankQuoteDoc(kind);
+      const title = kind === 'cotizacion' ? 'Cotización' : kind === 'repuestos' ? 'Repuestos' : 'Presupuesto';
+      const prefix = kind === 'cotizacion' ? 'COT' : kind === 'repuestos' ? 'REP' : 'PRE';
+      const printLines = printablePricedLines(doc.lines || []);
+      return `<article class="doc estimate-doc">
+        <div class="estimate-top">
+          <div class="estimate-business">
+            <img class="estimate-logo" src="automotriz-medina-logo.png" alt="Automotriz Medina">
+            <strong>Automotriz Medina SV</strong>
+            <div>Reparación Mecánica de Vehículos Automotores</div>
+            <div>Calle Sur América y Carr. Ruta Militar, Col. Campos 100 Después del Puente Urbina, San Miguel</div>
+            <div>Tel. 7166-0867</div>
+            <div>clientesautomotrizsv@gmail.com</div>
+          </div>
+          <div class="estimate-side">
+            <div class="estimate-box">
+              <div class="estimate-non-fiscal">DOCUMENTO NO FISCAL</div>
+              <h1>${esc(title)}</h1>
+              <div class="estimate-meta">
+                <div><b>Fecha:</b> ${esc(doc.fecha || '')}</div>
+                <div><b>No.:</b> ${esc(prefix + '-' + String(expedienteId).slice(-4).padStart(4, '0'))}</div>
+              </div>
+            </div>
+            <div class="estimate-qr-block">
+              <img class="estimate-qr-img" src="qr-servicios-automotriz-medina-limpio.png" alt="QR servicios">
+              <span>Conoce m&aacute;s sobre nuestros servicios</span>
+            </div>
+          </div>
+        </div>
+        <div class="estimate-vehicle">${estimateVehicleCard(doc)}</div>
+        ${estimatePrintTable(printLines, kind)}
+        <div class="estimate-summary">
+          <div class="estimate-validity">V&aacute;lido por 15 d&iacute;as.</div>
+          ${renderPrintTotals(printLines, kind)}
+        </div>
+      </article>`;
+    }
+
+    function buildTicketDoc() {
+      syncTicketFromDom();
+      const d = getData();
+      const doc = normalizeTicketDoc(d.ticketDoc || ticketDoc || blankTicketDoc());
+      const totals = ticketTotals(doc);
+      const moneyPrint = (value) => `<div class="ticket-money-inner"><span class="ticket-money-symbol">$</span><span class="ticket-money-value">${Number(value || 0) ? money(value) : '-'}</span></div>`;
+      const rows = (doc.rows || []).map(row => row.labelOnly ? `<tr>
+        <td class="ticket-desc">${esc(row.label || '')}</td><td class="ticket-cant"></td><td class="ticket-money"></td><td class="ticket-money"></td>
+      </tr>` : `<tr>
+        <td class="ticket-desc">${esc(row.label || '')}</td>
+        <td class="ticket-cant">${esc(row.cant || '-')}</td>
+        <td class="ticket-money">${moneyPrint(row.subtotal)}</td>
+        <td class="ticket-money">${moneyPrint(row.total)}</td>
+      </tr>`).join('');
+      return `<article class="doc ticket-print-doc">
+        <table class="ticket-table">
+          <caption>PRE-CUENTA</caption>
+          <thead><tr><th>Descripción</th><th>Cant</th><th>Subtotal</th><th>TOTAL</th></tr></thead>
+          <tbody>
+            ${rows}
+            <tr class="ticket-spacer"><td></td><td></td><td></td><td></td></tr>
+            <tr class="ticket-total-row"><td>PRECIO NETO:</td><td></td><td class="ticket-money">${moneyPrint(totals.neto)}</td><td></td></tr>
+            <tr class="ticket-total-row"><td>DESCUENTOS</td><td></td><td class="ticket-money">${moneyPrint(totals.descuento)}</td><td></td></tr>
+            <tr class="ticket-total-row"><td>TOTAL A PAGAR:</td><td></td><td class="ticket-money">${moneyPrint(totals.totalPagar)}</td><td></td></tr>
+          </tbody>
+        </table>
+      </article>`;
+    }
+
+    function buildDoc(kind) {
+      if (kind === 'ticket') return buildTicketDoc();
+      if (pricedKinds.includes(kind)) return buildPricedDoc(kind);
+      const d = getData();
+      const list = kind === 'autorizado' ? d.authItems : d.items.filter(x => !x.authOnly);
+      const title = kind === 'autorizado' ? 'Trabajo autorizado' : 'Revisión';
+      const sectionTitle = kind === 'autorizado' ? 'Trabajos autorizados' : 'Detalle de revisión';
+      const printParts = kind === 'autorizado' ? d.printAuthRepuestos : d.printRepuestos;
+      const partsList = kind === 'autorizado' ? d.authRepuestos : d.repuestosIngreso;
+      return `
+        <article class="doc">
+          <div class="doc-head">
+            <div>
+              <div class="doc-brand">Automotriz Medina SV</div>
+              <div class="doc-subtitle">Carretera Ruta Militar Salida a Santa Rosa de Lima 100 metros al Oriente del Puente Urbina. San Miguel</div>
+            </div>
+            <div class="doc-title">
+              <h1>${esc(title)}</h1>
+            </div>
+          </div>
+          <div class="doc-meta">${docMeta(d)}</div>
+          <h2>${esc(sectionTitle)}</h2>
+          ${tableFor(list, kind)}
+          ${printParts ? partsForPrint(partsList) : ''}
+        </article>`;
+    }
+
+    function printDoc(kind) {
+      if (!validateRequiredVehicleFields()) return;
+      $('printArea').innerHTML = buildDoc(kind);
+      setTimeout(() => window.print(), 50);
+    }
+
+    function htmlWorkbook() {
+      const d = getData();
+      const payload = esc(JSON.stringify(d));
+      return `
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body>
+          <h2>Expediente empleados</h2>
+          <table border="1">
+            ${fields.map(k => `<tr><th>${esc(k)}</th><td>${esc(d[k])}</td></tr>`).join('')}
+          </table>
+          <h2>Items</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Descripcion</th><th>Cantidad</th><th>Asistencia</th><th>Autorizado</th></tr>
+            ${d.items.filter(it => !it.authOnly).map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.tipo)}</td><td>${esc(it.desc)}</td><td>${esc(it.cant)}</td><td>${esc(it.asistencia || '')}</td><td>${it.autorizado ? 'Si' : ''}</td></tr>`).join('')}
+          </table>
+          <h2>Repuestos ingreso</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Cantidad</th><th>Descripcion Rep</th></tr>
+            ${d.repuestosIngreso.map((it, i) => `<tr><td>${i + 1}</td><td>Repuestos</td><td>${esc(it.cant || '')}</td><td>${esc(it.desc || '')}</td></tr>`).join('')}
+          </table>
+          <h2>Trabajo autorizado</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Descripcion</th><th>Cantidad</th><th>Asistencia</th></tr>
+            ${d.authItems.map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.tipo)}</td><td>${esc(it.desc)}</td><td>${esc(it.cant)}</td><td>${esc(it.asistencia || '')}</td></tr>`).join('')}
+          </table>
+          <h2>Repuestos autorizados</h2>
+          <table border="1">
+            <tr><th>#</th><th>Tipo</th><th>Cantidad</th><th>Descripcion Rep</th></tr>
+            ${d.authRepuestos.map((it, i) => `<tr><td>${i + 1}</td><td>Repuestos</td><td>${esc(it.cant || '')}</td><td>${esc(it.desc || '')}</td></tr>`).join('')}
+          </table>
+          ${pricedKinds.map(kind => {
+            const doc = d.masterDocs[kind] || { lines: [] };
+            return `<h2>${esc(quoteTitle(kind))}</h2>
+              <table border="1">
+                <tr><th>Fecha</th><td>${esc(doc.fecha || '')}</td><th>Cliente</th><td>${esc(doc.cliente || '')}</td></tr>
+                <tr><th>Marca</th><td>${esc(doc.marca || '')}</td><th>Modelo</th><td>${esc(doc.modelo || '')}</td></tr>
+              </table>
+              <table border="1">
+                <tr><th>#</th><th>Tipo</th><th>Descripcion</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr>
+                ${(doc.lines || []).map((line, i) => `<tr><td>${i + 1}</td><td>${esc(line.tipo)}</td><td>${esc(line.desc)}</td><td>${esc(line.cant)}</td><td>${esc(line.precio)}</td><td>${esc(lineTotal(line))}</td></tr>`).join('')}
+              </table>`;
+          }).join('')}
+          <h2>Ticket / Precuenta</h2>
+          <table border="1">
+            <tr><th>Descripcion</th><th>Cant</th><th>Subtotal</th><th>Total</th></tr>
+            ${(d.ticketDoc?.rows || []).map(row => `<tr><td>${esc(row.label || '')}</td><td>${esc(row.cant || '')}</td><td>${esc(row.subtotal === '' ? '' : row.subtotal)}</td><td>${esc(row.total === '' ? '' : row.total)}</td></tr>`).join('')}
+            <tr><th>Precio neto</th><td></td><td>${esc(d.ticketDoc?.neto || 0)}</td><td></td></tr>
+            <tr><th>Descuentos</th><td></td><td>${esc(d.ticketDoc?.descuento || 0)}</td><td></td></tr>
+            <tr><th>Total a pagar</th><td></td><td>${esc(d.ticketDoc?.totalPagar || 0)}</td><td></td></tr>
+          </table>
+          <h2>Datos internos</h2>
+          <pre id="expediente-json">${payload}</pre>
+        </body>
+        </html>`;
+    }
+
+    function download(name, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function writeWorkbookToHandle(handle, html) {
+      const writable = await handle.createWritable();
+      await writable.write(new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' }));
+      await writable.close();
+    }
+
+    async function saveExcel() {
+      if (!validateRequiredVehicleFields()) return;
+      persistArchiveSnapshot('Archivo maestro guardado localmente');
+      isDirty = false;
+      lastSavedAt = new Date();
+      updateFileStatus(`Guardado interno: ${saveTimeLabel(lastSavedAt)}`);
+      toast('Archivo guardado en el sistema');
+    }
+
+    async function loadExcel(file, handle = null) {
+      const raw = await file.text();
+      let data = null;
+      if (/\.json$/i.test(file.name)) {
+        data = JSON.parse(raw);
+      } else {
+        const doc = new DOMParser().parseFromString(raw, 'text/html');
+        const pre = doc.querySelector('#expediente-json');
+        if (pre && pre.textContent.trim()) data = JSON.parse(pre.textContent);
+        if (!data) {
+          const rows = Array.from(doc.querySelectorAll('table tr'));
+          const extracted = { items: [] };
+          rows.forEach(row => {
+            const cells = Array.from(row.children).map(cell => (cell.textContent || '').trim());
+            if (cells.length === 2 && cells[0]) extracted[cells[0]] = cells[1];
+          });
+          data = normalizeLoadedData(extracted);
+        }
+      }
+      if (!data) throw new Error('Este archivo no fue generado por el modulo de empleados.');
+      setData(data);
+      setFileHandle(handle);
+      isDirty = false;
+      lastSavedAt = null;
+      updateFileStatus('Expediente cargado');
+      persistArchiveSnapshot('Archivo maestro cargado y respaldado localmente');
+      toast('Expediente cargado');
+    }
+
+    function isSupportedLoadFile(file) {
+      return !!file && /\.(xls|html|json)$/i.test(file.name || '');
+    }
+
+    async function loadDroppedFile(file) {
+      if (!isSupportedLoadFile(file)) {
+        alert('Solo se pueden cargar archivos .xls, .html o .json.');
+        return;
+      }
+      if (hasPendingChanges() && !confirm('Hay cambios sin guardar. Si cargas otro expediente se reemplazara la informacion actual. Deseas continuar?')) {
+        return;
+      }
+      try {
+        await loadExcel(file, null);
+        updateFileStatus('Expediente cargado por arrastre');
+      } catch (err) {
+        alert('No se pudo abrir el expediente: ' + (err && err.message ? err.message : err));
+      }
+    }
+
+    function setupDropZone() {
+      const zone = $('dropZone');
+      if (!zone) return;
+      const stop = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+      ['dragenter', 'dragover'].forEach(type => zone.addEventListener(type, ev => {
+        stop(ev);
+        zone.classList.add('drag-over');
+      }));
+      ['dragleave', 'drop'].forEach(type => zone.addEventListener(type, ev => {
+        stop(ev);
+        zone.classList.remove('drag-over');
+      }));
+      zone.addEventListener('drop', ev => {
+        const file = ev.dataTransfer && ev.dataTransfer.files ? ev.dataTransfer.files[0] : null;
+        loadDroppedFile(file);
+      });
+      zone.addEventListener('click', openExcel);
+    }
+
+    async function openExcel() {
+      if (window.showOpenFilePicker) {
+        try {
+          const [handle] = await window.showOpenFilePicker({
+            multiple: false,
+            startIn: 'desktop',
+            types: [{ description: 'Expediente Excel', accept: { 'application/vnd.ms-excel': ['.xls'], 'text/html': ['.html'], 'application/json': ['.json'] } }]
+          });
+          const file = await handle.getFile();
+          await loadExcel(file, handle);
+          return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+          alert('No se pudo abrir el archivo: ' + (e && e.message ? e.message : e));
+          return;
+        }
+      }
+      $('loadFile').click();
+    }
+
+    document.querySelectorAll('.nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        $(btn.dataset.section).classList.add('active');
+        if (btn.dataset.section === 'autorizado') refreshAutorizado();
+      });
+    });
+    document.querySelectorAll('[data-print]').forEach(btn => btn.addEventListener('click', () => printDoc(btn.dataset.print)));
+    document.querySelectorAll('[data-add-rows]').forEach(btn => btn.addEventListener('click', () => addSheetRows(btn.dataset.addRows)));
+    document.querySelectorAll('[data-add-quote-rows]').forEach(btn => btn.addEventListener('click', () => addQuoteRows(btn.dataset.addQuoteRows)));
+    fields.forEach(id => {
+      const el = $(id);
+      if (!el) return;
+      const handler = () => {
+        if (uppercaseVehicleFields.includes(id)) forceUppercaseInput(el);
+        if (requiredVehicleFields.includes(id) && text(el.value).trim()) el.classList.remove('required-missing');
+        renderAndMarkDirty();
+      };
+      el.addEventListener('input', handler);
+      el.addEventListener('change', handler);
+    });
+    $('printRepuestos')?.addEventListener('change', markDirty);
+    $('printAuthRepuestos')?.addEventListener('change', markDirty);
+    pricedKinds.forEach(kind => {
+      if ($(`${kind}Tipo`)) $(`${kind}Tipo`).innerHTML = kind === 'repuestos' ? '<option selected>Repuestos</option>' : itemTypeOptions('Revision');
+      if (kind === 'repuestos' && $(`${kind}Tipo`)) $(`${kind}Tipo`).disabled = true;
+      $(`${kind}Cant`)?.addEventListener('input', () => updateQuoteTotals(kind));
+      $(`${kind}Precio`)?.addEventListener('input', () => updateQuoteTotals(kind));
+      if ($(`${kind}PrecioSinIva`)) $(`${kind}PrecioSinIva`).addEventListener('input', () => updateQuoteTotals(kind, true));
+      if ($(`${kind}IvaMode`)) $(`${kind}IvaMode`).addEventListener('change', () => { toggleIvaMode(kind, true); renderAndMarkDirty(); });
+      if ($(`${kind}Descuento`)) {
+        $(`${kind}Descuento`).addEventListener('input', () => { syncQuoteFields(kind); markDirty(); });
+        $(`${kind}Descuento`).addEventListener('change', renderAndMarkDirty);
+      }
+      if ($(`${kind}DescuentoTipo`)) {
+        $(`${kind}DescuentoTipo`).addEventListener('change', () => { syncQuoteFields(kind); renderAndMarkDirty(); });
+      }
+      $(`${kind}Desc`)?.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addPricedLine(kind); } });
+    });
+    $('addPresupuesto')?.addEventListener('click', () => addPricedLine('presupuesto'));
+    $('addCotizacion')?.addEventListener('click', () => addPricedLine('cotizacion'));
+    $('addRepuestos')?.addEventListener('click', () => addPricedLine('repuestos'));
+    $('newFile').addEventListener('click', () => { if (confirm('Esta acción borrará todo el expediente interno actual. ¿Desea continuar?')) { setData(blankData()); setFileHandle(null); isDirty = false; lastSavedAt = null; updateFileStatus('Expediente interno reiniciado'); persistArchiveSnapshot('Expediente interno reiniciado'); } });
+    $('saveFile').addEventListener('click', saveExcel);
+    document.addEventListener('mousedown', event => {
+      const cell = excelCellFrom(event.target);
+      if (!cell || cell.classList.contains('excel-editing-cell')) return;
+      if (event.button !== 0) return;
+      event.preventDefault();
+      setSelectedExcelCell(cell);
+      cell.focus({ preventScroll: true });
+    }, true);
+    document.addEventListener('dblclick', event => {
+      const cell = excelCellFrom(event.target);
+      if (!cell) return;
+      event.preventDefault();
+      beginExcelEdit(cell, false);
+      collapseDoubleClickSelection(cell);
+    }, true);
+    document.addEventListener('contextmenu', event => {
+      const cell = excelCellFrom(event.target);
+      if (cell && !cell.classList.contains('excel-editing-cell')) beginExcelEdit(cell, false);
+    }, true);
+    document.addEventListener('blur', event => {
+      const cell = excelCellFrom(event.target);
+      if (!cell) return;
+      const next = event.relatedTarget;
+      if (next && cell.contains(next)) return;
+      setTimeout(() => {
+        if (!cell.contains(document.activeElement)) commitExcelEdit(cell);
+      }, 0);
+    }, true);
+    document.addEventListener('focusin', event => {
+      if (event.target.matches?.('input, textarea')) enableNativeSpellcheck(document);
+    });
+    window.addEventListener('beforeunload', preventUnsafeUnload);
+    window.addEventListener('keydown', preventKeyboardRefresh, true);
+
+    window.updateItem = updateItem;
+    window.removeItem = removeItem;
+    window.importAuthorizedToQuote = importAuthorizedToQuote;
+    window.copyCotizacionToClipboard = copyCotizacionToClipboard;
+    window.importCotizacionToTicket = importCotizacionToTicket;
+    window.copyTicketToClipboard = copyTicketToClipboard;
+    window.importIngresoToParts = importIngresoToParts;
+    window.importPartsToCalculator = importPartsToCalculator;
+    window.addCalculatorCompany = addCalculatorCompany;
+    window.addCalculatorRow = addCalculatorRow;
+    window.updateCalculatorCell = updateCalculatorCell;
+    window.removeCalculatorRow = removeCalculatorRow;
+    window.renderCalculator = renderCalculator;
+    window.updatePricedLine = updatePricedLine;
+    window.removePricedLine = removePricedLine;
+    const savedArchive = persistedArchive();
+    if (savedArchive && savedArchive.data) {
+      setData(savedArchive.data);
+      lastSavedAt = savedArchive.updatedAt ? new Date(savedArchive.updatedAt) : null;
+      updateFileStatus('Archivo maestro local cargado');
+    } else {
+      setData(blankDataFromVehicle());
+      persistArchiveSnapshot('Archivo maestro local iniciado');
+    }
+    setFileHandle(null);
+  </script>
+  <script src="corrector-ortografico.js?v=20260630-flechas-texto"></script>
+</body>
+</html>

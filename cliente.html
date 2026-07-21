@@ -1,0 +1,89 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autorización cliente - AM Recepción Símple</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body data-page="client" lang="es" spellcheck="true">
+  <header class="public-header">
+    <div class="brand"><div class="brand-mark">AM</div><div><h1>Automotriz Medina</h1><p>Revisión y autorización</p></div></div>
+    <span></span>
+  </header>
+  <main class="public-main">
+    <section class="processing-only hidden" data-processing-only>
+      <article class="panel">
+        <div class="panel-body processing-box">
+          <div class="spinner"></div>
+          <h3>Validando autorización</h3>
+          <p>Estamos procesando la información para crear la autorización.</p>
+        </div>
+      </article>
+    </section>
+    <section class="authorized-only hidden" data-authorized-only>
+      <article class="panel">
+        <div class="panel-header"><div><h3>Autorización recibida</h3><p>Gracias por confirmar la información.</p></div></div>
+        <div class="panel-body grid">
+          <p>Gracias por su autorización, ya podemos proceder con el diagnóstico o reparación de su vehículo.</p>
+          <p>Por acá le dejamos un link privado de seguimiento. En este enlace puede revisar los avances que el taller vaya publicando.</p>
+          <p class="muted-note">Normalmente los avances se actualizan cada 24 horas segun el proceso y la información disponible del taller.</p>
+          <a class="btn primary authorize-btn" href="seguimiento.html" data-tracking-link>Seguimiento de mi vehículo</a>
+        </div>
+      </article>
+    </section>
+    <section class="authorization-flow" data-authorization-flow>
+    <div data-client-summary></div>
+    <article class="panel">
+      <div class="panel-header"><h3>Inventario registrado</h3></div>
+      <div class="panel-body check-grid" data-client-inventory></div>
+    </article>
+    <div class="split">
+      <article class="panel">
+        <div class="panel-header"><div><h3>Fotografías de recepción</h3><p>Use siguiente/anterior para revisar el vehículo</p></div></div>
+        <div class="panel-body carousel" data-carousel></div>
+      </article>
+      <aside class="panel">
+        <div class="panel-header"><h3>Observaciones y daños</h3></div>
+        <div class="panel-body grid">
+          <div class="notice" data-client-observations></div>
+          <section class="grid" data-client-damages></section>
+        </div>
+      </aside>
+    </div>
+    <article class="panel hidden" data-photo-ack-panel>
+      <div class="panel-header"><div><h3>Revisión de fotografías</h3><p>Confirme que ya revisó las imágenes de recepción.</p></div></div>
+      <div class="panel-body grid">
+        <div class="notice">La autorización principal ya fue firmada presencialmente en taller. Esta pantalla solo confirma que el cliente pudo revisar las fotografías y registros visuales de recepción.</div>
+        <button class="btn primary authorize-btn" data-action="acknowledge-client-photos">Siguiente</button>
+      </div>
+    </article>
+    <article class="panel" data-client-terms-panel>
+      <div class="panel-header"><div><h3>Terminos y autorización</h3><p>Lea el documento antes de autorizar diagnóstico o reparación</p></div></div>
+      <div class="panel-body grid">
+        <div class="terms-box" tabindex="0">
+          <h3>Contrato de servicio</h3>
+          <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos y verificaciones necesarias para determinar el estado del vehículo y el trabajo requerido.</p>
+          <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción. Automotriz Medina no se responsabiliza por fallas previas, desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo.</p>
+          <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda y siempre que el vehículo no haya sido intervenido por terceros. Componentes eléctricos, electrónicos, sensores, módulos, computadoras, piezas usadas, piezas reparadas y repuestos proporcionados por el cliente quedan excluidos de garantía salvo acuerdo escrito distinto.</p>
+          <p>El cliente declara haber revisado las fotografías, el inventario, las observaciones y los daños registrados. Dinero, documentos, herramientas, objetos personales o accesorios no declarados en esta recepción quedan bajo responsabilidad del cliente.</p>
+          <p>Una vez notificado que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia.</p>
+          <p>Sí el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación, podrá considerarse abandonado y Automotriz Medina podrá iniciar las gestiones legales correspondientes para recuperar saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos relacionados.</p>
+          <p>Automotriz Medina podrá retener el vehículo hasta que el cliente cancele por completo facturas, repuestos, mano de obra, diagnósticos, almacenaje, custodia u otros cargos autorizados o derivados del servicio.</p>
+          <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación segun la información acordada con el taller.</p>
+        </div>
+        <label class="check-item terms-accept"><input type="checkbox" data-terms-check> He leido y aceptó los términos y condiciones. Certifico que la inspeccion visual y el inventario son correctos.</label>
+        <button class="btn primary authorize-btn" data-action="authorize-client" disabled>Autorizar mi reparación / diagnóstico</button>
+      </div>
+    </article>
+    </section>
+  </main>
+  <script src="assets/js/cloud-sync.js"></script>
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
+
+
+
+
