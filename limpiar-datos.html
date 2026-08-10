@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Limpiar datos - Automotriz Medina</title>
+  <style>
+    :root{font-family:Inter,Arial,sans-serif;color:#13202c;background:#eef4f6}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
+    main{width:min(620px,100%);background:#fff;border:1px solid #d8e3e8;border-radius:10px;box-shadow:0 20px 60px rgba(20,40,55,.12);padding:28px}
+    h1{margin:0 0 8px;font-size:28px}
+    p{line-height:1.5;color:#536579}
+    button,a{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:8px;padding:14px 18px;font-size:16px;text-decoration:none;cursor:pointer}
+    button{background:#1f7a83;color:#fff;font-weight:800}
+    a{background:#eef4f6;color:#13202c;border:1px solid #d8e3e8}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+    .log{margin-top:18px;border-left:5px solid #1f7a83;background:#eef4f6;border-radius:8px;padding:14px;white-space:pre-wrap}
+    .danger{border-left-color:#b52931}
+    .ok{border-left-color:#16834a}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Limpiar datos del sistema</h1>
+  <p>Esto borra los registros locales de este navegador y guarda un respaldo vacío en la nube para comenzar desde cero.</p>
+  <div class="row">
+    <button id="clean">Limpiar local y nube</button>
+    <a href="admin.html">Volver al administrador</a>
+    <a href="empleado.html">Abrir empleados</a>
+  </div>
+  <div id="log" class="log">Listo para limpiar.</div>
+</main>
+<script>
+const ENDPOINT = "https://script.google.com/macros/s/AKfycby5D72bQSmpLv2pqJn7BmhiVArsyN5xsQxe7o3LmyvKZh1He1poANYWUH6rV4gZX0J_GA/exec";
+const ADMIN_KEY = "am_recepción_local_v1";
+const LEGACY_ADMIN_KEY = "am_recepciÃ³n_local_v1";
+const EMPLOYEE_KEY = "am_employee_module_safe_v2";
+const CONFIG_KEY = "am_cloud_sync_config_v1";
+const MASTER_ARCHIVE_KEY = "am_master_taller_archives_v1";
+const QUICK_ARCHIVE_KEY = "am_quick_taller_archives_v1";
+function emptyAdmin(){
+  return {
+    config:{schemaVersion:4,businessName:"Automotriz Medina",adminPin:"2468",employeeToken:"empleado-am-local",nextReceptionNumber:1},
+    employees:[
+      {id:"edwin",name:"Edwin",token:"empleado-edwin"},
+      {id:"rafael",name:"Rafael",token:"empleado-rafael"},
+      {id:"cristian",name:"Cristian",token:"empleado-cristian"}
+    ],
+    session:{admin:true,employee:true},
+    selectedId:null,
+    sequence:{reception:0,damage:1,update:1,inventory:6},
+    receptions:[],
+    deletedReceptionNumbers:[],
+    employeeNotifications:[]
+  };
+}
+function emptyEmployee(){return {schemaVersion:2,selected:"",seq:0,vehicles:[]};}
+function log(message,tone=""){const box=document.getElementById("log");box.className="log "+tone;box.textContent=message;}
+async function post(action,payload){
+  const response = await fetch(ENDPOINT,{method:"POST",mode:"cors",headers:{"Content-Type":"text/plain;charset=utf-8","Accept":"application/json"},body:JSON.stringify({action,account:"oficinaautomotrizmedina@gmail.com",payload})});
+  const text = await response.text();
+  let data;
+  try{data=JSON.parse(text)}catch{throw new Error("El servidor no devolvió JSON: "+text.slice(0,220));}
+  if(!response.ok || !data.ok) throw new Error(data.error || text || "No se pudo guardar.");
+  return data;
+}
+async function cleanAll(){
+  if(!confirm("Esto eliminará todos los registros locales y subirá un respaldo vacío a la nube. ¿Continuar?")) return;
+  log("Limpiando datos locales...");
+  const admin = emptyAdmin();
+  const employee = emptyEmployee();
+  localStorage.setItem(ADMIN_KEY,JSON.stringify(admin));
+  localStorage.removeItem(LEGACY_ADMIN_KEY);
+  localStorage.setItem(EMPLOYEE_KEY,JSON.stringify(employee));
+  localStorage.setItem(CONFIG_KEY,JSON.stringify({enabled:true,endpoint:ENDPOINT,account:"oficinaautomotrizmedina@gmail.com"}));
+  localStorage.removeItem(MASTER_ARCHIVE_KEY);
+  localStorage.removeItem(QUICK_ARCHIVE_KEY);
+  sessionStorage.clear();
+  log("Subiendo respaldo vacío a la nube...");
+  const snapshot = {version:1,exportedAt:new Date().toISOString(),account:"oficinaautomotrizmedina@gmail.com",appState:admin,employeeState:employee,archives:{master:{},quick:{}}};
+  await post("saveSnapshot",{reason:"manual-admin-clean-reset",snapshot});
+  log("Listo. Sistema limpio localmente y respaldo vacío guardado en nube.","ok");
+}
+document.getElementById("clean").addEventListener("click",()=>cleanAll().catch(error=>log(error.message || String(error),"danger")));
+</script>
+</body>
+</html>

@@ -43,6 +43,8 @@
     button.spell-check-btn { background: #16a34a; border-color: #16a34a; color: #fff; }
     button.spell-check-btn:hover { background: #15803d; border-color: #15803d; }
     button.danger { color: var(--danger); }
+    button.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+    button.danger-solid:hover { background: #991b1b; border-color: #991b1b; }
     button.small { padding: 5px 8px; font-size: 12px; }
     input, select, textarea {
       width: 100%;
@@ -482,10 +484,11 @@
           <h1>Módulo Externo</h1>
         </div>
         <div class="toolbar">
-          <button id="newFile">Crear nuevo expediente / borrar todo</button>
+          <button id="loadCloudFile" type="button">Cargar</button>
           <button id="saveFile" class="primary">Guardar</button>
+          <button id="newFile" class="danger-solid" type="button">Borrar todo</button>
           <input id="loadFile" type="file" accept=".xls,.html,.json" hidden>
-          <div id="fileStatus" class="file-status">Sin archivo vinculado</div>
+          <div id="fileStatus" class="file-status"></div>
         </div>
       </div>
     </header>
@@ -507,7 +510,6 @@
               </div>
               <div class="actions">
                 <button class="success" id="autoFillVehicleBtn" type="button">Autorellenar datos del vehiculo</button>
-                <button class="notify" onclick="openNotify()">Notificar</button>
                 <button class="print" data-print="ingreso">Imprimir ingreso</button>
               </div>
             </div>
@@ -558,7 +560,6 @@
                 <h2>Trabajo autorizado</h2>
               </div>
               <div class="actions">
-                <button class="notify" onclick="openNotify()">Notificar</button>
                 <button class="print" data-print="autorizado">Imprimir autorizado</button>
               </div>
             </div>
@@ -594,6 +595,8 @@
   <div id="printArea" class="print-area"></div>
   <div id="toast" class="toast"></div>
 
+  <script src="assets/js/auth-guard.js?v=20260810-auth1"></script>
+  <script src="assets/js/cloud-sync.js?v=20260723-saveconfirm2"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const text = (v) => String(v == null ? '' : v);
@@ -830,6 +833,7 @@
         const snapshot = { rec: key, updatedAt: new Date().toISOString(), data };
         store[archiveNorm(key)] = snapshot;
         saveArchiveStore(store);
+        localStorage.setItem('am_cloud_local_write_v1', snapshot.updatedAt);
         if (note) updateFileStatus(note);
       } catch (err) {
         console.warn('No se pudo guardar archivo rápido local', err);
@@ -879,7 +883,7 @@
     }
 
     function updateFileStatus(note = '') {
-      const base = currentFileName ? `Archivo abierto: ${currentFileName}` : 'Sin archivo vinculado';
+      const base = currentFileName ? `Archivo abierto: ${currentFileName}` : '';
       const status = note || (lastSavedAt ? `Ultimo guardado: ${saveTimeLabel(lastSavedAt)}` : '');
       $('fileStatus').textContent = status ? `${base} | ${status}` : base;
     }
@@ -1555,7 +1559,6 @@
           else removeBlankSheetRow(mode);
         });
       });
-
       wrap.querySelectorAll('.sheet-drag').forEach(handle => {
         handle.addEventListener('pointerdown', ev => {
           const row = handle.closest('.sheet-row');
@@ -2058,6 +2061,16 @@
       URL.revokeObjectURL(url);
     }
 
+    function cloudSync() {
+      if (window.AM_CLOUD_SYNC) return window.AM_CLOUD_SYNC;
+      try {
+        if (window.parent && window.parent !== window && window.parent.AM_CLOUD_SYNC) {
+          return window.parent.AM_CLOUD_SYNC;
+        }
+      } catch {}
+      return null;
+    }
+
     async function writeWorkbookToHandle(handle, html) {
       const writable = await handle.createWritable();
       await writable.write(new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' }));
@@ -2065,12 +2078,55 @@
     }
 
     async function saveExcel() {
-      if (!validateRequiredVehicleFields()) return;
-      persistArchiveSnapshot('Archivo rápido guardado internamente');
-      isDirty = false;
-      lastSavedAt = new Date();
-      updateFileStatus(`Guardado interno: ${saveTimeLabel(lastSavedAt)}`);
-      toast('Archivo guardado en el sistema');
+      if (!validateRequiredVehicleFields()) return false;
+      const saveButton = $('saveFile');
+      if (saveButton) saveButton.disabled = true;
+      persistArchiveSnapshot('Archivo rapido guardado internamente');
+      updateFileStatus('Guardando y confirmando en nube...');
+      try {
+        const cloud = cloudSync();
+        if (!cloud?.isReady?.()) throw new Error('La nube no esta disponible.');
+        const expectedKey = archiveNorm(currentArchiveKey());
+        const expectedArchive = expectedKey ? archiveStore()[expectedKey] : null;
+        const fixedSnapshot = cloud.snapshot ? cloud.snapshot() : null;
+        await cloud.saveNow('archivo-empleado-confirmado', fixedSnapshot);
+        let confirmed = false;
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          updateFileStatus(`Confirmando respaldo en nube (${attempt + 1}/10)...`);
+          const snapshot = await cloud.fetchLatest?.();
+          const archived = expectedKey && snapshot?.archives?.quick?.[expectedKey];
+          if (archived && expectedArchive && String(archived.updatedAt || '') === String(expectedArchive.updatedAt || '')) {
+            cloud.applySnapshot?.(snapshot);
+            confirmed = true;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 1200 + attempt * 650));
+        }
+        if (!confirmed) throw new Error('El servidor respondio, pero no confirmo el archivo recien guardado.');
+        isDirty = false;
+        lastSavedAt = new Date();
+        updateFileStatus(`Guardado confirmado: ${saveTimeLabel(lastSavedAt)}`);
+        try {
+          window.parent?.postMessage?.({
+            type: 'am-employee-archive-saved',
+            source: 'employee-quick-archive',
+            rec: archiveReception || currentArchiveKey(),
+            vehicle: getData(),
+            savedAt: lastSavedAt.toISOString()
+          }, '*');
+        } catch (notifyError) {
+          console.warn('No se pudo avisar al modulo principal que el archivo fue guardado', notifyError);
+        }
+        toast('Archivo guardado y confirmado');
+        return true;
+      } catch (error) {
+        console.error(error);
+        updateFileStatus('No se pudo confirmar el guardado en nube');
+        alert('No se pudo confirmar el archivo en nube: ' + (error && error.message ? error.message : error));
+        return false;
+      } finally {
+        if (saveButton) saveButton.disabled = false;
+      }
     }
 
     async function loadExcel(file, handle = null) {
@@ -2164,6 +2220,36 @@
       $('loadFile').click();
     }
 
+    async function loadCurrentArchive() {
+      if (hasPendingChanges() && !confirm('Hay cambios sin guardar. Si cargas el expediente se reemplazara la informacion actual. Deseas continuar?')) return;
+      const loadButton = $('loadCloudFile');
+      if (loadButton) loadButton.disabled = true;
+      updateFileStatus('Cargando expediente...');
+      try {
+        const cloud = cloudSync();
+        if (cloud?.ready) await cloud.ready();
+        if (cloud?.fetchLatest) {
+          const snapshot = await cloud.fetchLatest();
+          cloud.applySnapshot?.(snapshot);
+        }
+        const savedQuickArchive = persistedArchive();
+        if (savedQuickArchive?.data) {
+          setData(savedQuickArchive.data);
+          lastSavedAt = savedQuickArchive.updatedAt ? new Date(savedQuickArchive.updatedAt) : null;
+          isDirty = false;
+          updateFileStatus('Expediente cargado');
+          toast('Expediente cargado');
+          return;
+        }
+        await openExcel();
+      } catch (error) {
+        alert('No se pudo cargar el expediente: ' + (error && error.message ? error.message : error));
+        updateFileStatus('No se pudo cargar el expediente');
+      } finally {
+        if (loadButton) loadButton.disabled = false;
+      }
+    }
+
     document.querySelectorAll('.nav button').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
@@ -2196,7 +2282,19 @@
     $('itemDesc')?.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addItem(); } });
     $('authItemDesc')?.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addAuthorizedItem(); } });
     $('newFile').addEventListener('click', () => { if (confirm('Esta acción borrará todo el expediente interno actual. ¿Desea continuar?')) { setData(blankData()); setFileHandle(null); isDirty = false; lastSavedAt = null; updateFileStatus('Expediente interno reiniciado'); persistArchiveSnapshot('Expediente interno reiniciado'); } });
+    $('loadCloudFile')?.addEventListener('click', loadCurrentArchive);
     $('saveFile').addEventListener('click', saveExcel);
+    $('loadFile')?.addEventListener('change', async event => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        await loadExcel(file, null);
+      } catch (err) {
+        alert('No se pudo abrir el expediente: ' + (err && err.message ? err.message : err));
+      } finally {
+        event.target.value = '';
+      }
+    });
     document.addEventListener('mousedown', event => {
       const cell = excelCellFrom(event.target);
       if (!cell || cell.classList.contains('excel-editing-cell')) return;
@@ -2236,19 +2334,16 @@
     window.cancelEdit = cancelEdit;
     window.saveEdit = saveEdit;
     window.removeItem = removeItem;
-    const initialQuickData = blankDataFromVehicle();
-    const savedQuickArchive = persistedArchive();
-    if (savedQuickArchive && savedQuickArchive.data) {
-      setData(savedQuickArchive.data);
-      lastSavedAt = savedQuickArchive.updatedAt ? new Date(savedQuickArchive.updatedAt) : null;
-      updateFileStatus('Archivo rápido interno cargado');
-    } else {
-      setData(initialQuickData);
-      persistArchiveSnapshot('Archivo rápido interno iniciado');
+    function bootstrapArchiveModule() {
+      setData(blankDataFromVehicle());
+      isDirty = false;
+      lastSavedAt = null;
+      updateFileStatus('Archivo listo. Presione Cargar para leer lo guardado o Guardar para escribir cambios.');
+      toggleSuggestionInputs();
+      toggleSuggestionInputs('auth');
+      setFileHandle(null);
     }
-    toggleSuggestionInputs();
-    toggleSuggestionInputs('auth');
-    setFileHandle(null);
+    bootstrapArchiveModule();
   </script>
   <script src="corrector-ortografico.js?v=20260630-flechas-texto"></script>
 </body>

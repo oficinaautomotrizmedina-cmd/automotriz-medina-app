@@ -1,0 +1,4186 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autorización cliente - AM Recepción Símple</title>
+  <style>
+:root {
+  --bg: #f4f6f8;
+  --surface: #fff;
+  --surface-2: #eef2f5;
+  --text: #16212b;
+  --muted: #637282;
+  --line: #d9e1e8;
+  --brand: #206f78;
+  --brand-dark: #17202a;
+  --accent: #b52931;
+  --ok: #24744a;
+  --warn: #a56400;
+  --danger: #a83232;
+  --shadow: 0 12px 28px rgba(22, 33, 43, .08);
+  --radius: 8px;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg: #15191e;
+  --surface: #20262d;
+  --surface-2: #2a323a;
+  --text: #edf2f6;
+  --muted: #a9b5c1;
+  --line: #38434d;
+  --brand: #4aa3a7;
+  --shadow: 0 12px 28px rgba(0, 0, 0, .22);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 Inter, "Segoe UI", Arial, sans-serif;
+}
+button, input, select, textarea { font: inherit; }
+a { color: inherit; text-decoration: none; }
+
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 258px minmax(0, 1fr); }
+.sidebar { background: var(--brand-dark); color: #fff; padding: 22px 18px; display: flex; flex-direction: column; gap: 20px; }
+.brand { display: flex; gap: 12px; align-items: center; }
+.brand-mark { width: 42px; height: 42px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--brand)); display: grid; place-items: center; font-weight: 800; }
+.brand h1, .brand p { margin: 0; }
+.brand h1 { font-size: 16px; }
+.brand p { font-size: 12px; color: #c0cad4; }
+.nav { display: grid; gap: 6px; }
+.nav [data-dashboard-filter-menu] { display: grid; gap: 6px; }
+.nav button, .nav a { border: 0; border-radius: 8px; background: transparent; color: #dce5ec; padding: 10px 12px; text-align: left; cursor: pointer; }
+.nav button.active, .nav button:hover, .nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+.nav-submenu { display: grid; gap: 4px; margin: 4px 0 8px 12px; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.18); }
+.nav-submenu button { font-size: 13px; padding: 8px 10px; }
+.mobile-nav { display: none; }
+.main { min-width: 0; }
+.topbar { min-height: 72px; background: var(--surface); border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
+.topbar h2, .topbar p { margin: 0; }
+.topbar h2 { font-size: 20px; }
+.topbar p { color: var(--muted); font-size: 13px; }
+.content { padding: 24px; display: grid; gap: 18px; }
+.hidden { display: none !important; }
+
+.public-header { background: var(--surface); border-bottom: 1px solid var(--line); padding: 16px clamp(16px, 4vw, 48px); display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.public-main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 52px; display: grid; gap: 18px; }
+.hero { background: var(--surface); border-bottom: 1px solid var(--line); padding: 30px clamp(16px, 4vw, 48px); }
+.hero-inner { width: min(1120px, 100%); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.05fr) 360px; gap: 28px; align-items: center; }
+.hero h2 { font-size: clamp(30px, 4vw, 48px); line-height: 1.04; margin: 0 0 10px; }
+.hero p { color: var(--muted); font-size: 17px; margin: 0; }
+.vehicle-art { min-height: 230px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(135deg, #fff, #edf3f4); position: relative; overflow: hidden; }
+.vehicle-art:before { content: ""; position: absolute; left: 13%; right: 13%; top: 36%; height: 40%; border-radius: 46px 46px 22px 22px; background: #17202a; box-shadow: inset 0 0 0 10px #2e3a45; }
+.vehicle-art:after { content: ""; position: absolute; left: 23%; right: 23%; top: 20%; height: 32%; border-radius: 28px 28px 10px 10px; background: var(--accent); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.panel:has(.action-menu[open]) { overflow: visible; position: relative; z-index: 30; }
+.panel.focus-flash { animation: focusFlash 1.2s ease; }
+@keyframes focusFlash {
+  0%, 100% { box-shadow: var(--shadow); }
+  25%, 70% { box-shadow: 0 0 0 4px rgba(32,111,120,.22), var(--shadow); }
+}
+.panel-header { padding: 16px 18px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.panel-header h3, .panel-header p { margin: 0; }
+.panel-header h3 { font-size: 16px; }
+.panel-header p { color: var(--muted); font-size: 13px; }
+.panel-body { padding: 18px; }
+.grid { display: grid; gap: 16px; }
+.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dashboard-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+
+.metric { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.metric span { color: var(--muted); font-size: 12px; }
+.metric strong { display: block; font-size: 26px; margin-top: 4px; }
+.metric small { color: var(--muted); }
+.notice { border-left: 4px solid var(--brand); background: var(--surface-2); border-radius: 8px; padding: 12px 14px; }
+.notice.warn { border-left-color: var(--warn); }
+.notice.danger { border-left-color: var(--danger); }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.action-menu { position: relative; display: inline-block; }
+.action-menu > summary { list-style: none; }
+.action-menu > summary::-webkit-details-marker { display: none; }
+.action-menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 120;
+  min-width: 260px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 18px 50px rgba(15, 24, 34, .18);
+}
+.action-menu-list .btn { width: 100%; justify-content: flex-start; }
+.btn { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 9px 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.btn.danger { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn:not(:disabled) { transition: background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease; }
+.btn:not(:disabled):hover,
+.action-menu[open] > summary.btn { background: rgba(32,111,120,.12); border-color: rgba(32,111,120,.45); color: var(--text); box-shadow: 0 8px 22px rgba(15,24,34,.10); }
+.btn.primary:not(:disabled):hover { background: #185d65; border-color: #185d65; color: #fff; }
+.btn.danger:not(:disabled):hover { filter: brightness(.94); }
+.btn:not(:disabled):active { transform: translateY(1px); box-shadow: none; }
+
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.field { display: grid; gap: 6px; }
+.field.full { grid-column: 1 / -1; }
+label { color: var(--muted); font-weight: 650; font-size: 13px; }
+input, select, textarea { min-height: 42px; width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); padding: 10px 11px; }
+textarea { min-height: 104px; resize: vertical; }
+.check-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.check-item { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 10px; display: flex; gap: 8px; align-items: center; }
+.check-item input { width: 16px; min-height: 16px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 780px; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+tr.clickable-row { cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
+tr.clickable-row:hover { background: rgba(32,111,120,.12); box-shadow: inset 4px 0 0 var(--brand); }
+tr.clickable-row:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.table-thumb { width: 72px; height: 54px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); font-size: 12px; font-weight: 700; padding: 0; cursor: zoom-in; }
+.table-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.table-thumb.card-thumb { width: 84px; height: 58px; }
+.table-thumb-empty { cursor: default; }
+.image-modal { position: fixed; inset: 0; z-index: 80; background: rgba(5,10,15,.78); display: grid; place-items: center; padding: 22px; }
+.image-modal.hidden { display: none; }
+.image-modal-card { width: min(980px, 96vw); max-height: 92vh; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.42); display: grid; grid-template-rows: auto minmax(0,1fr); }
+.image-modal-head { padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+.image-modal-head h3 { margin: 0; font-size: 16px; }
+.image-modal-body { background: #0f151b; min-height: 260px; display: grid; place-items: center; overflow: auto; }
+.image-modal-body img { max-width: 100%; max-height: 80vh; object-fit: contain; display: block; }
+.backup-status { color: var(--muted); font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: var(--surface-2); }
+.backup-status.ok { color: var(--ok); background: rgba(36,116,74,.12); border-color: rgba(36,116,74,.28); }
+.backup-status.warn { color: var(--warn); background: rgba(165,100,0,.12); border-color: rgba(165,100,0,.28); }
+.backup-dropzone {
+  min-height: 150px;
+  border: 2px dashed rgba(32,111,120,.38);
+  border-radius: 8px;
+  background: rgba(32,111,120,.07);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  text-align: center;
+  cursor: pointer;
+  padding: 18px;
+}
+.backup-dropzone.dragover { background: rgba(32,111,120,.16); border-color: var(--brand); }
+.backup-dropzone span { color: var(--muted); }
+.backup-preview-frame {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.table-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.table-remove { width: 40px; flex: 0 0 40px; }
+.pill { display: inline-flex; align-items: center; min-height: 26px; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.pill.ok { color: var(--ok); background: rgba(36,116,74,.12); }
+.pill.warn { color: var(--warn); background: rgba(165,100,0,.14); }
+.pill.danger { color: var(--danger); background: rgba(168,50,50,.12); }
+.pill.info { color: var(--brand); background: rgba(32,111,120,.12); }
+
+.tabs { display: flex; gap: 8px; overflow-x: auto; border-bottom: 1px solid var(--line); padding: 0 18px; }
+.tabs button { border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); padding: 13px 4px 10px; cursor: pointer; white-space: nowrap; }
+.tabs button.active { color: var(--text); border-color: var(--brand); font-weight: 750; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.photo-card { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.photo-box { aspect-ratio: 4 / 3; background: linear-gradient(135deg, rgba(32,111,120,.18), rgba(181,41,49,.12)), var(--surface-2); display: grid; place-items: center; padding: 10px; text-align: center; color: var(--muted); position: relative; }
+.photo-box.has-image { background-size: cover; background-position: center; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+.photo-box:after { content: attr(data-label); position: absolute; left: 8px; bottom: 8px; background: rgba(22,33,43,.72); color: #fff; border-radius: 6px; padding: 4px 7px; font-size: 12px; }
+.photo-card .field { padding: 10px; }
+.detail-list { display: grid; gap: 10px; }
+.detail-row { display: grid; grid-template-columns: 32px minmax(0,1fr) 42px; gap: 8px; align-items: start; }
+.detail-row span { height: 42px; border: 1px solid var(--line); border-radius: 8px; display: grid; place-items: center; color: var(--muted); font-weight: 700; background: var(--surface-2); }
+.detail-row textarea { min-height: 42px; }
+.icon-remove { width: 42px; height: 42px; min-height: 42px; padding: 0; border-color: rgba(168,50,50,.35); color: var(--danger); font-weight: 800; font-size: 18px; line-height: 1; }
+.processing-box { display: grid; place-items: center; min-height: 220px; text-align: center; gap: 12px; }
+.spinner { width: 42px; height: 42px; border: 4px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.carousel { display: grid; gap: 12px; }
+.carousel-stage { min-height: 360px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); display: grid; place-items: center; overflow: hidden; position: relative; }
+.carousel-stage img { width: 100%; height: 100%; object-fit: contain; background: #101820; }
+.carousel-stage .photo-box { width: 100%; height: 100%; border-radius: 0; }
+.carousel-caption { color: var(--muted); }
+
+.timeline { display: grid; gap: 12px; }
+.timeline-item { display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.timeline-item time { color: var(--muted); font-size: 13px; }
+.timeline-item h4, .timeline-item p { margin: 0; }
+.timeline-item p { color: var(--muted); margin-top: 4px; }
+.progress-wrap { display: grid; gap: 8px; }
+.progress-bar { height: 16px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
+.progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--brand), var(--ok)); transition: width .2s ease; }
+.signature-pad { height: 170px; border: 1px dashed var(--muted); border-radius: 8px; background: linear-gradient(150deg, transparent 42%, rgba(32,111,120,.22) 44%, transparent 46%), var(--surface); display: grid; place-items: center; color: var(--muted); }
+
+.terms-box {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  padding: 14px;
+  line-height: 1.5;
+}
+.terms-box h3 { margin-top: 0; }
+.terms-box p { margin: 0 0 12px; }
+.terms-accept { align-items: flex-start; }
+.authorize-btn {
+  width: 100%;
+  min-height: 48px;
+  font-weight: 750;
+}
+.muted-note {
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+
+.tracking-page {
+  background: #151515;
+  color: #f4f4f4;
+}
+.tracking-header {
+  background: #151515;
+  border-bottom-color: #252525;
+}
+.tracking-main {
+  width: min(1180px, calc(100% - 16px));
+  margin: 0 auto;
+  padding: 18px 0 28px;
+}
+.tracking-card {
+  min-height: calc(100vh - 110px);
+  border: 1px solid #252525;
+  background: #181818;
+  padding: 22px;
+}
+.tracking-label {
+  color: #9b9b9f;
+  font-weight: 800;
+  font-size: 18px;
+  text-transform: uppercase;
+}
+.tracking-date {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 2px 0 20px;
+}
+.tracking-vehicle-row {
+  display: grid;
+  grid-template-columns: 152px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.tracking-vehicle-photo {
+  width: 152px;
+  height: 154px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tracking-vehicle-photo .photo-box,
+.tracking-card-photo .photo-box {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+.tracking-vehicle-info h2 {
+  font-size: 32px;
+  line-height: 1.05;
+  margin: 6px 0 10px;
+  color: #fff;
+}
+.tracking-vehicle-info p {
+  color: #9f9fa4;
+  font-size: 18px;
+  font-weight: 800;
+  margin: 2px 0;
+}
+.tracking-purple {
+  color: #9858ff;
+  font-size: 14px;
+  font-weight: 900;
+}
+.tracking-card-photo {
+  width: 70px;
+  height: 90px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 6px 0 36px;
+}
+.tracking-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+.tracking-progress-head strong {
+  color: #9f9fa4;
+}
+.tracking-progress {
+  height: 10px;
+  background: #2b203b;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 34px;
+}
+.tracking-progress div {
+  height: 100%;
+  background: #9858ff;
+  border-radius: 999px;
+}
+.tracking-section {
+  margin-top: 22px;
+}
+.tracking-section strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 18px;
+}
+.tracking-section h3 {
+  font-size: 28px;
+  margin: 0 0 20px;
+}
+.tracking-section p {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+.tracking-updates {
+  display: grid;
+  gap: 12px;
+}
+.tracking-updates div {
+  border-left: 3px solid #9858ff;
+  padding-left: 12px;
+}
+.tracking-updates span {
+  color: #9f9fa4;
+}
+
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 100; max-width: 380px; box-shadow: var(--shadow); }
+.master-file-frame { width: 100%; min-height: 78vh; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+
+@media (max-width: 920px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { position: sticky; top: 0; z-index: 20; padding: 12px 16px; gap: 12px; }
+  .nav { display: grid; gap: 6px; }
+  .nav [data-dashboard-filter-menu] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .nav [data-expediente-menu]:not(.hidden) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .nav button, .nav a { background: rgba(255,255,255,.08); color: #fff; text-align: center; padding: 9px 8px; }
+  .nav-submenu { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding-left: 0; border-left: 0; }
+  .mobile-nav { display: block; width: 100%; min-height: 42px; border-radius: 8px; border: 1px solid rgba(255,255,255,.22); background: #fff; color: #16212b; padding: 8px 10px; }
+  .brand { width: 100%; }
+  .topbar { position: static; }
+  .hero-inner, .split, .cols-2, .cols-3, .cols-4, .form-grid, .dashboard-metrics { grid-template-columns: 1fr; }
+  .photo-grid, .check-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .table-wrap { overflow: visible; }
+  .table-wrap table { min-width: 0; border-collapse: separate; border-spacing: 0 12px; }
+  .table-wrap thead { display: none; }
+  .table-wrap tbody, .table-wrap tr, .table-wrap td { display: block; width: 100%; }
+  .table-wrap tr.clickable-row {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-wrap tr.clickable-row:hover { background: var(--surface); box-shadow: inset 4px 0 0 var(--brand), var(--shadow); }
+  .table-wrap td {
+    position: relative;
+    min-height: 46px;
+    padding: 10px 12px 10px 124px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  .table-wrap td:last-child { border-bottom: 0; }
+  .table-wrap td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 12px;
+    top: 11px;
+    width: 98px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .table-thumb, .table-thumb.card-thumb { width: 100%; height: 170px; }
+  .table-actions { margin-top: 8px; justify-content: flex-end; }
+  .master-file-frame { min-height: 82vh; }
+}
+
+@media (max-width: 560px) {
+  .topbar, .public-header { align-items: flex-start; flex-direction: column; }
+  .content { padding: 12px; gap: 14px; }
+  .panel-body { padding: 14px; }
+  .photo-grid, .check-grid { grid-template-columns: 1fr; }
+  .timeline-item { grid-template-columns: 1fr; }
+  .carousel-stage { min-height: 260px; }
+  .public-main { width: min(100% - 20px, 1120px); padding-top: 16px; gap: 14px; }
+  .public-header { padding: 12px 10px; }
+  .metric strong { font-size: 22px; }
+  .panel-header { padding: 14px; align-items: flex-start; flex-direction: column; }
+  .panel-header h3 { font-size: 15px; }
+  .detail-row { grid-template-columns: 28px minmax(0,1fr) 38px; }
+  .detail-row span, .icon-remove { height: 38px; min-height: 38px; }
+  .table-wrap td { padding-left: 112px; }
+  .table-wrap td::before { width: 88px; }
+  .table-thumb, .table-thumb.card-thumb { height: 148px; }
+  .terms-box { max-height: 230px; font-size: 14px; }
+  .btn, .authorize-btn { width: 100%; }
+  .btn-row { width: 100%; }
+  .action-menu { width: 100%; }
+  .action-menu > summary { width: 100%; justify-content: center; }
+  .action-menu-list { position: static; margin-top: 8px; width: 100%; box-shadow: none; }
+  .tracking-header .btn { width: auto; }
+  .tracking-main { width: 100%; padding: 0; }
+  .tracking-card { border: 0; min-height: calc(100vh - 92px); padding: 16px 10px 28px; }
+  .tracking-label { font-size: 16px; }
+  .tracking-date { font-size: 17px; }
+  .tracking-vehicle-row {
+    grid-template-columns: 124px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .tracking-vehicle-photo {
+    width: 124px;
+    height: 132px;
+  }
+  .tracking-vehicle-info h2 { font-size: 26px; }
+  .tracking-vehicle-info p { font-size: 15px; }
+  .tracking-section h3 { font-size: 23px; }
+  .tracking-section p { font-size: 16px; }
+}
+
+</style>
+</head>
+<body data-page="client" lang="es" spellcheck="true">
+  <header class="public-header">
+    <div class="brand"><div class="brand-mark">AM</div><div><h1>Automotriz Medina</h1><p>Revisión y autorización</p></div></div>
+    <span></span>
+  </header>
+  <main class="public-main">
+    <section class="processing-only hidden" data-processing-only>
+      <article class="panel">
+        <div class="panel-body processing-box">
+          <div class="spinner"></div>
+          <h3>Validando autorización</h3>
+          <p>Estamos procesando la información para crear la autorización.</p>
+        </div>
+      </article>
+    </section>
+    <section class="authorized-only hidden" data-authorized-only>
+      <article class="panel">
+        <div class="panel-header"><div><h3>Autorización recibida</h3><p>Gracias por confirmar la información.</p></div></div>
+        <div class="panel-body grid">
+          <p>Gracias por su autorización, ya podemos proceder con el diagnóstico o reparación de su vehículo.</p>
+          <p>Por acá le dejamos un link privado de seguimiento. En este enlace puede revisar los avances que el taller vaya publicando.</p>
+          <p class="muted-note">Normalmente los avances se actualizan cada 24 horas segun el proceso y la información disponible del taller.</p>
+          <a class="btn primary authorize-btn" href="seguimiento-mobile.html" data-tracking-link>Seguimiento de mi vehículo</a>
+        </div>
+      </article>
+    </section>
+    <section class="authorization-flow" data-authorization-flow>
+    <div data-client-summary></div>
+    <article class="panel">
+      <div class="panel-header"><h3>Inventario registrado</h3></div>
+      <div class="panel-body check-grid" data-client-inventory></div>
+    </article>
+    <div class="split">
+      <article class="panel">
+        <div class="panel-header"><div><h3>Fotografías de recepción</h3><p>Use siguiente/anterior para revisar el vehículo</p></div></div>
+        <div class="panel-body carousel" data-carousel></div>
+      </article>
+      <aside class="panel">
+        <div class="panel-header"><h3>Observaciones y daños</h3></div>
+        <div class="panel-body grid">
+          <div class="notice" data-client-observations></div>
+          <section class="grid" data-client-damages></section>
+        </div>
+      </aside>
+    </div>
+    <article class="panel">
+      <div class="panel-header"><div><h3>Terminos y autorización</h3><p>Lea el documento antes de autorizar diagnóstico o reparación</p></div></div>
+      <div class="panel-body grid">
+        <div class="terms-box" tabindex="0">
+          <h3>Contrato de servicio</h3>
+          <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos y verificaciones necesarias para determinar el estado del vehículo y el trabajo requerido.</p>
+          <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción. Automotriz Medina no se responsabiliza por fallas previas, desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo.</p>
+          <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda y siempre que el vehículo no haya sido intervenido por terceros. Componentes eléctricos, electrónicos, sensores, módulos, computadoras, piezas usadas, piezas reparadas y repuestos proporcionados por el cliente quedan excluidos de garantía salvo acuerdo escrito distinto.</p>
+          <p>El cliente declara haber revisado las fotografías, el inventario, las observaciones y los daños registrados. Dinero, documentos, herramientas, objetos personales o accesorios no declarados en esta recepción quedan bajo responsabilidad del cliente.</p>
+          <p>Una vez notificado que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia.</p>
+          <p>Sí el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación, podrá considerarse abandonado y Automotriz Medina podrá iniciar las gestiones legales correspondientes para recuperar saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos relacionados.</p>
+          <p>Automotriz Medina podrá retener el vehículo hasta que el cliente cancele por completo facturas, repuestos, mano de obra, diagnósticos, almacenaje, custodia u otros cargos autorizados o derivados del servicio.</p>
+          <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación segun la información acordada con el taller.</p>
+        </div>
+        <label class="check-item terms-accept"><input type="checkbox" data-terms-check> He leido y aceptó los términos y condiciones. Certifico que la inspeccion visual y el inventario son correctos.</label>
+        <button class="btn primary authorize-btn" data-action="authorize-client" disabled>Autorizar mi reparación / diagnóstico</button>
+      </div>
+    </article>
+    </section>
+  </main>
+  <script>
+﻿const AM_SIMPLE_STORE = (() => {
+  const KEY = "am_recepción_local_v1";
+
+  const requiredPhotos = [
+    "Frente",
+    "Lado izquierdo",
+    "Atras",
+    "Lado derecho",
+    "Tablero con kilometraje",
+    "Interior delantero",
+    "Compartimiento motor",
+    "Tarjeta frente",
+    "Tarjeta reverso"
+  ];
+
+  const carouselPhotos = requiredPhotos.filter((name) => !name.startsWith("Tarjeta"));
+  const baseInventory = ["Herramientas", "Llanta de repuesto", "Mica", "Llave de ruedas", "Documentos", "Radio/Pantalla"];
+
+  function cryptoToken() {
+    const bytes = new Uint8Array(16);
+    if (globalThis.crypto?.getRandomValues) {
+      globalThis.crypto.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  function makePhoto(label, seed) {
+    return {
+      label,
+      dataUrl: "",
+      note: "",
+      color: seed % 2 === 0 ? "#206f78" : "#b52931"
+    };
+  }
+
+  function makeReception(id, number, clientName, phone, marca, modelo, anio, color, placa, vin, kilometraje, state, progress, details) {
+    const clientToken = "cli_" + cryptoToken();
+    const trackingToken = "trk_" + cryptoToken();
+    return {
+      id,
+      number,
+      status: "Revisión lista",
+      sentToClient: false,
+      signed: false,
+      signatureName: "",
+      signatureDate: "",
+      clientToken,
+      trackingToken,
+      client: { name: clientName, phone },
+      employeeId: id === "rec-3" ? "rafael" : id === "rec-4" ? "christian" : "edwin",
+      employeeName: id === "rec-3" ? "Rafael" : id === "rec-4" ? "Christian" : "Edwin",
+      vehicle: { marca, modelo, anio, color, placa, vin, kilometraje },
+      photos: requiredPhotos.map((label, index) => makePhoto(label, index)),
+      inventory: baseInventory.map((name, index) => ({
+        id: `inv-${id}-${index + 1}`,
+        name,
+        present: index !== 1,
+        note: index === 1 ? "No venia en el vehículo" : ""
+      })),
+      observations: "Vehículo recibido para revisión. Se observa desgaste normal de uso.",
+      damages: [
+        {
+          id: `dam-${id}-1`,
+          área: "Defensa traserá",
+          detail: "Rayon visible en esquina derecha.",
+          photos: [makePhoto("Daño defensa traserá", 10)]
+        }
+      ],
+      progress,
+      progressLabel: state,
+      tracking: {
+        receptionDate: "18/6/2026, 3:23:00 p.m.",
+        deliveryEstimate: "",
+        odometer: `${Number(kilometraje || 0).toLocaleString("en-US")} MILLAS`,
+        plate: placa || "N/D",
+        vehicleTitle: `${marca} ${modelo} ${anio}`.toUpperCase(),
+        state,
+        processDetails: details
+      },
+      internalWork: {
+        internalNote: "",
+        lockedReception: true
+      },
+      updates: []
+    };
+  }
+
+  function defaults() {
+    return {
+      config: {
+        schemaVersion: 2,
+        businessName: "Automotriz Medina",
+        adminPin: "2468",
+        employeeToken: "empleado-am-local",
+        nextReceptionNumber: 6
+      },
+      employees: [
+        { id: "edwin", name: "Edwin", token: "empleado-edwin" },
+        { id: "rafael", name: "Rafael", token: "empleado-rafael" },
+        { id: "christian", name: "Christian", token: "empleado-christian" }
+      ],
+      session: {
+        admin: true,
+        employee: true
+      },
+      selectedId: null,
+      sequence: { reception: 5, damage: 1, update: 2, inventory: 6 },
+      receptions: [
+        makeReception("rec-1", "AM-R-0001", "Roberto Sílva", "7744-9012", "Nissan", "Versa", "2020", "Negro", "N/D", "N/D", "81046", "EN DIAGNÓSTICO", 20, "Revisión de suspensión y direccion"),
+        makeReception("rec-2", "AM-R-0002", "Andrea Martinez", "7654-2231", "Toyota", "Corolla", "2018", "Blanco", "P778-554", "JTDBR32E7200302", "116100", "EN REVISIÓN", 10, "Recepción y validación de fotografías"),
+        makeReception("rec-3", "AM-R-0003", "Daniel Perez", "7899-6677", "Nissan", "Frontier", "2017", "Rojo", "N122-811", "3N6AD33A9HK0303", "141900", "ESPERA DE REPUESTOS", 45, "Pendiente confirmacion de repuesto"),
+        makeReception("rec-4", "AM-R-0004", "Patricia Gomez", "7980-2121", "Hyundai", "Tucson", "2019", "Gris", "P908-332", "KM8J33A49KU0304", "68420", "EN DIAGNÓSTICO", 25, "Revisión de aire acondicionado"),
+        makeReception("rec-5", "AM-R-0005", "Mauricio Lopez", "7012-8844", "Honda", "Civic", "2016", "Azul", "P334-772", "19XFC2F59GE0305", "90210", "EN PRUEBAS", 70, "Pruebas finales de manejo")
+      ]
+    };
+  }
+
+  function loadRaw() {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) {
+      const initial = defaults();
+      save(initial);
+      return initial;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      const initial = defaults();
+      save(initial);
+      return initial;
+    }
+  }
+
+  function save(state) {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  }
+
+  function ensureShape(state) {
+    if (state.config?.schemaVersion !== 2) {
+      return defaults();
+    }
+    if (!state.config) state.config = defaults().config;
+    if (!state.session) state.session = { admin: true, employee: true };
+    if (!Array.isArray(state.receptions) || state.receptions.length < 5) {
+      const fresh = defaults();
+      state.receptions = fresh.receptions;
+      state.sequence = fresh.sequence;
+      state.selectedId = null;
+    }
+    state.receptions.forEach((rec) => {
+      if (!rec.employeeId) {
+        rec.employeeId = "edwin";
+        rec.employeeName = "Edwin";
+      }
+      if (!rec.internalWork) rec.internalWork = { internalNote: "", lockedReception: true };
+      if (!rec.clientToken || rec.clientToken.startsWith("cliente-demo")) rec.clientToken = "cli_" + cryptoToken();
+      if (!rec.trackingToken || rec.trackingToken.startsWith("seguimiento-demo")) rec.trackingToken = "trk_" + cryptoToken();
+      if (!rec.tracking) {
+        rec.tracking = {
+          receptionDate: "18/6/2026, 3:23:00 p.m.",
+          deliveryEstimate: "",
+          odometer: `${Number(rec.vehicle?.kilometraje || 0).toLocaleString("en-US")} MILLAS`,
+          plate: rec.vehicle?.placa || "N/D",
+          vehicleTitle: `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim().toUpperCase(),
+          state: rec.progressLabel || "EN DIAGNÓSTICO",
+          processDetails: "Revisión pendiente"
+        };
+      }
+    });
+    return state;
+  }
+
+  function load() {
+    const state = ensureShape(loadRaw());
+    save(state);
+    return state;
+  }
+
+  function mutate(callback) {
+    const state = load();
+    const result = callback(state);
+    save(state);
+    window.dispatchEvent(new CustomEvent("simple-state-change", { detail: state }));
+    return result;
+  }
+
+  function reset() {
+    localStorage.removeItem(KEY);
+    const state = load();
+    window.dispatchEvent(new CustomEvent("simple-state-change", { detail: state }));
+    return state;
+  }
+
+  function selected(state = load()) {
+    return state.receptions.find((item) => item.id === state.selectedId) || state.receptions[0];
+  }
+
+  function next(state, key) {
+    state.sequence[key] += 1;
+    return state.sequence[key];
+  }
+
+  return { load, save, mutate, reset, selected, next, requiredPhotos, carouselPhotos, baseInventory, cryptoToken };
+})();
+
+
+
+
+</script>
+<script>
+﻿function qs(selector, scope = document) { return scope.querySelector(selector); }
+function qsa(selector, scope = document) { return Array.from(scope.querySelectorAll(selector)); }
+function state() { return AM_SIMPLE_STORE.load(); }
+function selected() { return AM_SIMPLE_STORE.selected(); }
+function today() { return new Intl.DateTimeFormat("es-SV", { day: "numeric", month: "long", year: "numeric" }).format(new Date()); }
+
+function statusTone(status) {
+  if (/firmad|enviado|autorizado/i.test(status)) return "ok";
+  if (/pendiente|revisión|lista/i.test(status)) return "warn";
+  if (/rechaz/i.test(status)) return "danger";
+  return "info";
+}
+
+function toast(message, tone = "") {
+  let host = qs("[data-toast]");
+  if (!host) {
+    host = document.createElement("div");
+    host.dataset.toast = "";
+    host.className = "toast notice";
+    document.body.appendChild(host);
+  }
+  host.className = `toast notice ${tone}`;
+  host.textContent = message;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => host.remove(), 3200);
+}
+
+function showAccessGate(role) {
+  const isAdmin = role === "admin";
+  document.body.innerHTML = `
+    <main class="public-main">
+      <article class="panel" style="max-width:520px;margin:40px auto">
+        <div class="panel-header"><div><h3>${isAdmin ? "Acceso administrador" : "Acceso empleado"}</h3><p>Automotriz Medina</p></div></div>
+        <div class="panel-body grid">
+          <div class="notice">${isAdmin ? "Ingrese el PIN administrativo local." : "Ingrese el token local de empleado."}</div>
+          <div class="field">
+            <label>${isAdmin ? "PIN" : "Token"}</label>
+            <input ${isAdmin ? 'type="password"' : 'type="text"'} data-login-value autofocus>
+          </div>
+          <button class="btn primary" data-action="${isAdmin ? "admin-login" : "employee-login"}">Entrar</button>
+          <button class="btn" data-action="${isAdmin ? "admin-quick-login" : "employee-quick-login"}">${isAdmin ? "Entrar como administrador local" : "Entrar como empleado local"}</button>
+          <small>${isAdmin ? "PIN local: 2468" : "Token local: empleado-am-local"}</small>
+        </div>
+      </article>
+    </main>`;
+}
+
+function requireLocalAccess(page) {
+  const current = state();
+  if (page === "admin" && !current.session.admin) {
+    AM_SIMPLE_STORE.mutate((state) => { state.session.admin = true; });
+    return true;
+  }
+  if (page === "employee" && !current.session.employee) {
+    AM_SIMPLE_STORE.mutate((state) => { state.session.employee = true; });
+    return true;
+  }
+  /*
+  if (page === "admin" && !current.session.admin) {
+    showAccessGate("admin");
+    return false;
+  }
+  if (page === "employee" && !current.session.employee) {
+    showAccessGate("employee");
+    return false;
+  }
+  */
+  return true;
+}
+
+function readFile(input, callback) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => callback(reader.result);
+  reader.readAsDataURL(file);
+}
+
+function photoVisual(photo) {
+  if (photo.dataUrl) {
+    return `<div class="photo-box has-image" data-label="${photo.label}" style="background-image:url('${photo.dataUrl}')"></div>`;
+  }
+  return `<div class="photo-box" data-label="${photo.label}" style="background:linear-gradient(135deg, ${photo.color || "#206f78"}, #eef2f5)">Foto pendiente</div>`;
+}
+
+const WORK_STATUSES = ["EN REVISIÓN", "EN DIAGNÓSTICO", "EN REPARACIÓN", "ESPERA DE REPUESTOS", "EN PAUSA", "FINALIZADO", "ENTREGADO"];
+
+function esc(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function statusOptions(value) {
+  return WORK_STATUSES.map((status) => `<option ${status === value ? "selected" : ""}>${status}</option>`).join("");
+}
+
+function processRows(rec) {
+  const details = trackingProfile(rec).processDetails || "";
+  return details.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+}
+
+function internalRows(rec) {
+  const note = rec.internalWork?.internalNote || "";
+  return note.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+}
+
+function whatsappPhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 8) return `503${digits}`;
+  return digits;
+}
+
+function absoluteHref(page, token) {
+  const base = location.href.replace(/[^/\\]*$/, "");
+  return `${base}${tokenHref(page, token)}`;
+}
+
+const LOCAL_BACKUP_DB = "am_recepcion_local_folder_v1";
+const LOCAL_BACKUP_STORE = "handles";
+let localBackupDirectoryHandle = null;
+let localBackupTimer = null;
+
+function localBackupSupported() {
+  return typeof indexedDB !== "undefined" && typeof window.showDirectoryPicker === "function";
+}
+
+function localBackupDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(LOCAL_BACKUP_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(LOCAL_BACKUP_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function localBackupSetHandle(key, handle) {
+  const db = await localBackupDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(LOCAL_BACKUP_STORE, "readwrite");
+    tx.objectStore(LOCAL_BACKUP_STORE).put(handle, key);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+async function localBackupGetHandle(key) {
+  const db = await localBackupDb();
+  const handle = await new Promise((resolve, reject) => {
+    const tx = db.transaction(LOCAL_BACKUP_STORE, "readonly");
+    const request = tx.objectStore(LOCAL_BACKUP_STORE).get(key);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return handle;
+}
+
+async function ensureDirectoryPermission(handle, requestPermission = false) {
+  if (!handle) return false;
+  const options = { mode: "readwrite" };
+  if ((await handle.queryPermission(options)) === "granted") return true;
+  if (requestPermission && (await handle.requestPermission(options)) === "granted") return true;
+  return false;
+}
+
+function setLocalBackupStatus(text, tone = "") {
+  const status = qs("[data-local-backup-status]");
+  if (!status) return;
+  status.textContent = text;
+  status.classList.toggle("ok", tone === "ok");
+  status.classList.toggle("warn", tone === "warn");
+}
+
+function closeActionMenus(except = null) {
+  qsa(".action-menu[open]").forEach((menu) => {
+    if (menu !== except) menu.open = false;
+  });
+}
+
+function hasOpenActionMenu() {
+  return !!qs(".action-menu[open]");
+}
+
+function initActionMenus() {
+  qsa(".action-menu").forEach((menu) => {
+    if (menu.dataset.menuReady) return;
+    menu.dataset.menuReady = "1";
+    menu.addEventListener("toggle", () => {
+      if (!menu.open) return;
+      closeActionMenus(menu);
+      if (!history.state?.menuOpen) {
+        history.pushState({ ...(history.state || {}), menuOpen: true }, "");
+      }
+    });
+  });
+}
+
+async function writeTextFileToDirectory(handle, fileName, content) {
+  const file = await handle.getFileHandle(fileName, { create: true });
+  const writable = await file.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+async function writeAdminLocalBackup(reason = "auto") {
+  if (document.body.dataset.page !== "admin") return;
+  if (!localBackupDirectoryHandle) return;
+  const allowed = await ensureDirectoryPermission(localBackupDirectoryHandle, reason === "manual");
+  if (!allowed) {
+    setLocalBackupStatus("Permiso pendiente", "warn");
+    return;
+  }
+  const backup = JSON.stringify(buildFullProgramBackup(), null, 2);
+  await writeTextFileToDirectory(localBackupDirectoryHandle, "respaldo-actual-automotriz-medina.amr", backup);
+  await writeTextFileToDirectory(localBackupDirectoryHandle, "estado-respaldo-admin.txt", `Último respaldo: ${new Date().toLocaleString("es-SV")}\nMotivo: ${reason}`);
+  setLocalBackupStatus("Guardado local activo", "ok");
+}
+
+function scheduleAdminLocalBackup(reason = "auto") {
+  if (document.body.dataset.page !== "admin" || !localBackupDirectoryHandle) return;
+  clearTimeout(localBackupTimer);
+  localBackupTimer = setTimeout(() => {
+    writeAdminLocalBackup(reason).catch((error) => {
+      console.warn("No se pudo respaldar en carpeta local", error);
+      setLocalBackupStatus("No se pudo guardar", "warn");
+    });
+  }, 600);
+}
+
+async function initAdminLocalBackup() {
+  if (document.body.dataset.page !== "admin") return;
+  if (!localBackupSupported()) {
+    setLocalBackupStatus("Carpeta no soportada", "warn");
+    return;
+  }
+  localBackupDirectoryHandle = await localBackupGetHandle("admin").catch(() => null);
+  if (!localBackupDirectoryHandle) {
+    setLocalBackupStatus("Sin carpeta local");
+    return;
+  }
+  const allowed = await ensureDirectoryPermission(localBackupDirectoryHandle, false);
+  if (allowed) {
+    setLocalBackupStatus("Guardado local activo", "ok");
+    scheduleAdminLocalBackup("inicio");
+  } else {
+    setLocalBackupStatus("Permiso pendiente", "warn");
+  }
+}
+
+async function pickAdminLocalBackupFolder() {
+  if (!localBackupSupported()) {
+    toast("Este navegador no permite elegir carpeta local.", "danger");
+    return;
+  }
+  localBackupDirectoryHandle = await window.showDirectoryPicker({ id: "am-admin-backup", mode: "readwrite" });
+  await localBackupSetHandle("admin", localBackupDirectoryHandle);
+  await writeAdminLocalBackup("manual");
+  toast("Carpeta local de administrador conectada.");
+}
+
+function encodePayload(data) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data || {}))));
+}
+
+function vehiclePayloadFromReception(rec) {
+  const profile = trackingProfile(rec);
+  return {
+    fecha: String(profile.receptionDate || "").split(",")[0] || "",
+    hora: "",
+    tecnico: rec.employeeName || "",
+    marca: rec.vehicle?.marca || "",
+    modelo: rec.vehicle?.modelo || "",
+    anio: rec.vehicle?.anio || "",
+    color: rec.vehicle?.color || "",
+    vin: rec.vehicle?.vin || "",
+    placa: rec.vehicle?.placa || "",
+    odometro: rec.vehicle?.kilometraje || "",
+    odometroUnidad: /km/i.test(profile.odometer || "") ? "km" : "mi",
+    rec: rec.number || "",
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function masterFileHref(rec) {
+  const params = new URLSearchParams();
+  params.set("rec", rec.number || rec.id || "");
+  params.set("vehicle", encodePayload(vehiclePayloadFromReception(rec)));
+  params.set("v", masterArchiveVersion(rec));
+  return `modulo-master-taller.html?${params.toString()}`;
+}
+
+function masterArchiveVersion(rec) {
+  const archive = masterArchiveForReception(rec);
+  return archive?.updatedAt || "nuevo";
+}
+
+function archiveNorm(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function archiveVehicleKey(data = {}) {
+  return [data.marca, data.modelo, data.anio].map(archiveNorm).filter(Boolean).join("|");
+}
+
+function archiveDataFromCandidate(archive = {}) {
+  return archive.data || archive.vehicle || {};
+}
+
+function archiveMatchesReception(archive, rec) {
+  const data = archiveDataFromCandidate(archive);
+  const recKeys = [
+    rec.number,
+    rec.id,
+    rec.vehicle?.vin,
+    rec.vehicle?.placa
+  ].map(archiveNorm).filter(Boolean);
+  const archiveKeys = [
+    archive.rec,
+    data.rec,
+    data.recepcion,
+    data.vin,
+    data.placa
+  ].map(archiveNorm).filter(Boolean);
+  if (archiveKeys.some((key) => recKeys.includes(key))) return true;
+  const recVehicleKey = archiveVehicleKey({
+    marca: rec.vehicle?.marca,
+    modelo: rec.vehicle?.modelo,
+    anio: rec.vehicle?.anio
+  });
+  return !!recVehicleKey && recVehicleKey === archiveVehicleKey(data);
+}
+
+function archiveContentScore(archive) {
+  const data = archiveDataFromCandidate(archive);
+  let score = 0;
+  ["items", "repuestos", "authItems", "authRepuestos"].forEach((key) => {
+    if (Array.isArray(data[key])) score += data[key].length * 5;
+  });
+  ["marca", "modelo", "anio", "color", "vin", "placa", "odometro", "tecnico"].forEach((key) => {
+    if (String(data[key] || "").trim()) score += 1;
+  });
+  if (archive.html && !/No habia un archivo|No había un archivo/i.test(archive.html)) score += 1;
+  return score;
+}
+
+function newestUsefulArchive(candidates) {
+  return [...new Set(candidates)].sort((a, b) => {
+    const scoreDiff = archiveContentScore(b) - archiveContentScore(a);
+    if (scoreDiff) return scoreDiff;
+    return Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0);
+  })[0] || null;
+}
+
+function authorizationMessage(rec) {
+  const link = absoluteHref("cliente-mobile.html", rec.clientToken);
+  return [
+    `Hola ${rec.client?.name || ""}.`,
+    `Le saluda Automotriz Medina.`,
+    `Le compartimos el link privado de autorización para revisar la recepción, fotografías, inventario, observaciones y términos del servicio de su vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}.`,
+    `Por favor abra el enlace y, si todo esta correcto, autorice el diagnóstico o reparación:`,
+    link
+  ].join("\n\n");
+}
+
+function safeFileName(value) {
+  return String(value || "archivo").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "archivo";
+}
+
+function excelDate() {
+  return new Date().toLocaleString("es-SV");
+}
+
+function downloadBlob(filename, content, type = "application/vnd.ms-excel;charset=utf-8") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function workbookHtml(title, body) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#17202a}
+    h1{font-size:22px;color:#206f78}h2{font-size:16px;margin-top:22px;color:#206f78}
+    table{border-collapse:collapse;width:100%;margin-bottom:14px}td,th{border:1px solid #bfcad3;padding:7px 8px;vertical-align:top}
+    th{background:#e9f2f3;text-align:left}.muted{color:#637282}.photo{max-width:180px;max-height:140px}
+  </style></head><body><h1>${esc(title)}</h1>${body}</body></html>`;
+}
+
+function kvRows(rows) {
+  return `<table><tbody>${rows.map(([key, value]) => `<tr><th>${esc(key)}</th><td>${value == null ? "" : esc(value)}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function tableRows(headers, rows) {
+  return `<table><thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.map((row) => `<tr>${row.map((cell) => {
+    const raw = typeof cell === "string" && cell.startsWith("<img ");
+    return `<td>${cell == null ? "" : (raw ? cell : esc(cell))}</td>`;
+  }).join("")}</tr>`).join("") : `<tr><td colspan="${headers.length}">Sin datos registrados.</td></tr>`}</tbody></table>`;
+}
+
+function photoBackupRows(rec) {
+  return (rec.photos || []).map((photo) => [
+    photo.label || "Foto",
+    photo.note || "",
+    photo.dataUrl ? "Incluida en respaldo local" : "Sin imagen",
+    photo.dataUrl ? `<img class="photo" src="${photo.dataUrl}">` : ""
+  ]);
+}
+
+function backupWorkbook(rec) {
+  const profile = trackingProfile(rec);
+  const evidence = rec.authorizationEvidence || {};
+  const inventory = (rec.inventory || []).map((item) => [item.name, item.present ? "Presente" : "Faltante", item.note || ""]);
+  const damages = (rec.damages || []).map((damage) => [damage.área || damage.area || "", damage.detail || "", (damage.photos || []).length]);
+  const photos = photoBackupRows(rec);
+  const updates = processRows(rec).map((row, index) => [index + 1, row]);
+  const internal = internalRows(rec).map((row, index) => [index + 1, row]);
+  return workbookHtml(`Respaldo expediente ${rec.number}`, `
+    <p class="muted">Generado localmente: ${esc(excelDate())}</p>
+    <h2>Cliente</h2>${kvRows([["Nombre", rec.client?.name || ""], ["Teléfono", rec.client?.phone || ""], ["Estado autorización", rec.express ? "No aplica - servicio express" : (rec.signed ? "Autorizado" : "Pendiente")], ["Fecha autorización", rec.signatureDate || ""], ["Token cliente", rec.clientToken || ""], ["Token seguimiento", rec.trackingToken || ""]])}
+    <h2>Vehículo</h2>${kvRows([["Recepción", rec.number], ["Tipo", rec.express ? `Servicio express: ${rec.serviceType || ""}` : "Vehículo en taller"], ["Técnico", rec.employeeName || ""], ["Estado", rec.status || ""], ["Marca", rec.vehicle?.marca || ""], ["Modelo", rec.vehicle?.modelo || ""], ["Año", rec.vehicle?.anio || ""], ["Color", rec.vehicle?.color || ""], ["Placa", rec.vehicle?.placa || ""], ["VIN", rec.vehicle?.vin || ""], ["Kilometraje", rec.vehicle?.kilometraje || ""]])}
+    <h2>Motivo y observaciones</h2>${kvRows([["Motivo de recepción / falla reportada", serviceReason(rec) || ""], ["Observaciones", rec.observations || ""]])}
+    <h2>Inventario</h2>${tableRows(["Elemento", "Estado", "Detalle"], inventory)}
+    <h2>Daños</h2>${tableRows(["Área", "Detalle", "Fotos"], damages)}
+    <h2>Fotografías</h2>${tableRows(["Foto", "Nota", "Estado", "Imagen"], photos)}
+    <h2>Seguimiento publicado</h2>${kvRows([["Recepción visible", profile.receptionDate || ""], ["Estimación entrega", profile.deliveryEstimate || ""], ["Vehículo visible", profile.vehicleTitle || ""], ["Odómetro visible", profile.odometer || ""], ["Placa visible", profile.plate || ""], ["Estado visible", profile.state || ""], ["Avance %", rec.progress || 0], ["Texto progreso", rec.progressLabel || ""]])}
+    ${tableRows(["#", "Detalle"], updates)}
+    <h2>Bitácora interna</h2>${tableRows(["#", "Nota interna"], internal)}
+    <h2>Constancia técnica de autorización</h2>${kvRows([["Navegador", evidence.userAgent || ""], ["Plataforma", evidence.platform || ""], ["Idioma", evidence.language || ""], ["Zona horaria", evidence.timezone || ""], ["Pantalla", evidence.screen || ""], ["Ventana", evidence.viewport || ""]])}
+  `);
+}
+
+function internalWorkbook(rec) {
+  const rows = internalRows(rec).map((row, index) => [index + 1, row]);
+  const profile = trackingProfile(rec);
+  return workbookHtml(`Archivo interno ${rec.number}`, `
+    <p class="muted">Generado localmente: ${esc(excelDate())}</p>
+    ${kvRows([["Recepción", rec.number], ["Fecha recepción", profile.receptionDate || ""], ["Técnico", rec.employeeName || ""], ["Cliente", rec.client?.name || ""], ["Teléfono", rec.client?.phone || ""], ["Vehículo", `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim()], ["Color", rec.vehicle?.color || ""], ["VIN", rec.vehicle?.vin || ""], ["Placa", rec.vehicle?.placa || ""], ["Odómetro", rec.vehicle?.kilometraje || ""], ["Estado", rec.status || ""], ["Avance %", rec.progress || 0], ["Motivo", serviceReason(rec) || ""]])}
+    <h2>Bitácora interna</h2>${tableRows(["#", "Renglón"], rows)}
+    <h2>Detalle de seguimiento</h2>${tableRows(["#", "Renglón"], processRows(rec).map((row, index) => [index + 1, row]))}
+  `);
+}
+
+function downloadReceptionBackup(rec) {
+  if (!rec) return;
+  const backup = buildReceptionBackup(rec);
+  const base = `${safeFileName(rec.number)}-${safeFileName(`${rec.vehicle?.marca || ""}-${rec.vehicle?.modelo || ""}-${rec.vehicle?.anio || ""}`)}`;
+  downloadBlob(`respaldo-${base}.amr`, JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
+}
+
+function safeJsonParse(value, fallback = {}) {
+  try { return JSON.parse(value || ""); } catch { return fallback; }
+}
+
+function archiveAliasesForReception(rec) {
+  return [rec.number, rec.id, rec.vehicle?.vin, rec.vehicle?.placa].map(archiveNorm).filter(Boolean);
+}
+
+function relatedArchivesForReception(rec, key) {
+  const store = safeJsonParse(localStorage.getItem(key), {});
+  const out = {};
+  const aliases = archiveAliasesForReception(rec);
+  const keepHtml = key === "am_master_taller_archives_v1";
+  Object.entries(store).forEach(([archiveKey, archive]) => {
+    if (aliases.includes(archiveNorm(archiveKey)) || archiveMatchesReception(archive, rec)) {
+      const data = archive?.data || {};
+      const compactKey = archiveNorm(archive?.rec || data.rec || archiveKey);
+      out[compactKey] = compactArchiveEntry(archive, keepHtml);
+    }
+  });
+  return out;
+}
+
+function compactArchiveEntry(archive, keepHtml = false) {
+  const data = archive?.data || {};
+  return {
+    rec: archive?.rec || data.rec || "",
+    updatedAt: archive?.updatedAt || new Date().toISOString(),
+    data,
+    ...(keepHtml && archive?.html ? { html: archive.html } : {})
+  };
+}
+
+function compactArchiveStoreValue(store = {}, keepHtml = false) {
+  const compact = {};
+  Object.values(store || {}).forEach((archive) => {
+    const data = archive?.data || {};
+    const key = archiveNorm(archive?.rec || data.rec || data.vin || data.placa || "");
+    if (!key) return;
+    const next = compactArchiveEntry(archive, keepHtml);
+    const existing = compact[key];
+    if (!existing || archiveContentScore(next) >= archiveContentScore(existing) || Date.parse(next.updatedAt || 0) > Date.parse(existing.updatedAt || 0)) {
+      compact[key] = next;
+    }
+  });
+  return compact;
+}
+
+function saveCompactedArchiveStore(key, incoming = {}, keepHtml = false) {
+  const compact = compactArchiveStoreValue(incoming, keepHtml);
+  localStorage.removeItem(key);
+  localStorage.setItem(key, JSON.stringify(compact));
+  return compact;
+}
+
+function setStorageSafely(key, value, fallbackValue = null) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn(`No se pudo guardar ${key}; limpiando espacio`, error);
+    if (key !== "am_quick_taller_archives_v1") {
+      try { localStorage.removeItem("am_quick_taller_archives_v1"); } catch {}
+    }
+    if (key !== "am_master_taller_archives_v1") {
+      try { localStorage.removeItem("am_master_taller_archives_v1"); } catch {}
+    }
+    if (fallbackValue != null) {
+      try {
+        localStorage.setItem(key, fallbackValue);
+        return true;
+      } catch (fallbackError) {
+        console.warn(`No se pudo guardar respaldo reducido para ${key}`, fallbackError);
+      }
+    }
+    return false;
+  }
+}
+
+function compactLocalArchiveStores() {
+  try {
+    saveCompactedArchiveStore("am_quick_taller_archives_v1", safeJsonParse(localStorage.getItem("am_quick_taller_archives_v1"), {}), false);
+  } catch (error) {
+    console.warn("No se pudo compactar archivo rápido", error);
+    try { localStorage.removeItem("am_quick_taller_archives_v1"); } catch {}
+  }
+  try {
+    saveCompactedArchiveStore("am_master_taller_archives_v1", safeJsonParse(localStorage.getItem("am_master_taller_archives_v1"), {}), true);
+  } catch (error) {
+    console.warn("No se pudo compactar archivo maestro", error);
+  }
+}
+
+function employeeVehicleFromReception(rec) {
+  const details = processRows(rec);
+  const internal = internalRows(rec);
+  const frontPhoto = Array.isArray(rec.photos) ? rec.photos.find((photo) => /frente/i.test(photo.label || "")) || rec.photos[0] : null;
+  return {
+    id: String(rec.id || `restored-${AM_SIMPLE_STORE.cryptoToken()}`).replace(/^emp-/, "") || AM_SIMPLE_STORE.cryptoToken(),
+    rec: rec.number || "",
+    express: !!rec.express,
+    tipoServicio: rec.serviceType || "",
+    eid: rec.employeeId || String(rec.employeeName || "edwin").toLowerCase(),
+    en: rec.employeeName || "Edwin",
+    fecha: String(trackingProfile(rec).receptionDate || "").split(",")[0] || new Date().toISOString().slice(0, 10),
+    hora: "",
+    marca: rec.vehicle?.marca || "",
+    modelo: rec.vehicle?.modelo || "",
+    anio: rec.vehicle?.anio || "",
+    color: rec.vehicle?.color || "",
+    vin: rec.vehicle?.vin || "",
+    placa: rec.vehicle?.placa || "",
+    odometro: rec.vehicle?.kilometraje || "",
+    unidad: /km/i.test(trackingProfile(rec).odometer || "") ? "km" : "mi",
+    estado: rec.status || "EN REVISIÓN",
+    avance: Number(rec.progress || 0),
+    autorizado: !!rec.signed,
+    motivo: serviceReason(rec) || "",
+    observaciones: rec.observations || "",
+    detalle: details.join("\n"),
+    detalles: details,
+    nota: internal.join("\n"),
+    bitacora: internal,
+    photos: frontPhoto ? [{ ...frontPhoto, label: frontPhoto.label || "Frente" }] : [],
+    inventory: Array.isArray(rec.inventory) ? rec.inventory.map((item) => ({ ...item })) : [],
+    damages: Array.isArray(rec.damages) ? rec.damages.map((damage) => ({ ...damage })) : []
+  };
+}
+
+function buildReceptionBackup(rec) {
+  const masterArchives = relatedArchivesForReception(rec, "am_master_taller_archives_v1");
+  return {
+    type: "am-recepcion-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    reception: rec,
+    employeeVehicle: employeeVehicleFromReception(rec),
+    files: {
+      expedienteHtml: backupWorkbook(rec),
+      archivoTallerHtml: masterArchiveForReception(rec)?.html || masterWorkbookFallback(rec)
+    },
+    archives: {
+      master: masterArchives,
+      quick: {}
+    }
+  };
+}
+
+function buildFullProgramBackup() {
+  const current = state();
+  return {
+    type: "am-recepcion-full-backup",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    appState: current,
+    employeeState: safeJsonParse(localStorage.getItem("am_employee_module_safe_v1"), null),
+    archives: {
+      master: compactArchiveStoreValue(safeJsonParse(localStorage.getItem("am_master_taller_archives_v1"), {}), true),
+      quick: {}
+    },
+    receptions: (current.receptions || []).map((rec) => buildReceptionBackup(rec))
+  };
+}
+
+function mergeArchiveStore(key, incoming = {}) {
+  const keepHtml = key === "am_master_taller_archives_v1";
+  const store = compactArchiveStoreValue(safeJsonParse(localStorage.getItem(key), {}), keepHtml);
+  Object.entries(incoming || {}).forEach(([archiveKey, archive]) => {
+    if (!archiveKey || !archive) return;
+    const data = archive?.data || {};
+    const keyName = archiveNorm(archive?.rec || data.rec || archiveKey);
+    store[keyName] = compactArchiveEntry(archive, keepHtml);
+  });
+  saveCompactedArchiveStore(key, store, keepHtml);
+}
+
+function persistRestoredArchiveAliases(rec, backup) {
+  const key = archiveNorm(rec.number || rec.id || rec.vehicle?.vin || rec.vehicle?.placa || "");
+  if (!key) return;
+  const masterStore = compactArchiveStoreValue(safeJsonParse(localStorage.getItem("am_master_taller_archives_v1"), {}), true);
+  const quickStore = compactArchiveStoreValue(safeJsonParse(localStorage.getItem("am_quick_taller_archives_v1"), {}), false);
+  const masterArchive = masterArchiveForReception(rec) || {
+    rec: rec.number,
+    updatedAt: backup.exportedAt || new Date().toISOString(),
+    data: vehiclePayloadFromReception(rec),
+    html: backup.files?.archivoTallerHtml || masterWorkbookFallback(rec)
+  };
+  const quickArchive = {
+    rec: rec.number,
+    updatedAt: backup.exportedAt || new Date().toISOString(),
+    data: employeeVehicleFromReception(rec)
+  };
+  masterStore[key] = compactArchiveEntry(masterArchive, true);
+  quickStore[key] = compactArchiveEntry(quickArchive, false);
+  try {
+    saveCompactedArchiveStore("am_master_taller_archives_v1", masterStore, true);
+  } catch (error) {
+    console.warn("No se pudo restaurar archivo maestro completo", error);
+    saveCompactedArchiveStore("am_master_taller_archives_v1", { [key]: { ...masterArchive, html: "" } }, true);
+  }
+  try {
+    saveCompactedArchiveStore("am_quick_taller_archives_v1", quickStore, false);
+  } catch (error) {
+    console.warn("No se pudo restaurar archivo rápido completo", error);
+    saveCompactedArchiveStore("am_quick_taller_archives_v1", { [key]: quickArchive }, false);
+  }
+}
+
+function upsertEmployeeVehicle(vehicle) {
+  if (!vehicle?.rec) return;
+  const employeeState = safeJsonParse(localStorage.getItem("am_employee_module_safe_v1"), { selected: "", seq: 0, vehicles: [] });
+  if (!Array.isArray(employeeState.vehicles)) employeeState.vehicles = [];
+  const compactVehicle = {
+    ...vehicle,
+    photos: Array.isArray(vehicle.photos) ? vehicle.photos.slice(0, 1) : [],
+    damages: Array.isArray(vehicle.damages) ? vehicle.damages.map((damage) => ({ ...damage, photos: [] })) : []
+  };
+  const index = employeeState.vehicles.findIndex((item) => item.rec === vehicle.rec || item.id === vehicle.id);
+  if (index >= 0) employeeState.vehicles[index] = { ...employeeState.vehicles[index], ...compactVehicle };
+  else employeeState.vehicles.unshift(compactVehicle);
+  const maxSeq = employeeState.vehicles.reduce((max, item) => {
+    const number = Number(String(item.id || "").replace(/\D/g, ""));
+    return Math.max(max, Number.isFinite(number) ? number : 0);
+  }, Number(employeeState.seq || 0));
+  employeeState.seq = Math.max(maxSeq, Number(employeeState.seq || 0), employeeState.vehicles.length);
+  setStorageSafely("am_employee_module_safe_v1", JSON.stringify(employeeState), JSON.stringify({ selected: "", seq: employeeState.seq || 0, vehicles: [compactVehicle] }));
+}
+
+function restoreReceptionBackup(backup) {
+  const rec = backup?.reception;
+  if (!rec?.number) throw new Error("El respaldo individual no contiene una recepción válida.");
+  rec.archivedAt = "";
+  rec.deletedAt = "";
+  rec.deletedBy = "";
+  AM_SIMPLE_STORE.mutate((current) => {
+    if (!Array.isArray(current.receptions)) current.receptions = [];
+    if (!Array.isArray(current.deletedReceptionNumbers)) current.deletedReceptionNumbers = [];
+    current.deletedReceptionNumbers = current.deletedReceptionNumbers.filter((number) => number !== rec.number);
+    const existing = current.receptions.findIndex((item) => item.number === rec.number || item.id === rec.id);
+    if (existing >= 0) current.receptions[existing] = rec;
+    else current.receptions.unshift(rec);
+    current.selectedId = rec.id;
+  });
+  mergeArchiveStore("am_master_taller_archives_v1", backup.archives?.master || {});
+  localStorage.removeItem("am_quick_taller_archives_v1");
+  persistRestoredArchiveAliases(rec, backup);
+  upsertEmployeeVehicle(backup.employeeVehicle || employeeVehicleFromReception(rec));
+}
+
+function restoreFullProgramBackup(backup) {
+  if (backup?.appState?.receptions) {
+    AM_SIMPLE_STORE.save(backup.appState);
+  }
+  const restoredEmployeeState = { selected: "", seq: 0, vehicles: [] };
+  (backup.appState?.receptions || backup.receptions?.map((item) => item.reception) || []).filter(Boolean).forEach((rec) => {
+    restoredEmployeeState.vehicles.push(employeeVehicleFromReception(rec));
+  });
+  restoredEmployeeState.seq = restoredEmployeeState.vehicles.length;
+  setStorageSafely("am_employee_module_safe_v1", JSON.stringify(restoredEmployeeState), JSON.stringify({ selected: "", seq: 0, vehicles: [] }));
+  mergeArchiveStore("am_master_taller_archives_v1", backup.archives?.master || {});
+  localStorage.removeItem("am_quick_taller_archives_v1");
+  (backup.receptions || []).forEach((item) => {
+    if (item?.reception?.number) {
+      mergeArchiveStore("am_master_taller_archives_v1", item.archives?.master || {});
+      persistRestoredArchiveAliases(item.reception, item);
+      upsertEmployeeVehicle(item.employeeVehicle || employeeVehicleFromReception(item.reception));
+    }
+  });
+}
+
+async function importBackupFile(file, expectedType = "") {
+  if (!file) return;
+  const backup = JSON.parse(await file.text());
+  if (expectedType === "single" && backup.type !== "am-recepcion-backup") {
+    throw new Error("Este botón solo acepta respaldos individuales de cliente/vehículo.");
+  }
+  if (expectedType === "full" && backup.type !== "am-recepcion-full-backup") {
+    throw new Error("Este botón solo acepta respaldos completos del programa.");
+  }
+  if (backup.type === "am-recepcion-backup") {
+    restoreReceptionBackup(backup);
+    toast("Respaldo individual cargado.");
+  } else if (backup.type === "am-recepcion-full-backup") {
+    restoreFullProgramBackup(backup);
+    toast("Respaldo completo cargado.");
+  } else {
+    throw new Error("El archivo no corresponde a un respaldo de Automotriz Medina.");
+  }
+  renderAdmin();
+  showSection("dashboard");
+}
+
+function renderBackupPreview(backup) {
+  const host = qs("[data-backup-viewer-content]");
+  const restoreButton = qs("[data-preview-restore]");
+  if (!host) return;
+  previewBackup = null;
+  if (!backup || backup.type !== "am-recepcion-backup" || !backup.reception) {
+    if (restoreButton) restoreButton.disabled = true;
+    host.innerHTML = '<div class="notice warn">Este visor temporal solo acepta respaldos individuales de cliente.</div>';
+    return;
+  }
+  previewBackup = backup;
+  const rec = backup.reception;
+  if (restoreButton) restoreButton.disabled = false;
+  const frameHtml = backup.files?.expedienteHtml || backupWorkbook(rec);
+  host.innerHTML = `
+    <article class="panel backup-preview">
+      <div class="panel-header">
+        <div><h3>${esc(rec.number || "Expediente")}</h3><p>Vista temporal. No altera el dashboard hasta restaurarlo.</p></div>
+        <span class="pill info">Temporal</span>
+      </div>
+      <div class="panel-body grid">
+        <div class="grid cols-4">
+          <div class="metric"><span>Cliente</span><strong>${esc(rec.client?.name || "Cliente pendiente")}</strong><small>${esc(rec.client?.phone || "Sin teléfono")}</small></div>
+          <div class="metric"><span>Vehículo</span><strong>${esc(`${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""}`.trim() || "Vehículo")}</strong><small>${esc(`${rec.vehicle?.anio || ""} ${rec.vehicle?.placa || ""}`.trim() || "Sin placa")}</small></div>
+          <div class="metric"><span>Técnico</span><strong>${esc(rec.employeeName || "N/D")}</strong><small>${esc(rec.status || "Sin estado")}</small></div>
+          <div class="metric"><span>Autorización</span><strong>${rec.signed ? "Autorizado" : "Pendiente"}</strong><small>${esc(rec.signatureDate || "")}</small></div>
+        </div>
+        <div class="photo-grid">
+          <article class="photo-card">${photoVisual(frontReceptionPhoto(rec) || { label: "Frente", dataUrl: "" })}<div class="field"><label>Fotografía</label></div></article>
+          <article class="photo-card">${photoVisual(receptionPhotoByLabel(rec, "Tarjeta reverso") || { label: "Tarjeta reverso", dataUrl: "" })}<div class="field"><label>Tarjeta reverso</label></div></article>
+          <article class="photo-card">${photoVisual(receptionPhotoByLabel(rec, "Tarjeta frente") || { label: "Tarjeta frente", dataUrl: "" })}<div class="field"><label>Tarjeta frente</label></div></article>
+        </div>
+        <iframe class="backup-preview-frame" title="Expediente temporal" srcdoc="${esc(frameHtml)}"></iframe>
+      </div>
+    </article>`;
+}
+
+async function previewBackupFile(file) {
+  if (!file) return;
+  const backup = JSON.parse(await file.text());
+  renderBackupPreview(backup);
+  toast("Expediente cargado en visor temporal.");
+}
+
+function textBytes(text) {
+  return new TextEncoder().encode(String(text == null ? "" : text));
+}
+
+function concatBytes(chunks) {
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return out;
+}
+
+const crcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n += 1) {
+    let c = n;
+    for (let k = 0; k < 8; k += 1) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i += 1) crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function zipTimeParts(date = new Date()) {
+  return {
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+    day: (date.getFullYear() - 1980) << 9 | ((date.getMonth() + 1) << 5) | date.getDate()
+  };
+}
+
+function zipHeader(values) {
+  const bytes = new Uint8Array(values.length * 2);
+  const view = new DataView(bytes.buffer);
+  values.forEach((value, index) => view.setUint16(index * 2, value, true));
+  return bytes;
+}
+
+function zipLongs(values) {
+  const bytes = new Uint8Array(values.length * 4);
+  const view = new DataView(bytes.buffer);
+  values.forEach((value, index) => view.setUint32(index * 4, value >>> 0, true));
+  return bytes;
+}
+
+function createZip(files) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  const now = zipTimeParts();
+  files.forEach((file) => {
+    const name = textBytes(file.path.replace(/\\/g, "/"));
+    const data = typeof file.data === "string" ? textBytes(file.data) : file.data;
+    const crc = crc32(data);
+    const local = concatBytes([
+      zipLongs([0x04034b50]),
+      zipHeader([20, 0x0800, 0, now.time, now.day]),
+      zipLongs([crc, data.length, data.length]),
+      zipHeader([name.length, 0]),
+      name,
+      data
+    ]);
+    const central = concatBytes([
+      zipLongs([0x02014b50]),
+      zipHeader([20, 20, 0x0800, 0, now.time, now.day]),
+      zipLongs([crc, data.length, data.length]),
+      zipHeader([name.length, 0, 0, 0, 0, 0]),
+      zipLongs([offset]),
+      name
+    ]);
+    locals.push(local);
+    centrals.push(central);
+    offset += local.length;
+  });
+  const centralBytes = concatBytes(centrals);
+  const localBytes = concatBytes(locals);
+  const end = concatBytes([
+    zipLongs([0x06054b50]),
+    zipHeader([0, 0, files.length, files.length]),
+    zipLongs([centralBytes.length, localBytes.length]),
+    zipHeader([0])
+  ]);
+  return concatBytes([localBytes, centralBytes, end]);
+}
+
+function dataUrlFile(dataUrl, fallbackName) {
+  const match = String(dataUrl || "").match(/^data:([^;,]+)?(;base64)?,(.*)$/);
+  if (!match) return null;
+  const mime = match[1] || "application/octet-stream";
+  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : mime.includes("gif") ? "gif" : "jpg";
+  const raw = match[2] ? atob(match[3]) : decodeURIComponent(match[3]);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+  return { name: `${safeFileName(fallbackName)}.${ext}`, bytes };
+}
+
+function backupFolderName(rec, index) {
+  const client = safeFileName(rec.client?.name || "sin-cliente");
+  const vehicle = safeFileName(`${rec.vehicle?.marca || ""}-${rec.vehicle?.modelo || ""}-${rec.vehicle?.anio || ""}` || "vehiculo");
+  return `${String(index + 1).padStart(2, "0")}-${safeFileName(rec.number || rec.id)}-${client}-${vehicle}`;
+}
+
+function allBackupSummaryWorkbook(receptions) {
+  return workbookHtml("Resumen general de recepciones", `
+    <p class="muted">Generado localmente: ${esc(excelDate())}</p>
+    ${tableRows(["Recepción", "Cliente", "Teléfono", "Vehículo", "Técnico", "Estado", "Autorización", "Motivo"], receptions.map((rec) => [
+      rec.number || "",
+      rec.client?.name || "",
+      rec.client?.phone || "",
+      `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim(),
+      rec.employeeName || "",
+      rec.status || "",
+      rec.express ? "No aplica" : (rec.signed ? "Autorizado" : "Pendiente"),
+      serviceReason(rec) || ""
+    ]))}
+  `);
+}
+
+function collectReceptionFiles(rec, index) {
+  const folder = `respaldo-automotriz-medina/${backupFolderName(rec, index)}`;
+  const files = [
+    { path: `${folder}/datos-expediente.json`, data: JSON.stringify(rec, null, 2) },
+    { path: `${folder}/expediente-completo.xls`, data: backupWorkbook(rec) },
+    { path: `${folder}/expediente-completo.html`, data: backupWorkbook(rec) },
+    { path: `${folder}/archivo-taller.xls`, data: masterArchiveForReception(rec)?.html || masterWorkbookFallback(rec) }
+  ];
+  (rec.photos || []).forEach((photo, photoIndex) => {
+    const file = dataUrlFile(photo.dataUrl, `${String(photoIndex + 1).padStart(2, "0")}-${photo.label || "foto-recepcion"}`);
+    if (file) files.push({ path: `${folder}/fotografias-recepcion/${file.name}`, data: file.bytes });
+  });
+  (rec.damages || []).forEach((damage, damageIndex) => {
+    (damage.photos || []).forEach((photo, photoIndex) => {
+      const file = dataUrlFile(photo.dataUrl, `${String(damageIndex + 1).padStart(2, "0")}-${damage.área || damage.area || "danio"}-${photoIndex + 1}`);
+      if (file) files.push({ path: `${folder}/fotografias-danios/${file.name}`, data: file.bytes });
+    });
+  });
+  return files;
+}
+
+function downloadAllProgramBackup() {
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+  downloadBlob(`respaldo-completo-automotriz-medina-${stamp}.amr`, JSON.stringify(buildFullProgramBackup(), null, 2), "application/json;charset=utf-8");
+}
+
+function masterArchiveForReception(rec) {
+  try {
+    const master = JSON.parse(localStorage.getItem("am_master_taller_archives_v1") || "{}") || {};
+    const quick = JSON.parse(localStorage.getItem("am_quick_taller_archives_v1") || "{}") || {};
+    const lookupKeys = [rec.number, rec.id, rec.vehicle?.vin, rec.vehicle?.placa].map(archiveNorm).filter(Boolean);
+    const exactCandidates = lookupKeys.flatMap((key) => [
+      master[key],
+      master[rec.number],
+      master[rec.id],
+      quick[key],
+      quick[rec.number],
+      quick[rec.id]
+    ]);
+    const scannedCandidates = [
+      ...Object.values(master),
+      ...Object.values(quick)
+    ].filter((archive) => archiveMatchesReception(archive, rec));
+    const candidates = [...exactCandidates, ...scannedCandidates].filter(Boolean);
+    if (!candidates.length) return null;
+    return newestUsefulArchive(candidates);
+  } catch {
+    return null;
+  }
+}
+
+function masterWorkbookFallback(rec) {
+  const profile = trackingProfile(rec);
+  return workbookHtml(`Archivo taller ${rec.number}`, `
+    <p class="muted">No había un archivo máster guardado para esta recepción. Se genera una base con los datos actuales del expediente.</p>
+    ${kvRows([["Recepción", rec.number], ["Fecha recepción", profile.receptionDate || ""], ["Técnico", rec.employeeName || ""], ["Cliente", rec.client?.name || ""], ["Teléfono", rec.client?.phone || ""], ["Vehículo", `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim()], ["Color", rec.vehicle?.color || ""], ["VIN", rec.vehicle?.vin || ""], ["Placa", rec.vehicle?.placa || ""], ["Odómetro", rec.vehicle?.kilometraje || ""], ["Estado", rec.status || ""], ["Motivo", serviceReason(rec) || ""]])}
+    <h2>Datos internos</h2>
+    <pre id="expediente-json">${esc(JSON.stringify({ ...vehiclePayloadFromReception(rec), rec: rec.number, items: [], repuestosIngreso: [], authItems: [], authRepuestos: [] }))}</pre>
+  `);
+}
+
+function trackingProfile(rec) {
+  if (!rec.tracking) {
+    rec.tracking = {
+      receptionDate: "18/6/2026, 3:23:00 p.m.",
+      deliveryEstimate: "",
+      odometer: "81,046 MILLAS",
+      plate: "N/D",
+      vehicleTitle: "NISSAN VERSA 2020",
+      state: "EN DIAGNÓSTICO",
+      processDetails: "Revisión de suspensión y dirección"
+    };
+    rec.progress = 20;
+    rec.progressLabel = rec.tracking.state;
+  }
+  return rec.tracking;
+}
+
+function renderNav() {
+  const buttons = qsa("[data-section-target]");
+  if (!buttons.length) return;
+  const mobile = qs("[data-mobile-nav]");
+  buttons.forEach((button) => button.addEventListener("click", () => {
+    if (button.dataset.sectionTarget === "dashboard") {
+      adminDashboardFilter = "all";
+      adminEmployeeFilter = "";
+      const employeeMenu = qs("[data-employee-filter-menu]");
+      if (employeeMenu) employeeMenu.classList.add("hidden");
+      if (document.body.dataset.page === "admin") pushAdminHash("dashboard");
+    }
+    showSection(button.dataset.sectionTarget);
+    if (button.dataset.sectionTarget === "dashboard") renderReceptionTable();
+    if (button.dataset.sectionTarget === "clientes") renderClientCatalog();
+  }));
+  if (mobile) mobile.addEventListener("change", (event) => showSection(event.target.value));
+  showSection(buttons[0].dataset.sectionTarget);
+}
+
+const wizardOrder = ["datos", "fotos", "inventario", "danos", "finalizar"];
+
+function showEmployeeStep(index) {
+  const target = wizardOrder[Math.max(0, Math.min(index, wizardOrder.length - 1))];
+  qsa("[data-section]").forEach((section) => section.classList.toggle("hidden", section.dataset.section !== target));
+  qsa("[data-section-target]").forEach((button) => button.classList.toggle("active", button.dataset.sectionTarget === target));
+  const mobile = qs("[data-mobile-nav]");
+  if (mobile) mobile.value = target;
+  const finalSummary = qs("[data-final-summary]");
+  if (finalSummary) {
+    const rec = selected();
+    finalSummary.innerHTML = `
+      <div class="grid cols-3">
+        <div class="metric"><span>Vehículo</span><strong>${rec.vehicle.marca || "Pendiente"} ${rec.vehicle.modelo || ""}</strong><small>${rec.vehicle.placa || "Sin placa"}</small></div>
+        <div class="metric"><span>Fotos</span><strong>${rec.photos.filter((p) => p.dataUrl).length}/${rec.photos.length}</strong><small>Cargadas localmente</small></div>
+        <div class="metric"><span>Daños</span><strong>${rec.damages.length}</strong><small>Registrados</small></div>
+      </div>`;
+  }
+}
+
+function renderTabs() {
+  qsa("[data-tabs]").forEach((tabs) => {
+    if (tabs.dataset.tabsReady) return;
+    tabs.dataset.tabsReady = "1";
+    const host = tabs.closest(".panel");
+    const buttons = qsa("[data-tab-target]", tabs);
+    const panels = qsa("[data-tab]", host);
+    const show = (target) => {
+      buttons.forEach((button) => button.classList.toggle("active", button.dataset.tabTarget === target));
+      panels.forEach((panel) => panel.classList.toggle("active", panel.dataset.tab === target));
+    };
+    buttons.forEach((button) => button.addEventListener("click", () => show(button.dataset.tabTarget)));
+    if (buttons[0]) show(buttons[0].dataset.tabTarget);
+  });
+}
+
+let adminFileTab = "";
+let adminDashboardFilter = "all";
+let adminEmployeeFilter = "";
+let previewBackup = null;
+let adminSearchFilters = {
+  text: "",
+  dateFrom: "",
+  dateTo: "",
+  vehicleYear: ""
+};
+
+function isArchived(rec) {
+  return !!rec?.archivedAt && !rec?.deletedAt;
+}
+
+function isDeleted(rec) {
+  return !!rec?.deletedAt;
+}
+
+function isActiveDashboardRec(rec) {
+  return !isArchived(rec) && !isDeleted(rec);
+}
+
+function purgeExpiredTrash(current) {
+  const limit = 60 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const before = current.receptions.length;
+  current.receptions = current.receptions.filter((rec) => {
+    if (!rec.deletedAt) return true;
+    const deletedAt = Date.parse(rec.deletedAt);
+    return Number.isFinite(deletedAt) && now - deletedAt <= limit;
+  });
+  if (current.selectedId && !current.receptions.some((rec) => rec.id === current.selectedId)) {
+    current.selectedId = "";
+  }
+  return before !== current.receptions.length;
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function receptionDateMs(rec) {
+  const raw = rec?.tracking?.receptionDate || rec?.fecha || rec?.createdAt || rec?.signatureDate || "";
+  if (!raw) return 0;
+  const direct = Date.parse(raw);
+  if (Number.isFinite(direct)) return direct;
+  const isoMatch = String(raw).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3])).getTime();
+  const svMatch = String(raw).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (svMatch) return new Date(Number(svMatch[3]), Number(svMatch[2]) - 1, Number(svMatch[1])).getTime();
+  return 0;
+}
+
+function dateInputMs(value, endOfDay = false) {
+  if (!value) return 0;
+  const date = new Date(`${value}T${endOfDay ? "23:59:59" : "00:00:00"}`);
+  return Number.isFinite(date.getTime()) ? date.getTime() : 0;
+}
+
+function receptionSearchHaystack(rec) {
+  const vehicle = rec.vehicle || {};
+  const client = rec.client || {};
+  return normalizeSearchText([
+    rec.number,
+    client.name,
+    client.phone,
+    vehicle.marca,
+    vehicle.modelo,
+    vehicle.anio,
+    vehicle.color,
+    vehicle.placa,
+    vehicle.vin,
+    vehicle.kilometraje,
+    rec.employeeName,
+    rec.employeeId,
+    rec.status,
+    rec.serviceType,
+    serviceReason(rec),
+    rec.tracking?.receptionDate
+  ].filter(Boolean).join(" "));
+}
+
+function matchesAdminSearch(rec) {
+  const textFilter = normalizeSearchText(adminSearchFilters.text);
+  if (textFilter && !receptionSearchHaystack(rec).includes(textFilter)) return false;
+  const year = String(adminSearchFilters.vehicleYear || "").trim();
+  if (year && String(rec.vehicle?.anio || "").trim() !== year) return false;
+  const time = receptionDateMs(rec);
+  const from = dateInputMs(adminSearchFilters.dateFrom);
+  const to = dateInputMs(adminSearchFilters.dateTo, true);
+  if (from && (!time || time < from)) return false;
+  if (to && (!time || time > to)) return false;
+  return true;
+}
+
+function applyAdminSearchFilters(receptions) {
+  return (receptions || []).filter(matchesAdminSearch);
+}
+
+function syncAdminSearchInputs() {
+  qsa("[data-admin-search]").forEach((input) => { if (input.value !== adminSearchFilters.text) input.value = adminSearchFilters.text; });
+  qsa("[data-admin-date-from]").forEach((input) => { if (input.value !== adminSearchFilters.dateFrom) input.value = adminSearchFilters.dateFrom; });
+  qsa("[data-admin-date-to]").forEach((input) => { if (input.value !== adminSearchFilters.dateTo) input.value = adminSearchFilters.dateTo; });
+  qsa("[data-admin-vehicle-year]").forEach((input) => { if (input.value !== adminSearchFilters.vehicleYear) input.value = adminSearchFilters.vehicleYear; });
+}
+
+function showAdminFileTab(target = adminFileTab) {
+  adminFileTab = target || "";
+  qsa("[data-admin-file-tab]").forEach((button) => {
+    button.classList.toggle("active", !!adminFileTab && button.dataset.adminFileTab === adminFileTab);
+  });
+  qsa('[data-section="expediente"] [data-tab]').forEach((panel) => {
+    panel.classList.toggle("active", !!adminFileTab && panel.dataset.tab === adminFileTab);
+  });
+  if (adminFileTab === "archivo") {
+    const rec = AM_SIMPLE_STORE.selected(state());
+    if (rec) {
+      const href = masterFileHref(rec);
+      const frame = qs("[data-master-file-frame]");
+      const open = qs("[data-master-file-open]");
+      if (frame && frame.getAttribute("src") !== href) frame.setAttribute("src", href);
+      if (open) open.href = href;
+    }
+  }
+}
+
+function initTheme() {
+  const button = qs("[data-theme-toggle]");
+  if (!button) return;
+  const saved = localStorage.getItem("am_simple_theme") || "light";
+  document.documentElement.dataset.theme = saved;
+  button.textContent = saved === "dark" ? "Modo claro" : "Modo oscuro";
+  button.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("am_simple_theme", next);
+    button.textContent = next === "dark" ? "Modo claro" : "Modo oscuro";
+  });
+}
+
+function renderReceptionSummary(host, reception = selected()) {
+  host.innerHTML = `
+    <div class="grid cols-3">
+      <div class="metric"><span>Recepción</span><strong>${reception.number}</strong><small>${reception.status}</small></div>
+      <div class="metric"><span>Cliente</span><strong>${reception.client.name}</strong><small>${reception.client.phone}</small></div>
+      <div class="metric"><span>Vehículo</span><strong>${reception.vehicle.marca} ${reception.vehicle.modelo}</strong><small>${reception.vehicle.anio} - ${reception.vehicle.color}</small></div>
+    </div>`;
+}
+
+function serviceReason(rec) {
+  return rec?.serviceReason || rec?.motivo || rec?.reason || rec?.observations || "";
+}
+
+function shortText(value, limit = 96) {
+  const text = String(value || "").trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit - 3)}...`;
+}
+
+function makePrivateTokens() {
+  return {
+    clientToken: "cli_" + AM_SIMPLE_STORE.cryptoToken(),
+    trackingToken: "trk_" + AM_SIMPLE_STORE.cryptoToken()
+  };
+}
+
+function tokenHref(page, token) {
+  return `${page}#token=${encodeURIComponent(token)}`;
+}
+
+function syncEmployeeModuleVehiclesIntoAdmin() {
+  if (document.body.dataset.page !== "admin") return;
+  let employeeState = null;
+  try {
+    employeeState = JSON.parse(localStorage.getItem("am_employee_module_safe_v1") || "null");
+  } catch {
+    employeeState = null;
+  }
+  if (!employeeState || !Array.isArray(employeeState.vehicles)) return;
+  AM_SIMPLE_STORE.mutate((current) => {
+    if (!Array.isArray(current.deletedReceptionNumbers)) current.deletedReceptionNumbers = [];
+    employeeState.vehicles.forEach((vehicle) => {
+      const number = vehicle.rec || vehicle.reception || "";
+      if (!number) return;
+      if (current.deletedReceptionNumbers.includes(number)) return;
+      let rec = current.receptions.find((item) => item.number === number);
+      if (!rec) {
+        rec = {
+          id: `emp-${vehicle.id || AM_SIMPLE_STORE.cryptoToken()}`,
+          number,
+          express: !!vehicle.express,
+          serviceType: vehicle.tipoServicio || "",
+          status: vehicle.estado || "EN REVISIÓN",
+          sentToClient: false,
+          signed: vehicle.express ? false : !!vehicle.autorizado,
+          signatureName: "",
+          signatureDate: "",
+          clientToken: "cli_" + AM_SIMPLE_STORE.cryptoToken(),
+          trackingToken: "trk_" + AM_SIMPLE_STORE.cryptoToken(),
+          client: { name: "", phone: "" },
+          employeeId: vehicle.eid || "edwin",
+          employeeName: vehicle.en || "Edwin",
+          serviceReason: vehicle.motivo || "",
+          vehicle: {},
+          photos: [],
+          inventory: [],
+          observations: "",
+          damages: [],
+          progress: 0,
+          progressLabel: vehicle.estado || "EN REVISIÓN",
+          tracking: {},
+          internalWork: { internalNote: "", lockedReception: true },
+          updates: []
+        };
+        current.receptions.unshift(rec);
+      }
+      if (rec.adminEdited) return;
+      rec.express = !!vehicle.express;
+      rec.serviceType = vehicle.tipoServicio || rec.serviceType || "";
+      rec.employeeId = vehicle.eid || rec.employeeId || "edwin";
+      rec.employeeName = vehicle.en || rec.employeeName || "Edwin";
+      rec.status = vehicle.estado || rec.status;
+      rec.sentToClient = vehicle.express ? false : !!rec.sentToClient;
+      rec.signed = vehicle.express ? false : (!!vehicle.autorizado || !!rec.signed);
+      rec.serviceReason = vehicle.motivo || rec.serviceReason || "";
+      rec.vehicle = {
+        marca: vehicle.marca || "",
+        modelo: vehicle.modelo || "",
+        anio: vehicle.anio || "",
+        color: vehicle.color || "",
+        placa: vehicle.placa || "",
+        vin: vehicle.vin || "",
+        kilometraje: vehicle.odometro || vehicle.kilometraje || ""
+      };
+      rec.photos = Array.isArray(vehicle.photos) ? vehicle.photos.map((photo, index) => ({
+        label: photo.label || `Foto ${index + 1}`,
+        dataUrl: photo.dataUrl || "",
+        note: photo.note || "",
+        color: photo.color || (index % 2 === 0 ? "#206f78" : "#b52931")
+      })) : rec.photos;
+      rec.inventory = Array.isArray(vehicle.inventory) ? vehicle.inventory.map((item, index) => ({
+        id: item.id || `inv-${rec.id}-${index}`,
+        name: item.name || `Inventario ${index + 1}`,
+        present: item.present !== false,
+        note: item.note || ""
+      })) : rec.inventory;
+      rec.observations = vehicle.observaciones || rec.observations || "";
+      rec.damages = Array.isArray(vehicle.damages) ? vehicle.damages.map((damage, index) => ({
+        id: damage.id || `dam-${rec.id}-${index}`,
+        area: damage.area || "Daño",
+        detail: damage.detail || "",
+        photos: Array.isArray(damage.photos) ? damage.photos : []
+      })) : rec.damages;
+      rec.progress = Number(vehicle.avance || rec.progress || 0);
+      rec.progressLabel = vehicle.estado || rec.progressLabel || "EN REVISIÓN";
+      rec.tracking = {
+        ...(rec.tracking || {}),
+        receptionDate: [vehicle.fecha, vehicle.hora].filter(Boolean).join(", ") || rec.tracking?.receptionDate || "",
+        odometer: `${vehicle.odometro || rec.vehicle.kilometraje || "N/D"} ${vehicle.unidad === "km" ? "KM" : "MILLAS"}`,
+        plate: vehicle.placa || "N/D",
+        vehicleTitle: `${vehicle.marca || ""} ${vehicle.modelo || ""} ${vehicle.anio || ""}`.trim().toUpperCase(),
+        state: vehicle.estado || rec.tracking?.state || "EN REVISIÓN",
+        processDetails: Array.isArray(vehicle.detalles) ? vehicle.detalles.join("\n") : (vehicle.detalle || rec.tracking?.processDetails || "")
+      };
+      if (vehicle.express) {
+        rec.tracking.processDetails = vehicle.detalle || `Servicio express: ${vehicle.tipoServicio || "N/D"}`;
+      }
+      rec.internalWork = {
+        ...(rec.internalWork || {}),
+        internalNote: vehicle.express ? (rec.internalWork?.internalNote || "Servicio express registrado desde módulo de empleado.") : (Array.isArray(vehicle.bitacora) ? vehicle.bitacora.join("\n") : (vehicle.nota || rec.internalWork?.internalNote || "")),
+        lockedReception: true
+      };
+    });
+  });
+}
+
+function frontReceptionPhoto(rec) {
+  const photos = Array.isArray(rec.photos) ? rec.photos : [];
+  return photos.find((photo) => String(photo.label || "").toLowerCase() === "frente") || photos[0] || null;
+}
+
+function receptionPhotoByLabel(rec, label, fallback = "") {
+  const photos = Array.isArray(rec.photos) ? rec.photos : [];
+  const target = String(label || "").toLowerCase();
+  return photos.find((photo) => String(photo.label || "").toLowerCase() === target)
+    || (fallback ? photos.find((photo) => String(photo.label || "").toLowerCase() === String(fallback).toLowerCase()) : null)
+    || null;
+}
+
+function receptionTableThumb(rec, label = "Frente", fallback = "", className = "") {
+  const photo = label === "Frente" ? frontReceptionPhoto(rec) : receptionPhotoByLabel(rec, label, fallback);
+  const shortLabel = label.replace(/^Tarjeta\s+/i, "");
+  if (photo?.dataUrl) {
+    return `<button type="button" class="table-thumb ${className}" data-action="open-image-preview" data-id="${esc(rec.id)}" data-label="${esc(label)}" title="Ver ${esc(label)}"><img src="${photo.dataUrl}" alt="${esc(label)} ${esc(rec.vehicle?.marca || "vehículo")}"></button>`;
+  }
+  return `<div class="table-thumb table-thumb-empty ${className}">${esc(shortLabel)}</div>`;
+}
+
+function closeImagePreview() {
+  qs("[data-image-modal]")?.classList.add("hidden");
+}
+
+function openImagePreview(recId, label) {
+  const rec = state().receptions.find((item) => item.id === recId);
+  if (!rec) return;
+  const photo = label === "Frente" ? frontReceptionPhoto(rec) : receptionPhotoByLabel(rec, label);
+  if (!photo?.dataUrl) return;
+  let modal = qs("[data-image-modal]");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.className = "image-modal hidden";
+    modal.dataset.imageModal = "1";
+    modal.innerHTML = `
+      <div class="image-modal-card" role="dialog" aria-modal="true">
+        <div class="image-modal-head">
+          <h3 data-image-modal-title>Imagen</h3>
+          <button type="button" class="btn" data-action="close-image-preview">Cerrar</button>
+        </div>
+        <div class="image-modal-body"><img data-image-modal-img alt=""></div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  qs("[data-image-modal-title]", modal).textContent = `${label} - ${rec.number || ""}`;
+  const img = qs("[data-image-modal-img]", modal);
+  img.src = photo.dataUrl;
+  img.alt = `${label} ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""}`.trim();
+  modal.classList.remove("hidden");
+}
+
+function authorizationTermsHtml() {
+  return `
+    <h3>Contrato de servicio</h3>
+    <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos y verificaciones necesarias para determinar el estado del vehículo y el trabajo requerido.</p>
+    <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción. Automotriz Medina no se responsabiliza por fallas previas, desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo.</p>
+    <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda y siempre que el vehículo no haya sido intervenido por terceros. Componentes eléctricos, electrónicos, sensores, módulos, computadoras, piezas usadas, piezas reparadas y repuestos proporcionados por el cliente quedan excluidos de garantía salvo acuerdo escrito distinto.</p>
+    <p>El cliente declara haber revisado las fotografías, el inventario, las observaciones y los daños registrados. Dinero, documentos, herramientas, objetos personales o accesorios no declarados en esta recepción quedan bajo responsabilidad del cliente.</p>
+    <p>Una vez notificado que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia.</p>
+    <p>Sí el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación, podrá considerarse abandonado y Automotriz Medina podrá iniciar las gestiones legales correspondientes para recuperar saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos relacionados.</p>
+    <p>Automotriz Medina podrá retener el vehículo hasta que el cliente cancele por completo facturas, repuestos, mano de obra, diagnósticos, almacenaje, custodia u otros cargos autorizados o derivados del servicio.</p>
+    <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación segun la información acordada con el taller.</p>`;
+}
+
+function authorizationProofHtml(rec) {
+  const evidence = rec.authorizationEvidence || {};
+  return rec.signed ? `
+    <div class="notice">
+      <strong>Autorizado por:</strong> ${esc(rec.signatureName || rec.client.name || "Cliente")}<br>
+      <strong>Fecha:</strong> ${esc(rec.signatureDate || "")}<br>
+      <strong>Tipo de autorización:</strong> ${esc(evidence.authorizationType || "Cliente por link")}<br>
+      <strong>Registrado por:</strong> ${esc(evidence.registeredBy || "Cliente")}<br>
+      <strong>Token:</strong> ${esc(rec.clientToken || "")}<br>
+      <strong>Navegador:</strong> ${esc(evidence.userAgent || "No registrado")}<br>
+      <strong>Plataforma:</strong> ${esc(evidence.platform || "No registrado")}<br>
+      <strong>Idioma:</strong> ${esc(evidence.language || "No registrado")}<br>
+      <strong>Zona horaria:</strong> ${esc(evidence.timezone || "No registrado")}<br>
+      <strong>Pantalla:</strong> ${esc(evidence.screen || "No registrado")}<br>
+      <strong>Ventana:</strong> ${esc(evidence.viewport || "No registrado")}
+    </div>` : '<div class="notice warn">Aún no hay autorización del cliente.</div>';
+}
+
+function renderAdminAuthorizationView(rec) {
+  const host = qs("[data-admin-authorization-view]");
+  if (!host) return;
+  const statusLabel = rec.signed ? "Autorizado" : "Pendiente de autorización";
+  const statusClass = rec.signed ? "ok" : "warn";
+  host.innerHTML = `
+    <article class="panel admin-authorization-view" data-admin-authorization-card>
+      <div class="panel-header">
+        <div><h3>Autorización administrativa</h3><p>Vista interna del expediente enviado y constancia del cliente.</p></div>
+        <span class="pill ${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="panel-body grid">
+        <div class="grid cols-3">
+          <div class="metric"><span>Cliente</span><strong>${esc(rec.client.name || "Cliente pendiente")}</strong><small>${esc(rec.client.phone || "Sin teléfono")}</small></div>
+          <div class="metric"><span>Vehículo</span><strong>${esc(`${rec.vehicle.marca || ""} ${rec.vehicle.modelo || ""}`.trim() || "Vehículo")}</strong><small>${esc(`${rec.vehicle.anio || ""} ${rec.vehicle.placa || ""}`.trim() || "Sin placa")}</small></div>
+          <div class="metric"><span>Recepción</span><strong>${esc(rec.number || "")}</strong><small>${esc(rec.status || "")}</small></div>
+        </div>
+        <div class="notice">
+          <strong>Motivo de recepción / falla reportada:</strong><br>
+          ${esc(serviceReason(rec) || "Sin motivo registrado.")}
+        </div>
+        <div class="notice ${rec.signed ? "" : "warn"}">
+          ${rec.signed
+            ? "El cliente ya aceptó esta autorización. Esta es la copia administrativa de lo que autorizo y la constancia registrada para imprimir."
+            : "Esta autorización aún no ha sido aceptada por el cliente. Aquí puede revisar el expediente que se envió o se enviará al cliente."}
+        </div>
+        <div class="terms-box" tabindex="0">${authorizationTermsHtml()}</div>
+        <article class="panel">
+          <div class="panel-header"><h3>Constancia de autorización</h3></div>
+          <div class="panel-body grid">${authorizationProofHtml(rec)}</div>
+        </article>
+      </div>
+    </article>`;
+}
+
+function receptionRowActions(rec) {
+  if (isDeleted(rec)) {
+    return `
+      <button class="btn" data-action="download-backup" data-id="${rec.id}" title="Descargar respaldo individual">Descargar</button>
+      <button class="btn" data-action="restore-trash-reception" data-id="${rec.id}" title="Restaurar al dashboard">Restaurar</button>
+      <button class="btn danger icon-remove table-remove" data-action="purge-trash-reception" data-id="${rec.id}" title="Eliminar definitivamente">X</button>`;
+  }
+  if (isArchived(rec)) {
+    return `
+      <button class="btn" data-action="download-backup" data-id="${rec.id}" title="Descargar respaldo individual">Descargar</button>
+      <button class="btn" data-action="unarchive-reception" data-id="${rec.id}" title="Sacar de archivados">Desarchivar</button>
+      <button class="btn danger icon-remove table-remove" data-action="delete-reception" data-id="${rec.id}" title="Mover a papelera">X</button>`;
+  }
+  return `
+    <button class="btn" data-action="download-backup" data-id="${rec.id}" title="Descargar respaldo individual">Descargar</button>
+    <button class="btn" data-action="archive-reception" data-id="${rec.id}" title="Archivar expediente">Archivar</button>
+    <button class="btn danger icon-remove table-remove" data-action="delete-reception" data-id="${rec.id}" title="Mover a papelera">X</button>`;
+}
+
+function renderReceptionTable() {
+  const tbody = qs("[data-reception-table]");
+  if (!tbody) return;
+  const current = state();
+  const filtered = applyAdminSearchFilters(current.receptions.filter((rec) => {
+    if (adminDashboardFilter === "archived") return isArchived(rec);
+    if (adminDashboardFilter === "trash") return isDeleted(rec);
+    if (!isActiveDashboardRec(rec)) return false;
+    if (adminDashboardFilter === "employee") {
+      const employeeId = String(rec.employeeId || rec.employeeName || "").toLowerCase();
+      return employeeId.includes(adminEmployeeFilter) || (adminEmployeeFilter === "christian" && employeeId.includes("cristian"));
+    }
+    if (adminDashboardFilter === "finished") return rec.status === "FINALIZADO";
+    if (adminDashboardFilter === "delivered") return rec.status === "ENTREGADO";
+    return true;
+  }));
+  qsa("[data-admin-search-count]").forEach((input) => { input.value = `${filtered.length} expediente(s)`; });
+  tbody.innerHTML = filtered.map((rec) => `
+    <tr class="clickable-row" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
+      <td data-label="Vehículo">${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}<br><small>${rec.vehicle.placa}</small></td>
+      <td data-label="Fotografía">${receptionTableThumb(rec, "Frente")}</td>
+      <td data-label="Tarjeta reverso">${receptionTableThumb(rec, "Tarjeta reverso", "", "card-thumb")}</td>
+      <td data-label="Tarjeta frente">${receptionTableThumb(rec, "Tarjeta frente", "", "card-thumb")}</td>
+      <td data-label="Técnico">${rec.employeeName || "N/D"}</td>
+      <td data-label="Estado"><span class="pill ${statusTone(rec.status)}">${rec.status}</span>${rec.express ? `<br><small>${esc(rec.serviceType || "Servicio express")}</small>` : ""}</td>
+      <td data-label="Autorización">${rec.express ? '<span class="pill info">No aplica</span>' : (rec.signed ? '<span class="pill ok">Autorizado</span>' : '<span class="pill warn">Pendiente</span>')}</td>
+      <td data-label="Cliente">${rec.client.name || "Cliente pendiente"}<br><small>${rec.client.phone || "Sin teléfono"}</small></td>
+      <td data-label="Motivo">${esc(shortText(serviceReason(rec) || "Sin motivo registrado", 110))}</td>
+      <td data-label="Recepción"><strong>${rec.number}</strong><br><small>${isDeleted(rec) ? `Papelera: ${new Date(rec.deletedAt).toLocaleDateString("es-SV")}` : rec.clientToken}</small><div class="table-actions">${receptionRowActions(rec)}</div></td>
+    </tr>`).join("") || '<tr><td colspan="10">No hay vehículos en este filtro.</td></tr>';
+  qsa("[data-admin-filter]").forEach((button) => {
+    const isEmployee = button.dataset.adminFilter === "employee" && adminDashboardFilter === "employee" && button.dataset.employeeFilter === adminEmployeeFilter;
+    const isDirect = button.dataset.adminFilter !== "employee" && button.dataset.adminFilter === adminDashboardFilter;
+    button.classList.toggle("active", isEmployee || isDirect);
+  });
+  const employeeMenu = qs("[data-employee-filter-menu]");
+  if (employeeMenu) employeeMenu.classList.toggle("hidden", adminDashboardFilter !== "employee" && adminDashboardFilter !== "workshop");
+}
+
+function clientCatalogKey(rec) {
+  const client = rec.client || {};
+  const name = normalizeSearchText(client.name || "cliente pendiente");
+  const phone = normalizeSearchText(client.phone || "");
+  return `${name}|${phone}`;
+}
+
+function clientDisplayName(rec) {
+  return rec.client?.name || "Cliente pendiente";
+}
+
+function clientYearSummary(records) {
+  const counts = {};
+  records.forEach((rec) => {
+    const time = receptionDateMs(rec);
+    const year = time ? new Date(time).getFullYear() : "Sin fecha";
+    counts[year] = (counts[year] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort(([a], [b]) => String(b).localeCompare(String(a)))
+    .map(([year, count]) => `${year}: ${count}`)
+    .join(" | ");
+}
+
+function renderClientCatalog() {
+  const host = qs("[data-client-catalog]");
+  if (!host) return;
+  const records = applyAdminSearchFilters(state().receptions.filter((rec) => !isDeleted(rec)));
+  const groups = new Map();
+  records.forEach((rec) => {
+    const key = clientCatalogKey(rec);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(rec);
+  });
+  const clients = Array.from(groups.values()).sort((a, b) => clientDisplayName(a[0]).localeCompare(clientDisplayName(b[0]), "es"));
+  qsa("[data-admin-search-count]").forEach((input) => { input.value = `${records.length} expediente(s) / ${clients.length} cliente(s)`; });
+  host.innerHTML = clients.map((recordsForClient) => {
+    const first = recordsForClient[0];
+    const vehicles = new Set(recordsForClient.map((rec) => normalizeSearchText(`${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""} ${rec.vehicle?.placa || ""}`)).filter(Boolean));
+    const sorted = recordsForClient.slice().sort((a, b) => receptionDateMs(b) - receptionDateMs(a));
+    return `
+      <article class="panel client-card">
+        <div class="panel-header">
+          <div>
+            <h3>${esc(clientDisplayName(first))}</h3>
+            <p>${esc(first.client?.phone || "Sin teléfono")} | ${recordsForClient.length} expediente(s) | ${vehicles.size || recordsForClient.length} vehículo(s)</p>
+          </div>
+          <span class="pill info">${esc(clientYearSummary(recordsForClient) || "Sin fechas")}</span>
+        </div>
+        <div class="panel-body table-wrap">
+          <table>
+            <thead><tr><th>Vehículo</th><th>Recepción</th><th>Técnico</th><th>Estado</th><th>Autorización</th><th>Acción</th></tr></thead>
+            <tbody>
+              ${sorted.map((rec) => `
+                <tr class="clickable-row" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
+                  <td data-label="Vehículo">${esc(`${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim() || "Vehículo")}<br><small>${esc(rec.vehicle?.placa || rec.vehicle?.vin || "Sin placa")}</small></td>
+                  <td data-label="Recepción"><strong>${esc(rec.number || "")}</strong><br><small>${esc(rec.tracking?.receptionDate || "")}</small></td>
+                  <td data-label="Técnico">${esc(rec.employeeName || "N/D")}</td>
+                  <td data-label="Estado"><span class="pill ${statusTone(rec.status)}">${esc(rec.status || "")}</span>${isArchived(rec) ? '<br><small>Archivado</small>' : ""}</td>
+                  <td data-label="Autorización">${rec.express ? '<span class="pill info">No aplica</span>' : (rec.signed ? '<span class="pill ok">Autorizado</span>' : '<span class="pill warn">Pendiente</span>')}</td>
+                  <td data-label="Acción"><div class="table-actions"><button class="btn" data-action="download-backup" data-id="${rec.id}">Descargar</button><button class="btn primary" data-action="open-file" data-id="${rec.id}">Abrir</button></div></td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </article>`;
+  }).join("") || '<div class="notice">No hay clientes que coincidan con la búsqueda.</div>';
+}
+
+function saveAdminAllFromDom(current) {
+  const rec = AM_SIMPLE_STORE.selected(current);
+  if (!rec) return;
+  qsa("[data-admin-client-field]").forEach((input) => {
+    const key = input.dataset.adminClientField;
+    if (key) rec.client[key] = input.value || "";
+  });
+  const get = (key) => qs(`[data-admin-edit="${key}"]`)?.value || "";
+  if (qs('[data-admin-edit="employeeName"]')) {
+    rec.employeeName = get("employeeName") || rec.employeeName;
+    rec.employeeId = String(rec.employeeName || "").toLowerCase();
+    rec.status = get("status") || rec.status;
+    rec.adminEdited = true;
+    rec.vehicle.marca = get("marca");
+    rec.vehicle.modelo = get("modelo");
+    rec.vehicle.anio = get("anio");
+    rec.vehicle.color = get("color");
+    rec.vehicle.placa = get("placa");
+    rec.vehicle.vin = get("vin");
+    rec.vehicle.kilometraje = get("kilometraje");
+    rec.serviceReason = get("serviceReason");
+    rec.observations = get("observations");
+    rec.inventory.forEach((item) => {
+      item.present = !!qs(`[data-admin-inv-present="${item.id}"]`)?.checked;
+      item.note = qs(`[data-admin-inv-note="${item.id}"]`)?.value || "";
+    });
+    rec.photos.forEach((photo, index) => {
+      photo.note = qs(`[data-admin-photo-note="${index}"]`)?.value || "";
+    });
+    rec.damages.forEach((damage) => {
+      damage.área = qs(`[data-admin-damage-área="${damage.id}"]`)?.value || "";
+      damage.detail = qs(`[data-admin-damage-detail="${damage.id}"]`)?.value || "";
+    });
+  }
+  const profile = trackingProfile(rec);
+  qsa("[data-track-field]").forEach((input) => {
+    profile[input.dataset.trackField] = input.value;
+  });
+  if (qs("[data-admin-progress]")) rec.progress = Number(qs("[data-admin-progress]").value || 0);
+  const processInputs = qsa("[data-admin-process-row]");
+  if (processInputs.length) profile.processDetails = processInputs.map((input) => input.value.trim()).filter(Boolean).join("\n");
+  const internalInputs = qsa("[data-admin-internal-row]");
+  if (internalInputs.length) {
+    const rows = internalInputs.map((input) => input.value.trim()).filter(Boolean);
+    rec.internalWork = { ...(rec.internalWork || {}), internalNote: rows.join("\n"), lockedReception: true };
+  }
+  profile.vehicleTitle = profile.vehicleTitle || `${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}`.trim().toUpperCase();
+  profile.plate = profile.plate || rec.vehicle.placa || "N/D";
+  profile.odometer = profile.odometer || (rec.vehicle.kilometraje ? `${rec.vehicle.kilometraje} MILLAS` : "N/D");
+  rec.status = profile.state || rec.status;
+  rec.progressLabel = profile.state || rec.status || "En proceso";
+}
+
+function adminHashParams() {
+  const raw = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  return new URLSearchParams(raw);
+}
+
+function pushAdminHash(hash) {
+  const next = hash.startsWith("#") ? hash : `#${hash}`;
+  if (location.hash === next) return;
+  history.pushState(null, "", next);
+}
+
+function applyAdminHashRoute() {
+  if (document.body.dataset.page !== "admin") return;
+  const params = adminHashParams();
+  const fileId = params.get("expediente");
+  if (fileId) {
+    AM_SIMPLE_STORE.mutate((current) => {
+      if (current.receptions.some((rec) => rec.id === fileId)) current.selectedId = fileId;
+    });
+    adminFileTab = params.get("tab") || adminFileTab || "seguimiento";
+    renderAdmin();
+    showSection("expediente");
+    showAdminFileTab(adminFileTab);
+    return;
+  }
+  renderAdmin();
+  showSection("dashboard");
+}
+
+function openAdminReceptionFile(id, shouldPush = true) {
+  if (!id) return;
+  AM_SIMPLE_STORE.mutate((current) => { current.selectedId = id; });
+  if (shouldPush) pushAdminHash(`expediente=${encodeURIComponent(id)}&tab=seguimiento`);
+  adminFileTab = "seguimiento";
+  renderAdmin();
+  showSection("expediente");
+  showAdminFileTab("seguimiento");
+  toast("Expediente abierto.");
+}
+
+function showSection(target) {
+  qsa("[data-section]").forEach((section) => section.classList.toggle("hidden", section.dataset.section !== target));
+  qsa("[data-section-target]").forEach((button) => button.classList.toggle("active", button.dataset.sectionTarget === target));
+  const dashboardFilters = qs("[data-dashboard-filter-menu]");
+  const searchPanel = qs("[data-admin-search-panel]");
+  if (searchPanel) searchPanel.classList.toggle("hidden", !(target === "dashboard" || target === "clientes"));
+  const expedienteMenu = qs("[data-expediente-menu]");
+  if (target !== "expediente" && expedienteMenu) expedienteMenu.classList.add("hidden");
+  if (target === "dashboard") {
+    if (expedienteMenu) expedienteMenu.classList.add("hidden");
+    if (dashboardFilters) dashboardFilters.classList.remove("hidden");
+  } else if (target === "expediente" && dashboardFilters) {
+    dashboardFilters.classList.add("hidden");
+  } else if (dashboardFilters) {
+    dashboardFilters.classList.remove("hidden");
+  }
+  const mobile = qs("[data-mobile-nav]");
+  if (mobile && mobile.querySelector(`option[value="${target}"]`)) mobile.value = target;
+}
+
+function fillReceptionForm() {
+  const form = qs("[data-reception-form]");
+  if (!form) return;
+  const rec = selected();
+  Object.entries({ ...rec.client, ...rec.vehicle, observations: rec.observations }).forEach(([key, value]) => {
+    const input = qs(`[name="${key}"]`, form);
+    if (input) input.value = value || "";
+  });
+}
+
+function collectReceptionForm() {
+  const form = qs("[data-reception-form]");
+  const data = new FormData(form);
+  return {
+    client: { name: data.get("name") || "Cliente", phone: data.get("phone") || "" },
+    vehicle: {
+      marca: data.get("marca") || "",
+      modelo: data.get("modelo") || "",
+      anio: data.get("anio") || "",
+      color: data.get("color") || "",
+      placa: data.get("placa") || "",
+      vin: data.get("vin") || "",
+      kilometraje: data.get("kilometraje") || ""
+    },
+    observations: data.get("observations") || ""
+  };
+}
+
+function renderPhotoEditor() {
+  const host = qs("[data-photo-editor]");
+  if (!host) return;
+  const rec = selected();
+  host.innerHTML = rec.photos.map((photo, index) => `
+    <article class="photo-card">
+      ${photoVisual(photo)}
+      <div class="field">
+        <label>${photo.label}</label>
+        <input type="file" accept="image/*" data-photo-index="${index}">
+        <input placeholder="Nota opcional" value="${photo.note || ""}" data-photo-note="${index}">
+      </div>
+    </article>`).join("");
+}
+
+function renderInventory() {
+  const host = qs("[data-inventory]");
+  if (!host) return;
+  const rec = selected();
+  host.innerHTML = rec.inventory.map((item) => `
+    <div class="check-item">
+      <input type="checkbox" ${item.present ? "checked" : ""} data-inventory-present="${item.id}">
+      <div style="width:100%">
+        <strong>${item.name}</strong>
+        <input placeholder="Detalle" value="${item.note || ""}" data-inventory-note="${item.id}">
+      </div>
+    </div>`).join("");
+}
+
+function renderDamageEditor() {
+  const host = qs("[data-damages]");
+  if (!host) return;
+  const rec = selected();
+  host.innerHTML = rec.damages.map((damage) => `
+    <article class="panel">
+      <div class="panel-header">
+        <div><h3>${damage.área}</h3><p>${damage.detail}</p></div>
+        <button class="btn danger" data-action="remove-damage" data-id="${damage.id}">Quitar</button>
+      </div>
+      <div class="panel-body">
+        <div class="photo-grid">
+          ${damage.photos.map((photo, photoIndex) => `
+            <article class="photo-card">
+              ${photoVisual(photo)}
+              <div class="field">
+                <label>Foto del daño</label>
+                <input type="file" accept="image/*" data-damage-photo="${damage.id}" data-photo-index="${photoIndex}">
+              </div>
+            </article>`).join("")}
+        </div>
+      </div>
+    </article>`).join("") || '<div class="notice">No hay daños registrados.</div>';
+}
+
+function renderAdmin() {
+  syncEmployeeModuleVehiclesIntoAdmin();
+  AM_SIMPLE_STORE.mutate((current) => {
+    purgeExpiredTrash(current);
+  });
+  syncAdminHashSelection();
+  const current = state();
+  const rec = selected();
+  const metrics = qs("[data-admin-metrics]");
+  if (metrics) {
+    const visible = current.receptions.filter(isActiveDashboardRec);
+    const pending = visible.filter((r) => !r.signed).length;
+    const sent = visible.filter((r) => r.sentToClient).length;
+    const finished = visible.filter((r) => r.status === "FINALIZADO").length;
+    const delivered = visible.filter((r) => r.status === "ENTREGADO").length;
+    metrics.innerHTML = `
+      <div class="metric"><span>Recepciones</span><strong>${visible.length}</strong><small>Activas en dashboard</small></div>
+      <div class="metric"><span>Pendientes</span><strong>${pending}</strong><small>Cliente aún no autoriza</small></div>
+      <div class="metric"><span>Enviadas</span><strong>${sent}</strong><small>Link generado</small></div>
+      <div class="metric"><span>Finalizados</span><strong>${finished}</strong><small>Pendientes de entrega</small></div>
+      <div class="metric"><span>Entregados</span><strong>${delivered}</strong><small>Cerrados por admin</small></div>`;
+  }
+  renderReceptionTable();
+  const summary = qs("[data-admin-selected-summary]");
+  if (summary) renderReceptionSummary(summary, rec);
+  const links = qs("[data-client-links]");
+  if (links) {
+    links.innerHTML = `
+      <div class="notice">
+        Autorización cliente: <a href="${tokenHref("cliente-mobile.html", rec.clientToken)}">${tokenHref("cliente-mobile.html", rec.clientToken)}</a><br>
+        Seguimiento: <a href="${tokenHref("seguimiento-mobile.html", rec.trackingToken)}">${tokenHref("seguimiento-mobile.html", rec.trackingToken)}</a>
+      </div>`;
+  }
+  const openClient = qs("[data-open-client]");
+  if (openClient) openClient.href = tokenHref("cliente-mobile.html", rec.clientToken);
+  const openTracking = qs("[data-open-tracking]");
+  if (openTracking) openTracking.href = tokenHref("seguimiento-mobile.html", rec.trackingToken);
+  renderAdminFile(rec);
+  renderTrackingAdmin();
+  renderTabs();
+  showAdminFileTab(adminFileTab);
+  syncAdminSearchInputs();
+  renderClientCatalog();
+}
+
+function syncAdminHashSelection() {
+  if (document.body.dataset.page !== "admin") return;
+  const raw = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  const params = new URLSearchParams(raw);
+  const fileId = params.get("expediente");
+  if (!fileId) return;
+  const current = state();
+  if (current.selectedId === fileId) return;
+  if (!current.receptions.some((rec) => rec.id === fileId)) return;
+  AM_SIMPLE_STORE.mutate((state) => {
+    state.selectedId = fileId;
+  });
+}
+
+function renderAdminFile(rec) {
+  const hasSelection = !!state().selectedId;
+  const empty = qs("[data-admin-file-empty]");
+  const panel = qs("[data-admin-file-panel]");
+  const expedienteMenu = qs("[data-expediente-menu]");
+  if (empty) empty.classList.toggle("hidden", hasSelection);
+  if (panel) panel.classList.toggle("hidden", !hasSelection);
+  if (expedienteMenu) expedienteMenu.classList.toggle("hidden", !hasSelection);
+  if (!hasSelection) return;
+  qsa("[data-admin-client-field]").forEach((input) => {
+    input.value = rec.client?.[input.dataset.adminClientField] || "";
+  });
+  const links = qs("[data-admin-file-links]");
+  if (links) {
+    links.innerHTML = `
+      <div class="notice">
+        <strong>Link de autorización:</strong> <a href="${tokenHref("cliente-mobile.html", rec.clientToken)}">${tokenHref("cliente-mobile.html", rec.clientToken)}</a><br>
+        <strong>Link de seguimiento:</strong> <a href="${tokenHref("seguimiento-mobile.html", rec.trackingToken)}">${tokenHref("seguimiento-mobile.html", rec.trackingToken)}</a>
+      </div>`;
+  }
+  const masterHref = masterFileHref(rec);
+  const masterFrame = qs("[data-master-file-frame]");
+  const masterOpen = qs("[data-master-file-open]");
+  if (masterFrame && masterFrame.getAttribute("src") !== masterHref) masterFrame.setAttribute("src", masterHref);
+  if (masterOpen) masterOpen.href = masterHref;
+  const vehicle = qs("[data-admin-file-vehicle]");
+  if (vehicle) {
+    vehicle.innerHTML = `
+      <div class="form-grid">
+        <div class="field"><label>Técnico</label><select data-admin-edit="employeeName"><option ${rec.employeeName === "Edwin" ? "selected" : ""}>Edwin</option><option ${rec.employeeName === "Rafael" ? "selected" : ""}>Rafael</option><option ${rec.employeeName === "Christian" ? "selected" : ""}>Christian</option></select></div>
+        <div class="field"><label>Estado</label><select data-admin-edit="status">${statusOptions(rec.status)}</select></div>
+        <div class="field"><label>Marca</label><input data-admin-edit="marca" value="${esc(rec.vehicle.marca)}"></div>
+        <div class="field"><label>Modelo</label><input data-admin-edit="modelo" value="${esc(rec.vehicle.modelo)}"></div>
+        <div class="field"><label>Año</label><input data-admin-edit="anio" value="${esc(rec.vehicle.anio)}"></div>
+        <div class="field"><label>Color</label><input data-admin-edit="color" value="${esc(rec.vehicle.color)}"></div>
+        <div class="field"><label>Placa</label><input data-admin-edit="placa" value="${esc(rec.vehicle.placa)}"></div>
+        <div class="field"><label>VIN</label><input data-admin-edit="vin" value="${esc(rec.vehicle.vin)}"></div>
+        <div class="field"><label>Kilometraje</label><input data-admin-edit="kilometraje" value="${esc(rec.vehicle.kilometraje)}"></div>
+        <div class="field full"><label>Motivo de recepción / falla reportada</label><textarea data-admin-edit="serviceReason">${esc(serviceReason(rec))}</textarea></div>
+      </div>`;
+  }
+  const inventory = qs("[data-admin-file-inventory]");
+  if (inventory) {
+    inventory.innerHTML = rec.inventory.map((item) => `
+      <div class="check-item">
+        <input type="checkbox" ${item.present ? "checked" : ""} data-admin-inv-present="${item.id}">
+        <div style="width:100%">
+          <strong>${item.name}</strong>
+          <input placeholder="Detalle" value="${esc(item.note || "")}" data-admin-inv-note="${item.id}">
+        </div>
+      </div>`).join("");
+  }
+  const photos = qs("[data-admin-file-photos]");
+  if (photos) {
+    photos.innerHTML = rec.photos.map((photo, index) => `
+      <article class="photo-card">
+        ${photoVisual(photo)}
+        <div class="field">
+          <label>${photo.label}</label>
+          <input type="file" accept="image/*" data-admin-photo-index="${index}">
+          <input placeholder="Nota" value="${esc(photo.note || "")}" data-admin-photo-note="${index}">
+        </div>
+      </article>`).join("");
+  }
+  const damages = qs("[data-admin-file-damages]");
+  if (damages) {
+    damages.innerHTML = `
+      <div class="field"><label>Observaciones generales</label><textarea data-admin-edit="observations">${esc(rec.observations || "")}</textarea></div>
+      ${rec.damages.map((damage, damageIndex) => `
+        <article class="panel">
+          <div class="panel-header"><div><h3>Daño encontrado</h3><p>${damage.área || "Área"}</p></div><button class="btn danger" data-action="admin-remove-damage" data-id="${damage.id}">X</button></div>
+          <div class="panel-body grid">
+            <div class="form-grid">
+              <div class="field"><label>Área</label><input value="${esc(damage.área)}" data-admin-damage-área="${damage.id}"></div>
+              <div class="field"><label>Detalle</label><input value="${esc(damage.detail)}" data-admin-damage-detail="${damage.id}"></div>
+            </div>
+            <div class="photo-grid">${(damage.photos || []).map((photo, photoIndex) => `
+              <article class="photo-card">
+                ${photoVisual(photo)}
+                <div class="field"><label>Foto daño</label><input type="file" accept="image/*" data-admin-damage-photo="${damage.id}" data-photo-index="${photoIndex}"></div>
+              </article>`).join("")}</div>
+            <button class="btn" data-action="admin-add-damage-photo" data-id="${damage.id}">Agregar foto al daño</button>
+          </div>
+        </article>
+      `).join("") || '<div class="notice">No hay daños registrados.</div>'}
+      <button class="btn" data-action="admin-add-damage">Agregar daño</button>`;
+  }
+  const internalHost = qs("[data-admin-internal-rows]");
+  if (internalHost) {
+    const rows = internalRows(rec);
+    internalHost.innerHTML = rows.map((row, index) => `
+      <div class="detail-row">
+        <span>${index + 1}</span>
+        <textarea data-admin-internal-row="${index}">${esc(row)}</textarea>
+        <button type="button" class="btn icon-remove" data-action="admin-remove-internal-row" data-index="${index}">X</button>
+      </div>`).join("") || '<div class="notice">Sin bitacora interna.</div>';
+  }
+  const proof = qs("[data-authorization-proof]");
+  if (proof) {
+    proof.innerHTML = authorizationProofHtml(rec);
+  }
+  renderAdminAuthorizationView(rec);
+}
+
+function renderEmployee() {
+  fillReceptionForm();
+  renderPhotoEditor();
+  renderInventory();
+  renderDamageEditor();
+  const summary = qs("[data-employee-summary]");
+  if (summary) renderReceptionSummary(summary);
+  const finalSummary = qs("[data-final-summary]");
+  if (finalSummary) showEmployeeStep(wizardOrder.indexOf(qs("[data-section]:not(.hidden)")?.dataset.section || "datos"));
+}
+
+function renderTrackingAdmin() {
+  const rec = selected();
+  const profile = trackingProfile(rec);
+  qsa("[data-track-field]").forEach((input) => {
+    input.value = profile[input.dataset.trackField] || "";
+  });
+  const progress = qs("[data-admin-progress]");
+  if (progress) {
+    progress.value = rec.progress;
+    const progressValue = qs("[data-progress-value]");
+    if (progressValue) progressValue.textContent = `${rec.progress}%`;
+  }
+  const detailHost = qs("[data-admin-detail-rows]");
+  if (detailHost) {
+    const rows = processRows(rec);
+    detailHost.innerHTML = rows.map((row, index) => `
+      <div class="detail-row">
+        <span>${index + 1}</span>
+        <textarea data-admin-process-row="${index}">${esc(row)}</textarea>
+        <button type="button" class="btn icon-remove" data-action="admin-remove-detail-row" data-index="${index}">X</button>
+      </div>`).join("") || '<div class="notice">Sin renglones publicados.</div>';
+  }
+  const updates = qs("[data-admin-updates]");
+  if (updates) {
+    updates.innerHTML = rec.updates.map((item) => `
+      <div class="timeline-item">
+        <time>${item.date}</time>
+        <div>
+          <h4>${item.title}</h4>
+          <p>${item.text}</p>
+        </div>
+      </div>`).join("");
+  }
+}
+
+function activeEmployee() {
+  const raw = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  const params = new URLSearchParams(raw);
+  const id = (params.get("empleado") || "edwin").toLowerCase();
+  const employees = state().employees || [];
+  return employees.find((employee) => employee.id === id) || employees[0] || { id: "edwin", name: "Edwin" };
+}
+
+function setEmployeeLabels(employee) {
+  qsa("[data-employee-name]").forEach((node) => { node.textContent = employee.name; });
+  qsa("[data-employee-name-inline]").forEach((node) => { node.textContent = employee.name; });
+  const tecnico = qs('[name="tecnico"]');
+  if (tecnico) tecnico.value = employee.name;
+}
+
+function employeeVehicles(employee) {
+  return state().receptions.filter((rec) => rec.employeeId === employee.id);
+}
+
+function renderEmployeeLists(employee) {
+  const vehicles = employeeVehicles(employee);
+  const active = vehicles.filter((rec) => rec.status !== "FINALIZADO" && rec.status !== "ENTREGADO");
+  const finished = vehicles.filter((rec) => rec.status === "FINALIZADO");
+  const metrics = qs("[data-employee-metrics]");
+  if (metrics) {
+    metrics.innerHTML = `
+      <div class="metric"><span>En taller</span><strong>${active.length}</strong><small>Asignados a ${employee.name}</small></div>
+      <div class="metric"><span>Finalizados</span><strong>${finished.length}</strong><small>Pendientes de cierre admin</small></div>
+      <div class="metric"><span>Empleado</span><strong>${employee.name}</strong><small>Módulo local</small></div>`;
+  }
+  const activeList = qs("[data-employee-active-list]");
+  if (activeList) {
+    activeList.innerHTML = active.map((rec) => `
+      <tr>
+        <td><strong>${rec.number}</strong><br><small>${rec.tracking?.receptionDate || ""}</small></td>
+        <td>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}<br><small>${rec.vehicle.placa || "N/D"}</small></td>
+        <td><span class="pill ${statusTone(rec.status)}">${rec.status}</span></td>
+        <td>${rec.signed ? '<span class="pill ok">Autorizado</span>' : '<span class="pill warn">Pendiente</span>'}</td>
+        <td><button class="btn primary" data-action="open-employee-vehicle" data-id="${rec.id}">Abrir vehículo</button></td>
+      </tr>`).join("") || '<tr><td colspan="5">No hay vehículos activos para este empleado.</td></tr>';
+  }
+  const finishedList = qs("[data-employee-finished-list]");
+  if (finishedList) {
+    finishedList.innerHTML = finished.map((rec) => `
+      <tr>
+        <td><strong>${rec.number}</strong></td>
+        <td>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</td>
+        <td><span class="pill ok">${rec.status}</span></td>
+        <td><button class="btn" data-action="open-employee-vehicle" data-id="${rec.id}">Ver</button></td>
+      </tr>`).join("") || '<tr><td colspan="4">No hay vehículos finalizados.</td></tr>';
+  }
+}
+
+function setEmployeeWizardStep(step) {
+  const formPanel = qs("[data-reception-form]")?.closest(".panel");
+  if (formPanel) formPanel.classList.toggle("hidden", step !== "datos");
+  qsa("[data-employee-wizard-step]").forEach((panel) => {
+    panel.classList.toggle("hidden", panel.dataset.employeeWizardStep !== step);
+  });
+}
+
+function collectReceptionForm() {
+  const form = qs("[data-reception-form]");
+  const data = new FormData(form);
+  return {
+    fecha: data.get("fecha") || "",
+    hora: data.get("hora") || "",
+    tecnico: data.get("tecnico") || activeEmployee().name,
+    client: { name: "", phone: "" },
+    vehicle: {
+      marca: String(data.get("marca") || "").toUpperCase(),
+      modelo: String(data.get("modelo") || "").toUpperCase(),
+      anio: String(data.get("anio") || "").toUpperCase(),
+      color: String(data.get("color") || "").toUpperCase(),
+      placa: String(data.get("placa") || "").toUpperCase(),
+      vin: String(data.get("vin") || "").toUpperCase(),
+      kilometraje: String(data.get("kilometraje") || "").toUpperCase(),
+      odometroUnidad: data.get("odometroUnidad") || "mi"
+    },
+    observations: data.get("observations") || "",
+    serviceReason: data.get("serviceReason") || data.get("motivo") || ""
+  };
+}
+
+function fillReceptionForm() {
+  const form = qs("[data-reception-form]");
+  if (!form) return;
+  const rec = selected();
+  const employee = activeEmployee();
+  const now = new Date();
+  const values = {
+    fecha: rec?.tracking?.receptionDate ? "" : now.toISOString().slice(0, 10),
+    hora: now.toTimeString().slice(0, 5),
+    tecnico: employee.name,
+    marca: rec?.vehicle?.marca || "",
+    modelo: rec?.vehicle?.modelo || "",
+    anio: rec?.vehicle?.anio || "",
+    color: rec?.vehicle?.color || "",
+    placa: rec?.vehicle?.placa || "",
+    vin: rec?.vehicle?.vin || "",
+    kilometraje: rec?.vehicle?.kilometraje || "",
+    odometroUnidad: rec?.vehicle?.odometroUnidad || "mi",
+    observations: rec?.observations || "",
+    serviceReason: serviceReason(rec)
+  };
+  Object.entries(values).forEach(([key, value]) => {
+    const input = qs(`[name="${key}"]`, form);
+    if (input) input.value = value || "";
+  });
+}
+
+function createReception() {
+  const employee = activeEmployee();
+  AM_SIMPLE_STORE.mutate((current) => {
+    const next = AM_SIMPLE_STORE.next(current, "reception");
+    const id = `rec-${next}`;
+    const clientToken = "cli_" + AM_SIMPLE_STORE.cryptoToken();
+    const trackingToken = "trk_" + AM_SIMPLE_STORE.cryptoToken();
+    const photos = AM_SIMPLE_STORE.requiredPhotos.map((label, index) => ({ label, dataUrl: "", note: "", color: index % 2 === 0 ? "#206f78" : "#b52931" }));
+    current.receptions.unshift({
+      id,
+      number: `AM-R-${String(next).padStart(4, "0")}`,
+      status: "BORRADOR",
+      sentToClient: false,
+      signed: false,
+      signatureName: "",
+      signatureDate: "",
+      clientToken,
+      trackingToken,
+      employeeId: employee.id,
+      employeeName: employee.name,
+      client: { name: "", phone: "" },
+      vehicle: { marca: "", modelo: "", anio: "", color: "", placa: "", vin: "", kilometraje: "", odometroUnidad: "mi" },
+      photos,
+      inventory: AM_SIMPLE_STORE.baseInventory.map((name, index) => ({ id: `inv-${id}-${index + 1}`, name, present: true, note: "" })),
+      observations: "",
+      damages: [],
+      progress: 0,
+      progressLabel: "EN REVISIÓN",
+      tracking: {
+        receptionDate: "",
+        deliveryEstimate: "",
+        odometer: "",
+        plate: "",
+        vehicleTitle: "",
+        state: "EN REVISIÓN",
+        processDetails: ""
+      },
+      internalWork: { internalNote: "", lockedReception: false },
+      updates: []
+    });
+    current.selectedId = id;
+  });
+  fillReceptionForm();
+  renderPhotoEditor();
+  renderInventory();
+  renderDamageEditor();
+  setEmployeeWizardStep("datos");
+  showSection("nuevo");
+  toast("Nuevo vehículo listo para registrar.");
+}
+
+function saveReception() {
+  const collected = collectReceptionForm();
+  const employee = activeEmployee();
+  saveInventoryFromDom();
+  AM_SIMPLE_STORE.mutate((current) => {
+    let rec = AM_SIMPLE_STORE.selected(current);
+    if (!rec || rec.employeeId !== employee.id) {
+      const next = AM_SIMPLE_STORE.next(current, "reception");
+      const id = `rec-${next}`;
+      rec = {
+        id,
+        number: `AM-R-${String(next).padStart(4, "0")}`,
+        photos: AM_SIMPLE_STORE.requiredPhotos.map((label, index) => ({ label, dataUrl: "", note: "", color: index % 2 === 0 ? "#206f78" : "#b52931" })),
+        inventory: AM_SIMPLE_STORE.baseInventory.map((name, index) => ({ id: `inv-${id}-${index + 1}`, name, present: true, note: "" })),
+        damages: [],
+        updates: []
+      };
+      current.receptions.unshift(rec);
+      current.selectedId = id;
+    }
+    rec.client = { name: "", phone: "" };
+    rec.vehicle = collected.vehicle;
+    rec.employeeId = employee.id;
+    rec.employeeName = employee.name;
+    rec.serviceReason = collected.serviceReason || rec.serviceReason || "";
+    rec.observations = collected.observations;
+    rec.status = "EN REVISIÓN";
+    rec.progressLabel = "EN REVISIÓN";
+    rec.internalWork = { ...(rec.internalWork || {}), lockedReception: true };
+    rec.tracking = {
+      ...(rec.tracking || {}),
+      receptionDate: `${collected.fecha || new Date().toLocaleDateString("es-SV")}, ${collected.hora || new Date().toLocaleTimeString("es-SV")}`,
+      odometer: `${Number(collected.vehicle.kilometraje || 0).toLocaleString("en-US")} ${collected.vehicle.odometroUnidad === "km" ? "KILÓMETROS" : "MILLAS"}`,
+      plate: collected.vehicle.placa || "N/D",
+      vehicleTitle: `${collected.vehicle.marca} ${collected.vehicle.modelo} ${collected.vehicle.anio}`.trim(),
+      state: "EN REVISIÓN",
+      processDetails: collected.observations || collected.serviceReason || "Recepción registrada"
+    };
+  });
+  renderEmployee();
+  showSection("asignados");
+  toast("Registro guardado y agregado a vehículos asignados.");
+}
+
+function renderEmployeeVehicle() {
+  const current = state();
+  const rec = current.receptions.find((item) => item.id === current.selectedId);
+  const empty = qs("[data-employee-vehicle-empty]");
+  const panel = qs("[data-employee-vehicle-panel]");
+  if (empty) empty.classList.toggle("hidden", !!rec);
+  if (panel) panel.classList.toggle("hidden", !rec);
+  if (!rec) return;
+  const summary = qs("[data-employee-vehicle-summary]");
+  if (summary) {
+    summary.innerHTML = `
+      <div class="grid cols-4">
+        <div class="metric"><span>Recepción</span><strong>${rec.number}</strong><small>${rec.status}</small></div>
+        <div class="metric"><span>Vehículo</span><strong>${rec.vehicle.marca} ${rec.vehicle.modelo}</strong><small>${rec.vehicle.anio} - ${rec.vehicle.color}</small></div>
+        <div class="metric"><span>Placa</span><strong>${rec.vehicle.placa || "N/D"}</strong><small>VIN: ${rec.vehicle.vin || "N/D"}</small></div>
+        <div class="metric"><span>Autorización</span><strong>${rec.signed ? "Sí" : "No"}</strong><small>${rec.signed ? "Cliente autorizo" : "Pendiente"}</small></div>
+      </div>`;
+  }
+  const statusInput = qs('[data-employee-work="status"]');
+  if (statusInput) statusInput.value = rec.status || "EN REVISIÓN";
+  const progressInput = qs('[data-employee-work="progress"]');
+  if (progressInput) progressInput.value = rec.progress || 0;
+  const detailInput = qs('[data-employee-work="processDetails"]');
+  if (detailInput) detailInput.value = rec.tracking?.processDetails || "";
+  const noteInput = qs('[data-employee-work="internalNote"]');
+  if (noteInput) noteInput.value = rec.internalWork?.internalNote || "";
+}
+
+function renderEmployee() {
+  const employee = activeEmployee();
+  setEmployeeLabels(employee);
+  renderEmployeeLists(employee);
+  fillReceptionForm();
+  renderPhotoEditor();
+  renderInventory();
+  renderDamageEditor();
+  renderEmployeeVehicle();
+}
+
+let carouselIndex = 0;
+function renderClient() {
+  const rec = findReceptionByParam("clientToken");
+  if (!rec) return renderMissingToken();
+  const flow = qs("[data-authorization-flow]");
+  const authorizedOnly = qs("[data-authorized-only]");
+  const processingOnly = qs("[data-processing-only]");
+  if (processingOnly) processingOnly.classList.add("hidden");
+  if (flow) flow.classList.toggle("hidden", rec.signed);
+  if (authorizedOnly) authorizedOnly.classList.toggle("hidden", !rec.signed);
+  const summary = qs("[data-client-summary]");
+  if (summary) {
+    renderReceptionSummary(summary, rec);
+    summary.insertAdjacentHTML("beforeend", `
+      <article class="panel">
+        <div class="panel-header"><h3>Motivo de recepción</h3></div>
+        <div class="panel-body">
+          <div class="notice"><strong>Motivo por el cual recibimos el vehículo:</strong><br>${esc(serviceReason(rec) || "Sin motivo registrado.")}</div>
+        </div>
+      </article>`);
+  }
+  renderClientCarousel(rec);
+  renderClientInventory(rec);
+  renderClientDamages(rec);
+  const observations = qs("[data-client-observations]");
+  if (observations) observations.innerHTML = `<strong>Observaciones generales:</strong><br>${rec.observations || "Sin observaciones registradas."}`;
+  const authorizeButton = qs("[data-action='authorize-client']");
+  if (authorizeButton) authorizeButton.classList.toggle("hidden", rec.signed);
+  const termsCheck = qs("[data-terms-check]");
+  if (termsCheck) {
+    termsCheck.checked = rec.signed;
+    if (authorizeButton) authorizeButton.disabled = !termsCheck.checked;
+  }
+  const trackingLink = qs("[data-tracking-link]");
+  if (trackingLink) trackingLink.href = tokenHref("seguimiento-mobile.html", rec.trackingToken);
+}
+
+function renderClientCarousel(rec) {
+  const host = qs("[data-carousel]");
+  if (!host) return;
+  const photos = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label));
+  const photo = photos[carouselIndex] || photos[0];
+  host.innerHTML = `
+    <div class="carousel-stage">${photoVisual(photo)}</div>
+    <div class="carousel-caption">${carouselIndex + 1} de ${photos.length}: ${photo.label}</div>
+    <div class="btn-row">
+      <button class="btn" data-action="prev-photo">Anterior</button>
+      <button class="btn primary" data-action="next-photo">Siguiente</button>
+    </div>`;
+}
+
+function renderClientInventory(rec) {
+  const host = qs("[data-client-inventory]");
+  if (!host) return;
+  host.innerHTML = rec.inventory.map((item) => `
+    <div class="check-item">
+      <span class="pill ${item.present ? "ok" : "danger"}">${item.present ? "Presente" : "Falta"}</span>
+      <div><strong>${item.name}</strong><br><small>${item.note || "Sin detalle"}</small></div>
+    </div>`).join("");
+}
+
+function renderClientDamages(rec) {
+  const host = qs("[data-client-damages]");
+  if (!host) return;
+  host.innerHTML = rec.damages.map((damage) => `
+    <article class="panel">
+      <div class="panel-header"><div><h3>${damage.área}</h3><p>${damage.detail}</p></div></div>
+      <div class="panel-body photo-grid">${damage.photos.map(photoVisual).join("")}</div>
+    </article>`).join("") || '<div class="notice">No se registraron daños adicionales.</div>';
+}
+
+function renderTracking() {
+  const rec = findReceptionByParam("trackingToken");
+  if (!rec) return renderMissingToken();
+  const profile = trackingProfile(rec);
+  AM_SIMPLE_STORE.mutate((current) => {
+    const item = current.receptions.find((candidate) => candidate.id === rec.id);
+    if (item && !item.tracking) item.tracking = profile;
+  });
+  const host = qs("[data-tracking-view]");
+  if (!host) return;
+  const frontPhoto = rec.photos.find((photo) => photo.label === "Frente") || rec.photos[0];
+  const cardPhoto = rec.photos.find((photo) => photo.label === "Tarjeta reverso") || rec.photos.find((photo) => photo.label === "Tarjeta frente");
+  host.innerHTML = `
+    <div class="tracking-label">RECEPCION:</div>
+    <div class="tracking-date">${profile.receptionDate}</div>
+
+    <div class="tracking-vehicle-row">
+      <div class="tracking-vehicle-photo">${photoVisual(frontPhoto)}</div>
+      <div class="tracking-vehicle-info">
+        <div class="tracking-purple">ESTIMACION DE ENTREGA:</div>
+        <h2>${profile.vehicleTitle}</h2>
+        <p>ODOMETRO: ${profile.odometer}</p>
+        <p>PLACA:${profile.plate}</p>
+      </div>
+    </div>
+
+    <div class="tracking-label">TARJETA DE CIRCULACION</div>
+    <div class="tracking-card-photo">${photoVisual(cardPhoto)}</div>
+
+    <div class="tracking-progress-head">
+      <span>AVANCE %</span>
+      <strong>${rec.progress}</strong>
+    </div>
+    <div class="tracking-progress"><div style="width:${rec.progress}%"></div></div>
+
+    <div class="tracking-section">
+      <div class="tracking-label">ESTADO DEL VEHICULO:</div>
+      <strong>${profile.state}</strong>
+    </div>
+
+    <div class="tracking-section">
+      <h3>Detalles del proceso Actual:</h3>
+      <div class="timeline">
+        ${processRows(rec).map((row, index) => `
+          <div class="timeline-item">
+            <time>${index + 1}</time>
+            <div><p>${esc(row)}</p></div>
+          </div>`).join("") || "<p>Sin avances publicados.</p>"}
+      </div>
+    </div>
+
+  `;
+}
+
+function findReceptionByParam(key) {
+  const rawHash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  const params = new URLSearchParams(location.search || rawHash);
+  const token = params.get("token");
+  const current = state();
+  if (!token && (key === "clientToken" || key === "trackingToken")) return null;
+  if (!token) return AM_SIMPLE_STORE.selected(current);
+  const found = current.receptions.find((rec) => rec[key] === token);
+  if (found) return found;
+  return null;
+}
+
+function renderMissingToken() {
+  document.body.innerHTML = '<main class="public-main"><div class="notice danger">Token no válido o recepción no encontrada.</div></main>';
+}
+
+function saveReception() {
+  const collected = collectReceptionForm();
+  AM_SIMPLE_STORE.mutate((current) => {
+    const rec = AM_SIMPLE_STORE.selected(current);
+    rec.client = collected.client;
+    rec.vehicle = collected.vehicle;
+    rec.serviceReason = collected.serviceReason || rec.serviceReason || "";
+    rec.observations = collected.observations;
+    rec.status = "Revisión lista";
+    rec.sentToClient = false;
+  });
+  renderEmployee();
+  toast("Registro completo guardado. El administrador ya puede revisarlo.");
+}
+
+function saveReceptionDraft() {
+  const collected = collectReceptionForm();
+  AM_SIMPLE_STORE.mutate((current) => {
+    const rec = AM_SIMPLE_STORE.selected(current);
+    rec.client = collected.client;
+    rec.vehicle = collected.vehicle;
+    rec.serviceReason = collected.serviceReason || rec.serviceReason || "";
+    rec.observations = collected.observations;
+    if (rec.status === "Nueva recepción") rec.status = "Borrador empleado";
+  });
+  fillReceptionForm();
+}
+
+function saveInventoryFromDom() {
+  AM_SIMPLE_STORE.mutate((current) => {
+    const rec = AM_SIMPLE_STORE.selected(current);
+    rec.inventory.forEach((item) => {
+      const present = qs(`[data-inventory-present="${item.id}"]`);
+      const note = qs(`[data-inventory-note="${item.id}"]`);
+      item.present = !!present?.checked;
+      item.note = note?.value || "";
+    });
+  });
+}
+
+function createReception() {
+  AM_SIMPLE_STORE.mutate((current) => {
+    const next = AM_SIMPLE_STORE.next(current, "reception");
+    const id = `rec-${next}`;
+    const base = AM_SIMPLE_STORE.selected(current);
+    const tokens = makePrivateTokens();
+    current.receptions.unshift({
+      ...JSON.parse(JSON.stringify(base)),
+      id,
+      number: `AM-R-${String(next).padStart(4, "0")}`,
+      status: "Nueva recepción",
+      sentToClient: false,
+      signed: false,
+      signatureName: "",
+      signatureDate: "",
+      clientToken: tokens.clientToken,
+      trackingToken: tokens.trackingToken,
+      client: { name: "Nuevo cliente", phone: "" },
+      vehicle: { marca: "", modelo: "", anio: "", color: "", placa: "", vin: "", kilometraje: "" },
+      observations: "",
+      damages: [],
+      updates: []
+    });
+    current.selectedId = id;
+  });
+  renderEmployee();
+  toast("Nueva recepción creada.");
+}
+
+function createReception() {
+  const employee = activeEmployee();
+  AM_SIMPLE_STORE.mutate((current) => {
+    const next = AM_SIMPLE_STORE.next(current, "reception");
+    const id = `rec-${next}`;
+    const clientToken = "cli_" + AM_SIMPLE_STORE.cryptoToken();
+    const trackingToken = "trk_" + AM_SIMPLE_STORE.cryptoToken();
+    const photos = AM_SIMPLE_STORE.requiredPhotos.map((label, index) => ({ label, dataUrl: "", note: "", color: index % 2 === 0 ? "#206f78" : "#b52931" }));
+    current.receptions.unshift({
+      id,
+      number: `AM-R-${String(next).padStart(4, "0")}`,
+      status: "BORRADOR",
+      sentToClient: false,
+      signed: false,
+      signatureName: "",
+      signatureDate: "",
+      clientToken,
+      trackingToken,
+      employeeId: employee.id,
+      employeeName: employee.name,
+      client: { name: "", phone: "" },
+      vehicle: { marca: "", modelo: "", anio: "", color: "", placa: "", vin: "", kilometraje: "", odometroUnidad: "mi" },
+      photos,
+      inventory: AM_SIMPLE_STORE.baseInventory.map((name, index) => ({ id: `inv-${id}-${index + 1}`, name, present: true, note: "" })),
+      observations: "",
+      damages: [],
+      progress: 0,
+      progressLabel: "EN REVISIÓN",
+      tracking: {
+        receptionDate: "",
+        deliveryEstimate: "",
+        odometer: "",
+        plate: "",
+        vehicleTitle: "",
+        state: "EN REVISIÓN",
+        processDetails: ""
+      },
+      internalWork: { internalNote: "", lockedReception: false },
+      updates: []
+    });
+    current.selectedId = id;
+  });
+  fillReceptionForm();
+  renderPhotoEditor();
+  renderInventory();
+  renderDamageEditor();
+  setEmployeeWizardStep("datos");
+  showSection("nuevo");
+  toast("Nuevo vehículo listo para registrar.");
+}
+
+function saveReception() {
+  const collected = collectReceptionForm();
+  const employee = activeEmployee();
+  saveInventoryFromDom();
+  AM_SIMPLE_STORE.mutate((current) => {
+    const rec = AM_SIMPLE_STORE.selected(current);
+    if (!rec) return;
+    rec.client = { name: "", phone: "" };
+    rec.vehicle = collected.vehicle;
+    rec.employeeId = employee.id;
+    rec.employeeName = employee.name;
+    rec.serviceReason = collected.serviceReason || rec.serviceReason || "";
+    rec.observations = collected.observations;
+    rec.status = "EN REVISIÓN";
+    rec.progressLabel = "EN REVISIÓN";
+    rec.internalWork = { ...(rec.internalWork || {}), lockedReception: true };
+    rec.tracking = {
+      ...(rec.tracking || {}),
+      receptionDate: `${collected.fecha || new Date().toLocaleDateString("es-SV")}, ${collected.hora || new Date().toLocaleTimeString("es-SV")}`,
+      odometer: `${Number(collected.vehicle.kilometraje || 0).toLocaleString("en-US")} ${collected.vehicle.odometroUnidad === "km" ? "KILÓMETROS" : "MILLAS"}`,
+      plate: collected.vehicle.placa || "N/D",
+      vehicleTitle: `${collected.vehicle.marca} ${collected.vehicle.modelo} ${collected.vehicle.anio}`.trim(),
+      state: "EN REVISIÓN",
+      processDetails: collected.observations || collected.serviceReason || "Recepción registrada"
+    };
+  });
+  renderEmployee();
+  showSection("asignados");
+  toast("Registro guardado y agregado a vehículos asignados.");
+}
+
+function handleActions() {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && hasOpenActionMenu()) {
+      closeActionMenus();
+      return;
+    }
+    const row = event.target.closest?.("[data-open-file-row]");
+    if (!row || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    openAdminReceptionFile(row.dataset.openFileRow);
+  });
+  document.addEventListener("click", (event) => {
+    const clickedMenu = event.target.closest?.(".action-menu");
+    if (!clickedMenu) closeActionMenus();
+    if (event.target.matches?.("[data-image-modal]")) {
+      closeImagePreview();
+      return;
+    }
+    const tabButton = event.target.closest("[data-admin-file-tab]");
+    if (tabButton) {
+      showSection("expediente");
+      showAdminFileTab(tabButton.dataset.adminFileTab);
+      const rec = selected();
+      if (rec?.id) pushAdminHash(`expediente=${encodeURIComponent(rec.id)}&tab=${encodeURIComponent(tabButton.dataset.adminFileTab)}`);
+      return;
+    }
+    const filterButton = event.target.closest("[data-admin-filter]");
+    if (filterButton) {
+      const filter = filterButton.dataset.adminFilter || "all";
+      const employeeMenu = qs("[data-employee-filter-menu]");
+      if (filter === "workshop") {
+        adminDashboardFilter = "workshop";
+        adminEmployeeFilter = "";
+        if (employeeMenu) employeeMenu.classList.remove("hidden");
+      } else if (filter === "employee") {
+        adminDashboardFilter = "employee";
+        adminEmployeeFilter = filterButton.dataset.employeeFilter || "";
+        if (employeeMenu) employeeMenu.classList.remove("hidden");
+      } else {
+        adminDashboardFilter = filter;
+        adminEmployeeFilter = "";
+        if (employeeMenu) employeeMenu.classList.add("hidden");
+      }
+      showSection("dashboard");
+      renderReceptionTable();
+      return;
+    }
+    const row = event.target.closest("[data-open-file-row]");
+    if (row && !event.target.closest("[data-action]")) {
+      openAdminReceptionFile(row.dataset.openFileRow);
+      return;
+    }
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const action = button.dataset.action;
+    if (button.closest(".action-menu")) setTimeout(() => closeActionMenus(), 0);
+    if (action === "open-image-preview") {
+      event.preventDefault();
+      event.stopPropagation();
+      openImagePreview(button.dataset.id, button.dataset.label || "Imagen");
+      return;
+    }
+    if (action === "close-image-preview") {
+      event.preventDefault();
+      closeImagePreview();
+      return;
+    }
+    if (document.body.dataset.page === "employee" && handleEmployeeModuleAction(action, button, event)) return;
+    if (action === "admin-login") {
+      const value = qs("[data-login-value]")?.value || "";
+      AM_SIMPLE_STORE.mutate((current) => {
+        if (value === current.config.adminPin) current.session.admin = true;
+      });
+      if (state().session.admin) location.reload();
+      else toast("PIN incorrecto.", "danger");
+    }
+    if (action === "admin-quick-login") {
+      AM_SIMPLE_STORE.mutate((current) => { current.session.admin = true; });
+      location.reload();
+    }
+    if (action === "employee-login") {
+      const value = qs("[data-login-value]")?.value || "";
+      AM_SIMPLE_STORE.mutate((current) => {
+        if (value === current.config.employeeToken) current.session.employee = true;
+      });
+      if (state().session.employee) location.reload();
+      else toast("Token de empleado incorrecto.", "danger");
+    }
+    if (action === "employee-quick-login") {
+      AM_SIMPLE_STORE.mutate((current) => { current.session.employee = true; });
+      location.reload();
+    }
+    if (action === "admin-logout") {
+      AM_SIMPLE_STORE.mutate((current) => { current.session.admin = false; });
+      location.reload();
+    }
+    if (action === "employee-logout") {
+      AM_SIMPLE_STORE.mutate((current) => { current.session.employee = false; });
+      location.reload();
+    }
+    if (action === "reset-local") {
+      AM_SIMPLE_STORE.reset();
+      location.reload();
+    }
+    if (action === "import-full-backup") {
+      event.preventDefault();
+      qs('[data-backup-input="full"]')?.click();
+    }
+    if (action === "import-single-backup") {
+      event.preventDefault();
+      qs('[data-backup-input="single"]')?.click();
+    }
+    if (action === "clear-admin-search") {
+      event.preventDefault();
+      adminSearchFilters = { text: "", dateFrom: "", dateTo: "", vehicleYear: "" };
+      syncAdminSearchInputs();
+      renderReceptionTable();
+      renderClientCatalog();
+      toast("Búsqueda limpia.");
+    }
+    if (action === "select-backup-preview") {
+      event.preventDefault();
+      qs("[data-backup-viewer-input]")?.click();
+    }
+    if (action === "restore-preview-backup") {
+      event.preventDefault();
+      if (!previewBackup) {
+        toast("Primero cargue un respaldo individual en el visor.", "warn");
+        return;
+      }
+      restoreReceptionBackup(previewBackup);
+      previewBackup = null;
+      renderAdmin();
+      showSection("dashboard");
+      toast("Expediente restaurado al dashboard.");
+    }
+    if (action === "pick-local-folder") {
+      event.preventDefault();
+      pickAdminLocalBackupFolder().catch((error) => {
+        console.error(error);
+        toast("No se pudo conectar la carpeta local.", "danger");
+      });
+    }
+    if (action === "save-reception") {
+      saveInventoryFromDom();
+      saveReception();
+    }
+    if (action === "next-step" || action === "prev-step") {
+      const currentSection = button.closest("[data-section]");
+      const currentIndex = wizardOrder.indexOf(currentSection?.dataset.section || "datos");
+      if (action === "next-step") {
+        if (currentSection?.dataset.section === "datos") {
+          const form = qs("[data-reception-form]");
+          if (form && !form.reportValidity()) return;
+          saveReceptionDraft();
+        }
+        if (currentSection?.dataset.section === "inventario") {
+          saveInventoryFromDom();
+        }
+        showEmployeeStep(currentIndex + 1);
+      } else {
+        showEmployeeStep(currentIndex - 1);
+      }
+    }
+    if (action === "new-reception") createReception();
+    if (action === "add-inventory") {
+      const name = prompt("Nombre del inventario");
+      if (!name) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const next = AM_SIMPLE_STORE.next(current, "inventory");
+        rec.inventory.push({ id: `inv-${next}`, name, present: true, note: "" });
+      });
+      renderEmployee();
+    }
+    if (action === "add-damage") {
+      const area = qs("[name='damageArea']")?.value || "Área no especificada";
+      const detail = qs("[name='damageDetail']")?.value || "Detalle pendiente";
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const next = AM_SIMPLE_STORE.next(current, "damage");
+        rec.damages.push({ id: `dam-${next}`, área, detail, photos: [{ label: `Daño ${área}`, dataUrl: "", note: "", color: "#b52931" }] });
+      });
+      renderEmployee();
+      toast("Daño agregado.");
+    }
+    if (action === "remove-damage") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        rec.damages = rec.damages.filter((item) => item.id !== button.dataset.id);
+      });
+      renderEmployee();
+    }
+    if (action === "select-reception") {
+      AM_SIMPLE_STORE.mutate((current) => { current.selectedId = button.dataset.id; });
+      renderAdmin();
+      toast("Recepción seleccionada.");
+    }
+    if (action === "open-file") {
+      event.preventDefault();
+      openAdminReceptionFile(button.dataset.id);
+    }
+    if (action === "download-backup") {
+      event.preventDefault();
+      const rec = button.dataset.id ? state().receptions.find((item) => item.id === button.dataset.id) : AM_SIMPLE_STORE.selected(state());
+      if (!rec) return;
+      downloadReceptionBackup(rec);
+      toast("Descargando respaldo del expediente y archivo interno.");
+    }
+    if (action === "download-all-backup") {
+      event.preventDefault();
+      downloadAllProgramBackup();
+      toast("Descargando respaldo completo del programa.");
+    }
+    if (action === "delete-reception") {
+      event.preventDefault();
+      const rec = state().receptions.find((item) => item.id === button.dataset.id);
+      if (!rec) return;
+      if (!confirm(`Mover ${rec.number} a la papelera de reciclaje? Permanecerá disponible para restaurar durante 60 días.`)) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = current.receptions.find((candidate) => candidate.id === rec.id);
+        if (!item) return;
+        item.deletedAt = new Date().toISOString();
+        item.archivedAt = "";
+        item.deletedBy = "Administrador";
+        if (current.selectedId === item.id) current.selectedId = "";
+      });
+      if (location.hash.includes(rec.id)) history.replaceState(null, "", "admin.html");
+      renderAdmin();
+      showSection("dashboard");
+      toast("Expediente enviado a papelera.");
+    }
+    if (action === "archive-reception") {
+      event.preventDefault();
+      const rec = state().receptions.find((item) => item.id === button.dataset.id);
+      if (!rec) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = current.receptions.find((candidate) => candidate.id === rec.id);
+        if (!item) return;
+        item.archivedAt = new Date().toISOString();
+        item.deletedAt = "";
+        item.archivedBy = "Administrador";
+      });
+      renderAdmin();
+      toast("Expediente archivado.");
+    }
+    if (action === "unarchive-reception") {
+      event.preventDefault();
+      const rec = state().receptions.find((item) => item.id === button.dataset.id);
+      if (!rec) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = current.receptions.find((candidate) => candidate.id === rec.id);
+        if (!item) return;
+        item.archivedAt = "";
+        item.archivedBy = "";
+      });
+      adminDashboardFilter = "all";
+      renderAdmin();
+      toast("Expediente devuelto al dashboard.");
+    }
+    if (action === "restore-trash-reception") {
+      event.preventDefault();
+      const rec = state().receptions.find((item) => item.id === button.dataset.id);
+      if (!rec) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = current.receptions.find((candidate) => candidate.id === rec.id);
+        if (!item) return;
+        item.deletedAt = "";
+        item.deletedBy = "";
+        item.archivedAt = "";
+      });
+      adminDashboardFilter = "all";
+      renderAdmin();
+      toast("Expediente restaurado al dashboard.");
+    }
+    if (action === "purge-trash-reception") {
+      event.preventDefault();
+      const rec = state().receptions.find((item) => item.id === button.dataset.id);
+      if (!rec) return;
+      if (!confirm(`Eliminar definitivamente ${rec.number}? Esta acción ya no se podrá restaurar desde papelera.`)) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        if (!Array.isArray(current.deletedReceptionNumbers)) current.deletedReceptionNumbers = [];
+        if (rec.number && !current.deletedReceptionNumbers.includes(rec.number)) current.deletedReceptionNumbers.push(rec.number);
+        current.receptions = current.receptions.filter((item) => item.id !== rec.id);
+        if (current.selectedId === rec.id) current.selectedId = "";
+      });
+      if (location.hash.includes(rec.id)) history.replaceState(null, "", "admin.html");
+      renderAdmin();
+      toast("Expediente eliminado definitivamente.");
+    }
+    if (action === "send-client") {
+      let target = "";
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        rec.sentToClient = true;
+        rec.status = "Enviado al cliente";
+        const phone = whatsappPhone(rec.client?.phone);
+        const text = encodeURIComponent(authorizationMessage(rec));
+        target = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+      });
+      renderAdmin();
+      if (target) window.open(target, "_blank");
+      toast("Link de autorización generado para WhatsApp.");
+    }
+    if (action === "open-admin-authorization") {
+      const card = qs("[data-admin-authorization-card]");
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+        card.classList.add("focus-flash");
+        setTimeout(() => card.classList.remove("focus-flash"), 1200);
+      }
+      toast("Vista administrativa de autorización abierta.");
+    }
+    if (action === "admin-manual-authorize") {
+      const reason = prompt("Motivo o referencia de autorización manual", "Cliente autoriza personalmente en taller / por llamada");
+      if (reason === null) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        rec.signed = true;
+        rec.sentToClient = true;
+        rec.signatureName = rec.client?.name || "Autorización manual administrativa";
+        rec.signatureDate = new Date().toLocaleString("es-SV");
+        rec.status = "Autorizado";
+        rec.authorizationEvidence = {
+          acceptedAtIso: new Date().toISOString(),
+          token: rec.clientToken,
+          authorizationType: "Manual por administrador",
+          registeredBy: "Administrador",
+          reason: reason || "Autorización manual registrada por administrador",
+          userAgent: navigator.userAgent || "",
+          platform: navigator.platform || "",
+          language: navigator.language || "",
+          languages: Array.isArray(navigator.languages) ? navigator.languages.join(", ") : "",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+          screen: `${screen.width}x${screen.height}`,
+          viewport: `${innerWidth}x${innerHeight}`
+        };
+      });
+      renderAdmin();
+      toast("Autorización manual registrada.");
+    }
+    if (action === "admin-remove-authorization") {
+      const rec = AM_SIMPLE_STORE.selected(state());
+      if (!rec) return;
+      if (!confirm(`Quitar la autorización de ${rec.number}? El expediente volverá a estado pendiente.`)) return;
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = AM_SIMPLE_STORE.selected(current);
+        item.signed = false;
+        item.sentToClient = false;
+        item.signatureName = "";
+        item.signatureDate = "";
+        item.status = "Pendiente de autorización";
+        item.authorizationEvidence = {
+          removedAtIso: new Date().toISOString(),
+          authorizationType: "Autorización eliminada",
+          registeredBy: "Administrador",
+          reason: "Autorización quitada manualmente por administrador"
+        };
+      });
+      renderAdmin();
+      toast("Autorización eliminada.");
+    }
+    if (action === "save-client-profile") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        saveAdminAllFromDom(current);
+      });
+      renderAdmin();
+      toast("Guardado.");
+    }
+    if (action === "save-admin-expediente") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        saveAdminAllFromDom(current);
+      });
+      renderAdmin();
+      toast("Guardado.");
+    }
+    if (action === "save-admin-all") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        saveAdminAllFromDom(current);
+      });
+      renderAdmin();
+      toast("Guardado.");
+    }
+    if (action === "admin-add-damage") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const next = AM_SIMPLE_STORE.next(current, "damage");
+        rec.damages.push({ id: `adm-dam-${next}`, área: "Área", detail: "Detalle", photos: [{ label: "Foto daño", dataUrl: "", note: "", color: "#b52931" }] });
+      });
+      renderAdmin();
+      toast("Daño agregado.");
+    }
+    if (action === "admin-remove-damage") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        rec.damages = rec.damages.filter((damage) => damage.id !== button.dataset.id);
+      });
+      renderAdmin();
+      toast("Daño eliminado.");
+    }
+    if (action === "admin-add-damage-photo") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const damage = rec.damages.find((item) => item.id === button.dataset.id);
+        if (!damage) return;
+        if (!Array.isArray(damage.photos)) damage.photos = [];
+        damage.photos.push({ label: `Foto daño ${damage.photos.length + 1}`, dataUrl: "", note: "", color: "#b52931" });
+      });
+      renderAdmin();
+      toast("Foto agregada al daño.");
+    }
+    if (action === "copy-client-link") copyText(qs("[data-client-links] a")?.href || "");
+    if (action === "save-progress") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const profile = trackingProfile(rec);
+        qsa("[data-track-field]").forEach((input) => {
+          profile[input.dataset.trackField] = input.value;
+        });
+        rec.progress = Number(qs("[data-admin-progress]").value || 0);
+        const rows = qsa("[data-admin-process-row]").map((input) => input.value.trim()).filter(Boolean);
+        profile.processDetails = rows.join("\n");
+        rec.status = profile.state || rec.status;
+        rec.progressLabel = profile.state || "En proceso";
+      });
+      renderAdmin();
+      toast("Seguimiento actualizado.");
+    }
+    if (action === "admin-add-detail-row") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const profile = trackingProfile(rec);
+        const rows = processRows(rec);
+        const next = qs("[data-admin-new-detail]")?.value.trim();
+        if (next) rows.push(next);
+        profile.processDetails = rows.join("\n");
+      });
+      renderAdmin();
+    }
+    if (action === "admin-remove-detail-row") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const profile = trackingProfile(rec);
+        const rows = qsa("[data-admin-process-row]").map((input) => input.value.trim()).filter(Boolean);
+        rows.splice(Number(button.dataset.index), 1);
+        profile.processDetails = rows.join("\n");
+      });
+      renderAdmin();
+    }
+    if (action === "save-internal-log") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const rows = qsa("[data-admin-internal-row]").map((input) => input.value.trim()).filter(Boolean);
+        rec.internalWork = { ...(rec.internalWork || {}), internalNote: rows.join("\n"), lockedReception: true };
+      });
+      renderAdmin();
+      toast("Bitácora interna guardada.");
+    }
+    if (action === "admin-add-internal-row") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const rows = internalRows(rec);
+        const next = qs("[data-admin-new-internal]")?.value.trim();
+        if (next) rows.push(next);
+        rec.internalWork = { ...(rec.internalWork || {}), internalNote: rows.join("\n"), lockedReception: true };
+      });
+      renderAdmin();
+    }
+    if (action === "admin-remove-internal-row") {
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const rows = qsa("[data-admin-internal-row]").map((input) => input.value.trim()).filter(Boolean);
+        rows.splice(Number(button.dataset.index), 1);
+        rec.internalWork = { ...(rec.internalWork || {}), internalNote: rows.join("\n"), lockedReception: true };
+      });
+      renderAdmin();
+    }
+    if (action === "print-authorization") {
+      const rec = AM_SIMPLE_STORE.selected(state());
+      const evidence = rec.authorizationEvidence || {};
+      const inventoryRows = (rec.inventory || []).map((item) => `<tr><td>${esc(item.name)}</td><td>${item.present ? "Presente" : "Faltante"}</td><td>${esc(item.note || "")}</td></tr>`).join("");
+      const damageRows = (rec.damages || []).map((damage) => `<tr><td>${esc(damage.área || "")}</td><td>${esc(damage.detail || "")}</td></tr>`).join("");
+      const html = `
+        <html><head><title>Autorización ${esc(rec.number)}</title><style>
+          *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;margin:0;color:#17202a;background:#fff;line-height:1.42}.page{max-width:920px;margin:0 auto;padding:34px}.header{display:flex;justify-content:space-between;gap:18px;border-bottom:3px solid #206f78;padding-bottom:18px;margin-bottom:22px}.brand h1{margin:0;font-size:26px}.brand p,.meta p{margin:3px 0;color:#637282}.meta{text-align:right}.status{display:inline-block;border-radius:999px;padding:6px 12px;font-weight:700;background:${rec.signed ? "#e7f4ed" : "#fff3d8"};color:${rec.signed ? "#24744a" : "#8a5b00"}}h2{font-size:16px;margin:22px 0 8px;color:#206f78;text-transform:uppercase;letter-spacing:.04em}table{width:100%;border-collapse:collapse;margin-bottom:10px}td,th{border:1px solid #d9e1e8;padding:9px 10px;vertical-align:top}th{background:#eef5f6;text-align:left}.notice{border-left:4px solid #206f78;background:#f4f8f9;padding:12px 14px;margin:10px 0}.legal{font-size:13px;text-align:justify}.signature{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}.box{border:1px solid #d9e1e8;padding:14px;min-height:92px}.footer{margin-top:24px;border-top:1px solid #d9e1e8;padding-top:10px;color:#637282;font-size:12px}@media print{.page{padding:18px}.no-break{break-inside:avoid}}
+        </style></head><body>
+        <main class="page">
+          <section class="header">
+            <div class="brand">
+              <h1>Autorización de diagnóstico y/o reparación</h1>
+              <p>Automotriz Medina</p>
+              <p>Documento de consentimiento informado del cliente</p>
+            </div>
+            <div class="meta">
+              <p><strong>Recepción:</strong> ${esc(rec.number)}</p>
+              <p><strong>Fecha de impresion:</strong> ${new Date().toLocaleString("es-SV")}</p>
+              <span class="status">${rec.signed ? "AUTORIZADO POR EL CLIENTE" : "PENDIENTE DE AUTORIZACION"}</span>
+            </div>
+          </section>
+
+          <div class="notice">
+            Este documento deja constancia de la información presentada al cliente, el motivo por el cual el vehículo fue recibido en taller y, cuando corresponda, la autorización otorgada para proceder con diagnóstico y/o reparación.
+          </div>
+
+          <h2>Cliente</h2>
+          <table><tr><td>Nombre</td><td>${esc(rec.client.name)}</td></tr><tr><td>Teléfono</td><td>${esc(rec.client.phone)}</td></tr></table>
+
+          <h2>Vehículo</h2>
+          <table><tr><td>Vehículo</td><td>${esc(`${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}`)}</td></tr><tr><td>Color</td><td>${esc(rec.vehicle.color)}</td></tr><tr><td>Placa</td><td>${esc(rec.vehicle.placa)}</td></tr><tr><td>VIN</td><td>${esc(rec.vehicle.vin)}</td></tr><tr><td>Kilometraje</td><td>${esc(rec.vehicle.kilometraje)}</td></tr><tr><td>Técnico receptor</td><td>${esc(rec.employeeName || "")}</td></tr></table>
+
+          <h2>Motivo de recepción / falla reportada</h2>
+          <div class="notice">${esc(serviceReason(rec) || "Sin motivo registrado.")}</div>
+
+          <h2>Observaciones de recepción</h2>
+          <div class="notice">${esc(rec.observations || "Sin observaciones registradas.")}</div>
+
+          <h2>Inventario registrado</h2>
+          <table><thead><tr><th>Elemento</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>${inventoryRows || '<tr><td colspan="3">Sin inventario registrado.</td></tr>'}</tbody></table>
+
+          <h2>Daños u observaciones de carrocería</h2>
+          <table><thead><tr><th>Área</th><th>Detalle</th></tr></thead><tbody>${damageRows || '<tr><td colspan="2">Sin daños registrados.</td></tr>'}</tbody></table>
+
+          <h2>Declaracion de autorización</h2>
+          <div class="legal">
+            <p>El cliente declara que la información anterior corresponde a la recepción del vehículo identificado en este documento y reconoce que el motivo de ingreso/falla reportada ha sido registrado para orientar el diagnóstico inicial del taller.</p>
+            <p>El cliente autoriza a Automotriz Medina a realizar inspecciones, pruebas, desmontajes razonables, diagnósticos, verificaciones eléctricas, mecánicas o electrónicas y demás procedimientos necesarios para determinar el estado del vehículo y las acciones recomendadas. Cualquier reparación, repuesto o cargo adicional deberá ser informado conforme al proceso interno del taller, salvo trabajos expresamente autorizados por el cliente.</p>
+            <p>El cliente comprende que pueden existir fallas preexistentes, intermitentes, ocultas o derivadas de desgaste natural que no sean visibles al momento de la recepción. Automotriz Medina no asume responsabilidad por condiciones previas, manipulaciones anteriores, accesorios no declarados, objetos personales no registrados o fallas que se manifiesten durante pruebas necesarias para el diagnóstico.</p>
+            <p>El cliente acepta que el vehículo podrá permanecer bajo resguardo del taller mientras se realiza el proceso autorizado y que la entrega final podrá estar sujeta a la cancelación de saldos pendientes por diagnóstico, mano de obra, repuestos, almacenaje u otros conceptos debidamente informados.</p>
+          </div>
+
+          <h2>Constancia tecnica de aceptacion</h2>
+          <table><tr><td>Estado</td><td>${rec.signed ? "Autorizado" : "Pendiente"}</td></tr><tr><td>Tipo</td><td>${esc(evidence.authorizationType || "Cliente por link")}</td></tr><tr><td>Registrado por</td><td>${esc(evidence.registeredBy || "Cliente")}</td></tr><tr><td>Motivo / referencia</td><td>${esc(evidence.reason || "")}</td></tr><tr><td>Fecha de autorización</td><td>${esc(rec.signatureDate || "")}</td></tr><tr><td>Token privado</td><td>${esc(rec.clientToken)}</td></tr><tr><td>Navegador</td><td>${esc(evidence.userAgent || "")}</td></tr><tr><td>Plataforma</td><td>${esc(evidence.platform || "")}</td></tr><tr><td>Idioma</td><td>${esc(evidence.language || "")}</td></tr><tr><td>Zona horaria</td><td>${esc(evidence.timezone || "")}</td></tr><tr><td>Pantalla</td><td>${esc(evidence.screen || "")}</td></tr><tr><td>Ventana</td><td>${esc(evidence.viewport || "")}</td></tr></table>
+
+          <section class="signature no-break">
+            <div class="box"><strong>Cliente / responsable</strong><br>${esc(rec.signatureName || rec.client.name || "")}<br><br>Autorización digital registrada por token.</div>
+            <div class="box"><strong>Automotriz Medina</strong><br>Recepción y resguardo local del expediente.<br><br>Documento generado desde el sistema interno.</div>
+          </section>
+
+          <div class="footer">Este documento fue generado localmente desde el sistema de recepción de Automotriz Medina. Conserve una copia para respaldo administrativo.</div>
+        </main>
+        </body></html>`;
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+        win.print();
+      }
+    }
+    if (action === "add-update") {
+      const title = qs("[name='updateTitle']")?.value || "Avance";
+      const text = qs("[name='updateText']")?.value || "Avance registrado.";
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        const next = AM_SIMPLE_STORE.next(current, "update");
+        rec.updates.unshift({ id: `upd-${next}`, date: today(), title, text, photo: "" });
+      });
+      renderAdmin();
+      toast("Avance publicado en seguimiento.");
+    }
+    if (action === "prev-photo" || action === "next-photo") {
+      const rec = findReceptionByParam("clientToken");
+      const total = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label)).length;
+      carouselIndex = action === "next-photo" ? (carouselIndex + 1) % total : (carouselIndex - 1 + total) % total;
+      renderClientCarousel(rec);
+    }
+    if (action === "authorize-client") {
+      const rec = findReceptionByParam("clientToken");
+      const flow = qs("[data-authorization-flow]");
+      const processingOnly = qs("[data-processing-only]");
+      const authorizedOnly = qs("[data-authorized-only]");
+      if (flow) flow.classList.add("hidden");
+      if (authorizedOnly) authorizedOnly.classList.add("hidden");
+      if (processingOnly) processingOnly.classList.remove("hidden");
+      setTimeout(() => {
+        AM_SIMPLE_STORE.mutate((current) => {
+          const item = current.receptions.find((candidate) => candidate.id === rec.id);
+          item.signed = true;
+          item.signatureName = item.client.name;
+          item.signatureDate = new Date().toLocaleString("es-SV");
+          item.status = "Autorizado";
+          item.authorizationEvidence = {
+            acceptedAtIso: new Date().toISOString(),
+            token: item.clientToken,
+            userAgent: navigator.userAgent || "",
+            platform: navigator.platform || "",
+            language: navigator.language || "",
+            languages: Array.isArray(navigator.languages) ? navigator.languages.join(", ") : "",
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+            screen: `${screen.width}x${screen.height}`,
+            viewport: `${innerWidth}x${innerHeight}`
+          };
+        });
+        renderClient();
+        toast("Autorización recibida. Link de seguimiento generado.");
+      }, 3000);
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    const input = event.target;
+    if (input.matches?.("[data-admin-search], [data-admin-date-from], [data-admin-date-to], [data-admin-vehicle-year]")) {
+      adminSearchFilters.text = qs("[data-admin-search]")?.value || "";
+      adminSearchFilters.dateFrom = qs("[data-admin-date-from]")?.value || "";
+      adminSearchFilters.dateTo = qs("[data-admin-date-to]")?.value || "";
+      adminSearchFilters.vehicleYear = qs("[data-admin-vehicle-year]")?.value || "";
+      syncAdminSearchInputs();
+      renderReceptionTable();
+      renderClientCatalog();
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    const input = event.target;
+    if (input.matches?.("[data-admin-search], [data-admin-date-from], [data-admin-date-to], [data-admin-vehicle-year]")) {
+      adminSearchFilters.text = qs("[data-admin-search]")?.value || "";
+      adminSearchFilters.dateFrom = qs("[data-admin-date-from]")?.value || "";
+      adminSearchFilters.dateTo = qs("[data-admin-date-to]")?.value || "";
+      adminSearchFilters.vehicleYear = qs("[data-admin-vehicle-year]")?.value || "";
+      syncAdminSearchInputs();
+      renderReceptionTable();
+      renderClientCatalog();
+      return;
+    }
+    if (input.matches("[data-backup-input]")) {
+      importBackupFile(input.files?.[0], input.dataset.backupInput || "").catch((error) => {
+        console.error(error);
+        toast(error.message || "No se pudo cargar el respaldo.", "danger");
+      }).finally(() => {
+        input.value = "";
+      });
+      return;
+    }
+    if (input.matches("[data-backup-viewer-input]")) {
+      previewBackupFile(input.files?.[0]).catch((error) => {
+        console.error(error);
+        toast(error.message || "No se pudo abrir el expediente temporal.", "danger");
+      }).finally(() => {
+        input.value = "";
+      });
+      return;
+    }
+    if (input.matches("[data-photo-index]") && input.dataset.damagePhoto == null) {
+      const index = Number(input.dataset.photoIndex);
+      readFile(input, (dataUrl) => {
+        AM_SIMPLE_STORE.mutate((current) => {
+          AM_SIMPLE_STORE.selected(current).photos[index].dataUrl = dataUrl;
+        });
+        renderPhotoEditor();
+      });
+    }
+    if (input.matches("[data-damage-photo]")) {
+      const damageId = input.dataset.damagePhoto;
+      const photoIndex = Number(input.dataset.photoIndex);
+      readFile(input, (dataUrl) => {
+        AM_SIMPLE_STORE.mutate((current) => {
+          const damage = AM_SIMPLE_STORE.selected(current).damages.find((item) => item.id === damageId);
+          if (damage) damage.photos[photoIndex].dataUrl = dataUrl;
+        });
+        renderDamageEditor();
+      });
+    }
+    if (input.matches("[data-admin-photo-index]")) {
+      const photoIndex = Number(input.dataset.adminPhotoIndex);
+      readFile(input, (dataUrl) => {
+        AM_SIMPLE_STORE.mutate((current) => {
+          const rec = AM_SIMPLE_STORE.selected(current);
+          if (rec.photos[photoIndex]) rec.photos[photoIndex].dataUrl = dataUrl;
+        });
+        renderAdmin();
+      });
+    }
+    if (input.matches("[data-admin-damage-photo]")) {
+      const damageId = input.dataset.adminDamagePhoto;
+      const photoIndex = Number(input.dataset.photoIndex);
+      readFile(input, (dataUrl) => {
+        AM_SIMPLE_STORE.mutate((current) => {
+          const rec = AM_SIMPLE_STORE.selected(current);
+          const damage = rec.damages.find((item) => item.id === damageId);
+          if (damage?.photos?.[photoIndex]) damage.photos[photoIndex].dataUrl = dataUrl;
+        });
+        renderAdmin();
+      });
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target.matches("[data-admin-progress]")) {
+      const value = qs("[data-progress-value]");
+      if (value) value.textContent = `${event.target.value}%`;
+    }
+    if (event.target.matches("[data-terms-check]")) {
+      const button = qs("[data-action='authorize-client']");
+      if (button) button.disabled = !event.target.checked;
+    }
+  });
+
+  document.addEventListener("change", (event) => {
+    if (event.target.matches("[data-terms-check]")) {
+      const button = qs("[data-action='authorize-client']");
+      if (button) button.disabled = !event.target.checked;
+    }
+  });
+}
+
+function handleEmployeeModuleAction(action, button, event) {
+  if (action === "employee-new-vehicle") {
+    createReception();
+    return true;
+  }
+  if (action === "next-step") {
+    saveReceptionDraft();
+    setEmployeeWizardStep("fotos");
+    return true;
+  }
+  if (action === "employee-step-data") {
+    setEmployeeWizardStep("datos");
+    return true;
+  }
+  if (action === "employee-step-photos") {
+    setEmployeeWizardStep("fotos");
+    return true;
+  }
+  if (action === "employee-step-inventory") {
+    saveReceptionDraft();
+    setEmployeeWizardStep("inventario");
+    return true;
+  }
+  if (action === "employee-step-damages") {
+    saveInventoryFromDom();
+    setEmployeeWizardStep("danos");
+    return true;
+  }
+  if (action === "employee-step-finish") {
+    const finalSummary = qs("[data-final-summary]");
+    const rec = selected();
+    if (finalSummary && rec) {
+      finalSummary.innerHTML = `
+        <div class="grid cols-3">
+          <div class="metric"><span>Vehículo</span><strong>${rec.vehicle.marca || "Pendiente"} ${rec.vehicle.modelo || ""}</strong><small>${rec.vehicle.placa || "Sin placa"}</small></div>
+          <div class="metric"><span>Fotos</span><strong>${rec.photos.filter((p) => p.dataUrl).length}/${rec.photos.length}</strong><small>Cargadas localmente</small></div>
+          <div class="metric"><span>Daños</span><strong>${rec.damages.length}</strong><small>Registrados</small></div>
+        </div>`;
+    }
+    setEmployeeWizardStep("finalizar");
+    return true;
+  }
+  if (action === "save-reception") {
+    saveReception();
+    return true;
+  }
+  if (action === "add-inventory") {
+    const name = prompt("Nombre del inventario");
+    if (!name) return true;
+    AM_SIMPLE_STORE.mutate((current) => {
+      const rec = AM_SIMPLE_STORE.selected(current);
+      if (!rec) return;
+      const next = AM_SIMPLE_STORE.next(current, "inventory");
+      rec.inventory.push({ id: `inv-${next}`, name, present: true, note: "" });
+    });
+    renderEmployee();
+    return true;
+  }
+  if (action === "add-damage") {
+    const area = qs("[name='damageArea']")?.value || "Área no especificada";
+    const detail = qs("[name='damageDetail']")?.value || "Detalle pendiente";
+    AM_SIMPLE_STORE.mutate((current) => {
+      const rec = AM_SIMPLE_STORE.selected(current);
+      if (!rec) return;
+      const next = AM_SIMPLE_STORE.next(current, "damage");
+      rec.damages.push({ id: `dam-${next}`, área, detail, photos: [{ label: `Daño ${área}`, dataUrl: "", note: "", color: "#b52931" }] });
+    });
+    renderEmployee();
+    toast("Daño agregado.");
+    return true;
+  }
+  if (action === "remove-damage") {
+    AM_SIMPLE_STORE.mutate((current) => {
+      const rec = AM_SIMPLE_STORE.selected(current);
+      if (!rec) return;
+      rec.damages = rec.damages.filter((item) => item.id !== button.dataset.id);
+    });
+    renderEmployee();
+    return true;
+  }
+  if (action === "open-employee-vehicle") {
+    AM_SIMPLE_STORE.mutate((current) => { current.selectedId = button.dataset.id; });
+    renderEmployee();
+    showSection("vehiculo");
+    return true;
+  }
+  if (action === "employee-save-work") {
+    AM_SIMPLE_STORE.mutate((current) => {
+      const rec = AM_SIMPLE_STORE.selected(current);
+      if (!rec) return;
+      const status = qs('[data-employee-work="status"]')?.value || rec.status;
+      const progress = Number(qs('[data-employee-work="progress"]')?.value || rec.progress || 0);
+      const details = qs('[data-employee-work="processDetails"]')?.value || "";
+      const note = qs('[data-employee-work="internalNote"]')?.value || "";
+      rec.status = status;
+      rec.progress = progress;
+      rec.progressLabel = status;
+      rec.tracking = { ...(rec.tracking || {}), state: status, processDetails: details };
+      rec.internalWork = { ...(rec.internalWork || {}), internalNote: note };
+    });
+    renderEmployee();
+    toast("Cambios guardados.");
+    return true;
+  }
+  if (action === "employee-mark-finished") {
+    AM_SIMPLE_STORE.mutate((current) => {
+      const rec = AM_SIMPLE_STORE.selected(current);
+      if (!rec) return;
+      rec.status = "FINALIZADO";
+      rec.progress = 100;
+      rec.progressLabel = "FINALIZADO";
+      rec.tracking = { ...(rec.tracking || {}), state: "FINALIZADO" };
+    });
+    renderEmployee();
+    showSection("finalizados");
+    toast("Vehículo marcado como finalizado.");
+    return true;
+  }
+  return false;
+}
+
+function copyText(text) {
+  if (!text) return;
+  navigator.clipboard?.writeText(text);
+  toast("Link copiado al portapapeles.");
+}
+
+function enableSpanishSpellcheck(root = document) {
+  root.querySelectorAll?.("input:not([type='number']):not([type='date']):not([type='time']):not([type='range']):not([type='file']), textarea").forEach((field) => {
+    field.setAttribute("spellcheck", "true");
+    field.setAttribute("lang", "es");
+  });
+}
+
+function initBackupViewer() {
+  const drop = qs("[data-backup-viewer-drop]");
+  const input = qs("[data-backup-viewer-input]");
+  if (!drop && !input) return;
+  if (drop && !drop.dataset.ready) {
+    drop.dataset.ready = "1";
+    ["dragenter", "dragover"].forEach((type) => {
+      drop.addEventListener(type, (event) => {
+        event.preventDefault();
+        drop.classList.add("dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach((type) => {
+      drop.addEventListener(type, () => drop.classList.remove("dragover"));
+    });
+    drop.addEventListener("drop", (event) => {
+      event.preventDefault();
+      previewBackupFile(event.dataTransfer?.files?.[0]).catch((error) => {
+        console.error(error);
+        toast(error.message || "No se pudo abrir el expediente temporal.", "danger");
+      });
+    });
+    drop.addEventListener("click", () => input?.click());
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  handleActions();
+  initActionMenus();
+  initBackupViewer();
+  const page = document.body.dataset.page;
+  if (page === "admin") compactLocalArchiveStores();
+  if (page === "admin") initAdminLocalBackup().catch(() => setLocalBackupStatus("Sin carpeta local", "warn"));
+  if ((page === "admin" || page === "employee") && !requireLocalAccess(page)) return;
+  renderNav();
+  renderTabs();
+  if (page === "admin") {
+    applyAdminHashRoute();
+  }
+  if (page === "employee") renderEmployee();
+  if (page === "client") renderClient();
+  if (page === "tracking") renderTracking();
+  enableSpanishSpellcheck();
+});
+
+document.addEventListener("focusin", (event) => {
+  if (event.target.matches?.("input, textarea")) enableSpanishSpellcheck(document);
+});
+
+window.addEventListener("hashchange", () => {
+  if (document.body.dataset.page !== "admin") return;
+  applyAdminHashRoute();
+});
+
+window.addEventListener("popstate", () => {
+  if (hasOpenActionMenu()) closeActionMenus();
+});
+
+window.addEventListener("simple-state-change", () => {
+  scheduleAdminLocalBackup("cambio");
+});
+
+
+
+
+
+
+</script>
+</body>
+</html>
+
+
+
+

@@ -37,12 +37,18 @@
     }
     button:hover { border-color: #9aa7b8; }
     button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    #loadCloudFile { background: #facc15; border-color: #eab308; color: #422006; font-weight: 800; }
+    #loadCloudFile:hover { background: #fde047; border-color: #ca8a04; }
+    #saveFile.primary { background: #22c55e; border-color: #16a34a; color: #06240f; font-weight: 800; }
+    #saveFile.primary:hover { background: #4ade80; border-color: #15803d; }
     button.success { background: #0f766e; border-color: #0f766e; color: #fff; }
     button.notify { background: #2563eb; border-color: #2563eb; color: #fff; }
     button.print { background: #111827; border-color: #111827; color: #fff; }
     button.spell-check-btn { background: #16a34a; border-color: #16a34a; color: #fff; }
     button.spell-check-btn:hover { background: #15803d; border-color: #15803d; }
     button.danger { color: var(--danger); }
+    button.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+    button.danger-solid:hover { background: #991b1b; border-color: #991b1b; }
     button.small { padding: 5px 8px; font-size: 12px; }
     input, select, textarea {
       width: 100%;
@@ -1162,10 +1168,11 @@
           <h1>Módulo Máster</h1>
         </div>
         <div class="toolbar">
-          <button id="newFile">Crear nuevo expediente / borrar todo</button>
+          <button id="loadCloudFile" type="button">Cargar</button>
           <button id="saveFile" class="primary">Guardar</button>
+          <button id="newFile" class="danger-solid" type="button">Borrar todo</button>
           <input id="loadFile" type="file" accept=".xls,.html,.json" hidden>
-          <div id="fileStatus" class="file-status">Sin archivo vinculado</div>
+          <div id="fileStatus" class="file-status"></div>
         </div>
       </div>
     </header>
@@ -1393,6 +1400,8 @@
   <div id="printArea" class="print-area"></div>
   <div id="toast" class="toast"></div>
 
+  <script src="assets/js/auth-guard.js?v=20260810-auth1"></script>
+  <script src="assets/js/cloud-sync.js?v=20260723-saveconfirm2"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const text = (v) => String(v == null ? '' : v);
@@ -1403,6 +1412,7 @@
     const uppercaseVehicleFields = ['marca','modelo','anio','color','vin','placa','odometro'];
     const requiredVehicleFields = ['fecha','hora','tecnico','marca','modelo','anio','color','vin','placa','odometro'];
     const MASTER_ARCHIVE_KEY = 'am_master_taller_archives_v1';
+    const QUICK_ARCHIVE_KEY = 'am_quick_taller_archives_v1';
     const MASTER_VEHICLE_AUTOFILL_KEY = 'am_quick_vehicle_autofill';
     const requiredVehicleLabels = {
       fecha: 'Fecha de ingreso',
@@ -1527,7 +1537,7 @@
     }
 
     function updateFileStatus(note = '') {
-      const base = currentFileName ? `Archivo abierto: ${currentFileName}` : 'Sin archivo vinculado';
+      const base = currentFileName ? `Archivo abierto: ${currentFileName}` : '';
       const status = note || (lastSavedAt ? `Ultimo guardado: ${saveTimeLabel(lastSavedAt)}` : '');
       $('fileStatus').textContent = status ? `${base} | ${status}` : base;
     }
@@ -1561,7 +1571,7 @@
     }
 
     function quickArchiveStore() {
-      try { return JSON.parse(localStorage.getItem('am_quick_taller_archives_v1') || '{}') || {}; }
+      try { return JSON.parse(localStorage.getItem(QUICK_ARCHIVE_KEY) || '{}') || {}; }
       catch (err) { return {}; }
     }
 
@@ -1582,6 +1592,33 @@
       });
       localStorage.removeItem(MASTER_ARCHIVE_KEY);
       localStorage.setItem(MASTER_ARCHIVE_KEY, JSON.stringify(compact));
+    }
+
+    function saveQuickArchiveFromMaster(snapshot) {
+      if (!snapshot?.data) return;
+      const key = archiveNorm(snapshot.rec || snapshot.data.rec || snapshot.data.vin || snapshot.data.placa || currentArchiveKey());
+      if (!key) return;
+      const store = quickArchiveStore();
+      store[key] = {
+        rec: snapshot.rec || snapshot.data.rec || key,
+        updatedAt: snapshot.updatedAt || new Date().toISOString(),
+        data: snapshot.data
+      };
+      const compact = {};
+      Object.values(store || {}).forEach(archive => {
+        const data = archive?.data || {};
+        const nextKey = archiveNorm(archive?.rec || data.rec || data.vin || data.placa || '');
+        if (!nextKey) return;
+        const next = {
+          rec: archive?.rec || data.rec || nextKey,
+          updatedAt: archive?.updatedAt || new Date().toISOString(),
+          data
+        };
+        const existing = compact[nextKey];
+        if (!existing || Date.parse(next.updatedAt || 0) >= Date.parse(existing.updatedAt || 0)) compact[nextKey] = next;
+      });
+      localStorage.removeItem(QUICK_ARCHIVE_KEY);
+      localStorage.setItem(QUICK_ARCHIVE_KEY, JSON.stringify(compact));
     }
 
     function currentArchiveKey() {
@@ -1671,12 +1708,16 @@
         };
         store[archiveNorm(key)] = snapshot;
         saveArchiveStore(store);
+        saveQuickArchiveFromMaster(snapshot);
+        localStorage.setItem('am_cloud_local_write_v1', snapshot.updatedAt);
         if (note) updateFileStatus(note);
       } catch (err) {
         console.warn('No se pudo guardar archivo maestro local', err);
         try {
           localStorage.removeItem(MASTER_ARCHIVE_KEY);
-          localStorage.setItem(MASTER_ARCHIVE_KEY, JSON.stringify({ [archiveNorm(key)]: { rec: key, updatedAt: new Date().toISOString(), data: getData(), html: htmlWorkbook() } }));
+          const fallbackSnapshot = { rec: key, updatedAt: new Date().toISOString(), data: getData(), html: htmlWorkbook() };
+          localStorage.setItem(MASTER_ARCHIVE_KEY, JSON.stringify({ [archiveNorm(key)]: fallbackSnapshot }));
+          saveQuickArchiveFromMaster(fallbackSnapshot);
           if (note) updateFileStatus(note);
         } catch (innerErr) {
           console.warn('No se pudo compactar archivo maestro local', innerErr);
@@ -4080,6 +4121,16 @@
       URL.revokeObjectURL(url);
     }
 
+    function cloudSync() {
+      if (window.AM_CLOUD_SYNC) return window.AM_CLOUD_SYNC;
+      try {
+        if (window.parent && window.parent !== window && window.parent.AM_CLOUD_SYNC) {
+          return window.parent.AM_CLOUD_SYNC;
+        }
+      } catch {}
+      return null;
+    }
+
     async function writeWorkbookToHandle(handle, html) {
       const writable = await handle.createWritable();
       await writable.write(new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' }));
@@ -4087,12 +4138,48 @@
     }
 
     async function saveExcel() {
-      if (!validateRequiredVehicleFields()) return;
-      persistArchiveSnapshot('Archivo maestro guardado localmente');
-      isDirty = false;
-      lastSavedAt = new Date();
-      updateFileStatus(`Guardado interno: ${saveTimeLabel(lastSavedAt)}`);
-      toast('Archivo guardado en el sistema');
+      if (!validateRequiredVehicleFields()) return false;
+      const saveButton = $('saveFile');
+      if (saveButton) saveButton.disabled = true;
+      persistArchiveSnapshot('Archivo maestro guardado internamente');
+      updateFileStatus('Guardando y confirmando en nube...');
+      try {
+        const cloud = cloudSync();
+        if (!cloud?.isReady?.()) throw new Error('La nube no esta disponible.');
+        const expectedKey = archiveNorm(currentArchiveKey());
+        const expectedArchive = expectedKey ? archiveStore()[expectedKey] : null;
+        const expectedQuickArchive = expectedKey ? quickArchiveStore()[expectedKey] : null;
+        const fixedSnapshot = cloud.snapshot ? cloud.snapshot() : null;
+        await cloud.saveNow('archivo-maestro-confirmado', fixedSnapshot);
+        let confirmed = false;
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          updateFileStatus(`Confirmando respaldo en nube (${attempt + 1}/10)...`);
+          const snapshot = await cloud.fetchLatest?.();
+          const archived = expectedKey && snapshot?.archives?.master?.[expectedKey];
+          const quickArchived = expectedKey && snapshot?.archives?.quick?.[expectedKey];
+          const masterOk = archived && expectedArchive && String(archived.updatedAt || '') === String(expectedArchive.updatedAt || '');
+          const quickOk = quickArchived && expectedQuickArchive && String(quickArchived.updatedAt || '') === String(expectedQuickArchive.updatedAt || '');
+          if (masterOk && quickOk) {
+            cloud.applySnapshot?.(snapshot);
+            confirmed = true;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 1200 + attempt * 650));
+        }
+        if (!confirmed) throw new Error('El servidor respondio, pero no confirmo el archivo recien guardado.');
+        isDirty = false;
+        lastSavedAt = new Date();
+        updateFileStatus(`Guardado confirmado: ${saveTimeLabel(lastSavedAt)}`);
+        toast('Archivo guardado y confirmado');
+        return true;
+      } catch (error) {
+        console.error(error);
+        updateFileStatus('No se pudo confirmar el guardado en nube');
+        alert('No se pudo confirmar el archivo en nube: ' + (error && error.message ? error.message : error));
+        return false;
+      } finally {
+        if (saveButton) saveButton.disabled = false;
+      }
     }
 
     async function loadExcel(file, handle = null) {
@@ -4186,6 +4273,36 @@
       $('loadFile').click();
     }
 
+    async function loadCurrentArchive() {
+      if (hasPendingChanges() && !confirm('Hay cambios sin guardar. Si cargas el expediente se reemplazara la informacion actual. Deseas continuar?')) return;
+      const loadButton = $('loadCloudFile');
+      if (loadButton) loadButton.disabled = true;
+      updateFileStatus('Cargando expediente...');
+      try {
+        const cloud = cloudSync();
+        if (cloud?.ready) await cloud.ready();
+        if (cloud?.fetchLatest) {
+          const snapshot = await cloud.fetchLatest();
+          cloud.applySnapshot?.(snapshot);
+        }
+        const savedArchive = persistedArchive();
+        if (savedArchive?.data) {
+          setData(savedArchive.data);
+          lastSavedAt = savedArchive.updatedAt ? new Date(savedArchive.updatedAt) : null;
+          isDirty = false;
+          updateFileStatus('Expediente cargado');
+          toast('Expediente cargado');
+          return;
+        }
+        await openExcel();
+      } catch (error) {
+        alert('No se pudo cargar el expediente: ' + (error && error.message ? error.message : error));
+        updateFileStatus('No se pudo cargar el expediente');
+      } finally {
+        if (loadButton) loadButton.disabled = false;
+      }
+    }
+
     document.querySelectorAll('.nav button').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
@@ -4231,7 +4348,19 @@
     $('addCotizacion')?.addEventListener('click', () => addPricedLine('cotizacion'));
     $('addRepuestos')?.addEventListener('click', () => addPricedLine('repuestos'));
     $('newFile').addEventListener('click', () => { if (confirm('Esta acción borrará todo el expediente interno actual. ¿Desea continuar?')) { setData(blankData()); setFileHandle(null); isDirty = false; lastSavedAt = null; updateFileStatus('Expediente interno reiniciado'); persistArchiveSnapshot('Expediente interno reiniciado'); } });
+    $('loadCloudFile')?.addEventListener('click', loadCurrentArchive);
     $('saveFile').addEventListener('click', saveExcel);
+    $('loadFile')?.addEventListener('change', async event => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        await loadExcel(file, null);
+      } catch (err) {
+        alert('No se pudo abrir el expediente: ' + (err && err.message ? err.message : err));
+      } finally {
+        event.target.value = '';
+      }
+    });
     document.addEventListener('mousedown', event => {
       const cell = excelCellFrom(event.target);
       if (!cell || cell.classList.contains('excel-editing-cell')) return;
@@ -4281,16 +4410,14 @@
     window.renderCalculator = renderCalculator;
     window.updatePricedLine = updatePricedLine;
     window.removePricedLine = removePricedLine;
-    const savedArchive = persistedArchive();
-    if (savedArchive && savedArchive.data) {
-      setData(savedArchive.data);
-      lastSavedAt = savedArchive.updatedAt ? new Date(savedArchive.updatedAt) : null;
-      updateFileStatus('Archivo maestro local cargado');
-    } else {
+    function bootstrapArchiveModule() {
       setData(blankDataFromVehicle());
-      persistArchiveSnapshot('Archivo maestro local iniciado');
+      isDirty = false;
+      lastSavedAt = null;
+      updateFileStatus('Archivo listo. Presione Cargar para leer lo guardado o Guardar para escribir cambios.');
+      setFileHandle(null);
     }
-    setFileHandle(null);
+    bootstrapArchiveModule();
   </script>
   <script src="corrector-ortografico.js?v=20260630-flechas-texto"></script>
 </body>
