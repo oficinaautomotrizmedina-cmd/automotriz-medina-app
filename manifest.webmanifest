@@ -1,0 +1,45 @@
+{
+  "name": "Automotriz Medina",
+  "short_name": "AM Taller",
+  "description": "Sistema de gestion de vehiculos de Automotriz Medina.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7f9",
+  "theme_color": "#0b233f",
+  "icons": [
+    {
+      "src": "./pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./automotriz-medina-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Administrador",
+      "short_name": "Admin",
+      "url": "./admin.html",
+      "icons": [{ "src": "./pwa-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Empleados",
+      "short_name": "Empleados",
+      "url": "./empleado.html",
+      "icons": [{ "src": "./pwa-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Autorizacion",
+      "short_name": "Firma",
+      "url": "./autorizacion-rapida.html",
+      "icons": [{ "src": "./pwa-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}
