@@ -230,14 +230,27 @@ function adminTrackingImages(rec) {
 
 function parseProcessRow(row) {
   if (/^\[done\]\s*/i.test(row)) return { status: "done", text: row.replace(/^\[done\]\s*/i, "").trim() };
+  if (/^\[(issue|problem|problema)\]\s*/i.test(row)) return { status: "issue", text: row.replace(/^\[(issue|problem|problema)\]\s*/i, "").trim() };
   if (/^\[pending\]\s*/i.test(row)) return { status: "pending", text: row.replace(/^\[pending\]\s*/i, "").trim() };
   if (/^✓\s*/.test(row)) return { status: "done", text: row.replace(/^✓\s*/, "").trim() };
+  if (/^!\s*/.test(row)) return { status: "issue", text: row.replace(/^!\s*/, "").trim() };
   if (/^⏳\s*/.test(row)) return { status: "pending", text: row.replace(/^⏳\s*/, "").trim() };
   return { status: "pending", text: row };
 }
 
+function normalizeProcessStatus(status) {
+  return status === "done" || status === "issue" ? status : "pending";
+}
+
+function processStatusIcon(status) {
+  const value = normalizeProcessStatus(status);
+  if (value === "done") return "✓";
+  if (value === "issue") return "!";
+  return "⏳";
+}
+
 function formatProcessRow(item) {
-  return `[${item.status === "done" ? "done" : "pending"}] ${String(item.text || "").trim()}`;
+  return `[${normalizeProcessStatus(item.status)}] ${String(item.text || "").trim()}`;
 }
 
 function processRows(rec) {
@@ -3328,6 +3341,7 @@ function renderTrackingAdmin() {
         <div class="admin-detail-status">
           <button type="button" class="btn ${row.status === "pending" ? "primary" : ""}" data-action="admin-detail-status" data-index="${index}" data-status="pending" title="En proceso">⏳</button>
           <button type="button" class="btn ${row.status === "done" ? "primary" : ""}" data-action="admin-detail-status" data-index="${index}" data-status="done" title="Finalizado satisfactoriamente">✓</button>
+          <button type="button" class="btn ${row.status === "issue" ? "primary" : ""}" data-action="admin-detail-status" data-index="${index}" data-status="issue" title="Problema encontrado">!</button>
         </div>
         <div class="admin-detail-content">
           <textarea data-admin-process-row="${index}" data-detail-status="${row.status}">${esc(row.text)}</textarea>
@@ -3699,6 +3713,10 @@ function renderTracking() {
     || photos.find((photo) => /frente.*tarjeta|tarjeta.*frente/i.test(photo.label || ""));
   const isFinalized = String(profile.state || "").toUpperCase() === "FINALIZADO";
   host.innerHTML = `
+    <div class="tracking-brief-notice">
+      <strong>Seguimiento en actualización</strong>
+      <span>Los datos del vehículo se actualizan conforme el técnico registra avances. Algunas fotografías o detalles pueden reflejarse dentro de 24 a 48 horas.</span>
+    </div>
     <div class="tracking-label">RECEPCION:</div>
     <div class="tracking-date">${profile.receptionDate}</div>
 
@@ -3741,7 +3759,7 @@ function renderTracking() {
         <div class="timeline">
           ${processRowItems(rec).map((row, index) => `
             <div class="timeline-item">
-              <time class="${row.status === "done" ? "done" : "pending"}">${row.status === "done" ? "✓" : "⏳"}</time>
+              <time class="${normalizeProcessStatus(row.status)}">${processStatusIcon(row.status)}</time>
               <div>
                 <p>${esc(row.text)}</p>
                 <div class="photo-grid">${(Array.isArray(rec.trackingImages?.[index]) ? rec.trackingImages[index] : []).map((src, imgIndex) => `<button type="button" class="photo-box has-image" data-action="open-image-preview-direct" data-src="${esc(src)}" data-label="Avance ${index + 1}.${imgIndex + 1}" style="background-image:url('${src}')"></button>`).join("")}</div>
@@ -4327,16 +4345,31 @@ function handleActions() {
       const id = button.dataset.id || "";
       if (!confirm("¿Eliminar esta notificación?")) return;
       let affectedRec = null;
+      let deleted = false;
       AM_SIMPLE_STORE.mutate((current) => {
         const match = findNotificationInState(current, id);
         if (!match) return;
         affectedRec = match.rec;
         match.list.splice(match.index, 1);
+        deleted = true;
       });
+      if (!deleted) {
+        toast("No se encontró la notificación para eliminar.", "warn");
+        return;
+      }
       if (affectedRec) upsertEmployeeVehicle(employeeVehicleFromReception(affectedRec));
       renderAdmin();
       if (qs("[data-admin-notification-modal]:not(.hidden)")) openAdminNotificationSummary();
-      toast("Notificación eliminada.");
+      const saved = await confirmCloudSaved("Notificación eliminada.", "delete-notification");
+      const stillExists = !!findNotificationInState(state(), id);
+      if (!saved || stillExists) {
+        renderAdmin();
+        if (qs("[data-admin-notification-modal]:not(.hidden)")) openAdminNotificationSummary();
+        toast("No se pudo confirmar que la notificación fue eliminada. Intente nuevamente.", "danger");
+        return;
+      }
+      renderAdmin();
+      if (qs("[data-admin-notification-modal]:not(.hidden)")) openAdminNotificationSummary();
     }
     if (action === "ack-notification") {
       event.preventDefault();

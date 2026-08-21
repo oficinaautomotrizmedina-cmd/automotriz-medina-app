@@ -6,9 +6,12 @@
   const MASTER_ARCHIVE_KEY = "am_master_taller_archives_v1";
   const QUICK_ARCHIVE_KEY = "am_quick_taller_archives_v1";
   const LOCAL_WRITE_KEY = "am_cloud_local_write_v1";
-  const DEFAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycby5D72bQSmpLv2pqJn7BmhiVArsyN5xsQxe7o3LmyvKZh1He1poANYWUH6rV4gZX0J_GA/exec";
+  const DEFAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycbysDn3BlShlZm5NxZOu1WdkTZDrb1vpWhLLUED_J8cuc9RS6n4cr48rvTkFr7X-UbfRBQ/exec";
   const BLOCKED_ENDPOINTS = new Set([
-    "https://script.google.com/macros/s/AKfycbwJfuzhng2vZQ338s2GbdXb8El41OhtHz81ZyXgpLhSfJ7QLIfnKT0dQODAkymCLMvs/exec"
+    "https://script.google.com/macros/s/AKfycbwJfuzhng2vZQ338s2GbdXb8El41OhtHz81ZyXgpLhSfJ7QLIfnKT0dQODAkymCLMvs/exec",
+    "https://script.google.com/macros/s/AKfycby5D72bQSmpLv2pqJn7BmhiVArsyN5xsQxe7o3LmyvKZh1He1poANYWUH6rV4gZX0J_GA/exec",
+    "https://script.google.com/macros/s/AKfycbx2aKTDxKkJbZgOImcT4EDo_Eo2Y8-Ll49JtmVkFyZjTHww_aSbdJerbIjJzkM1BljmuQ/exec",
+    "https://script.google.com/macros/s/AKfycbzUvnrRnlqK92rdovgM2i373NM3H2Ig4BRjGqtFnjfiCdRAX2XdyT02ZgRNwXHCE6-siQ/exec"
   ]);
   let timer = null;
   let saving = false;
