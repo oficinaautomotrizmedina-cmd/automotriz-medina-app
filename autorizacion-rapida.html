@@ -240,6 +240,7 @@
     const ctx = signaturePad.getContext("2d");
     const launchParams = new URLSearchParams(location.search || "");
     const expressSignatureMode = launchParams.get("modo") === "express-firma";
+    const existingSignatureMode = launchParams.get("modo") === "firma-existente";
     let existingProfileMode = false;
     let selectedExistingVehicle = null;
     let currentStep = "vehicle";
@@ -278,10 +279,54 @@
     function hasStoredSignatureValue(value) {
       return String(value || "").trim().length > 40;
     }
+    function adminStateForSignature() {
+      try {
+        if (typeof AM_SIMPLE_STORE !== "undefined" && AM_SIMPLE_STORE?.load) {
+          return AM_SIMPLE_STORE.load();
+        }
+      } catch (error) {
+        console.warn("No se pudo leer el estado local para firmas.", error);
+      }
+      return {};
+    }
+    function deletedReceptionKeys(adminState = adminStateForSignature()) {
+      return new Set((Array.isArray(adminState.deletedReceptionNumbers) ? adminState.deletedReceptionNumbers : [])
+        .map((item) => String(item || "").trim())
+        .filter(Boolean));
+    }
+    function recMatchesEmployee(rec, employeeId) {
+      const id = String(employeeId || "").toLowerCase();
+      if (!id) return true;
+      return String(rec?.employeeId || "").toLowerCase() === id ||
+        String(rec?.employeeName || "").toLowerCase() === id;
+    }
+    function recMatchesVehicle(rec, vehicle) {
+      const recNumber = String(rec?.number || "").trim();
+      const recId = String(rec?.id || "").trim();
+      const vehicleNumber = String(vehicle?.rec || "").trim();
+      const vehicleId = String(vehicle?.id || "").trim();
+      return !!(
+        (recNumber && vehicleNumber && recNumber === vehicleNumber) ||
+        (recId && vehicleId && (recId === vehicleId || recId === `emp-${vehicleId}`))
+      );
+    }
+    function recIsDashboardActive(rec, adminState = adminStateForSignature()) {
+      if (!rec) return false;
+      const deletedKeys = deletedReceptionKeys(adminState);
+      const recNumber = String(rec.number || "").trim();
+      const recId = String(rec.id || "").trim();
+      const status = upperTrim(rec.status || "");
+      if ((recNumber && deletedKeys.has(recNumber)) || (recId && deletedKeys.has(recId))) return false;
+      if (rec.deletedAt || rec.archivedAt || rec.deliveredAt) return false;
+      if (status === "ARCHIVADO" || status === "ELIMINADO" || status === "PAPELERA") return false;
+      if (status === "FINALIZADO" && rec.finalizationPublishedAt) return false;
+      if (status === "FINALIZADO" || status === "ENTREGADO") return false;
+      return true;
+    }
     function vehicleHasSignature(vehicle) {
-      const adminState = window.AM_SIMPLE_STORE?.load?.() || {};
+      const adminState = adminStateForSignature();
       const adminRec = (Array.isArray(adminState.receptions) ? adminState.receptions : [])
-        .find((rec) => rec.number === vehicle?.rec || rec.id === `emp-${vehicle?.id}`);
+        .find((rec) => recMatchesVehicle(rec, vehicle));
       return !!(
         hasStoredSignatureValue(vehicle?.signatureDataUrl) ||
         hasStoredSignatureValue(vehicle?.authorizationEvidence?.signatureDataUrl) ||
@@ -289,8 +334,69 @@
         hasStoredSignatureValue(adminRec?.authorizationEvidence?.signatureDataUrl)
       );
     }
+    function adminReceptionForVehicle(vehicle) {
+      const adminState = adminStateForSignature();
+      return (Array.isArray(adminState.receptions) ? adminState.receptions : [])
+        .find((rec) => recMatchesVehicle(rec, vehicle));
+    }
     function vehicleIsInactive(vehicle) {
-      return !!(vehicle?.deletedAt || vehicle?.archivedAt || vehicle?.deliveredAt);
+      const adminRec = adminReceptionForVehicle(vehicle);
+      const adminState = adminStateForSignature();
+      const deletedKeys = deletedReceptionKeys(adminState);
+      const vehicleStatus = upper(vehicle?.estado || vehicle?.status || "");
+      const vehicleNumber = String(vehicle?.rec || "").trim();
+      const vehicleId = String(vehicle?.id || "").trim();
+      return !!(
+        (vehicleNumber && deletedKeys.has(vehicleNumber)) ||
+        (vehicleId && deletedKeys.has(vehicleId)) ||
+        vehicle?.deletedAt ||
+        vehicle?.archivedAt ||
+        vehicle?.deliveredAt ||
+        vehicleStatus === "FINALIZADO" ||
+        vehicleStatus === "ENTREGADO" ||
+        (adminRec && !recIsDashboardActive(adminRec, adminState))
+      );
+    }
+    function mergeVehicleWithReception(vehicle, rec, employeeId) {
+      return {
+        ...vehicle,
+        rec: vehicle.rec || rec?.number || "",
+        eid: vehicle.eid || rec?.employeeId || employeeId,
+        en: vehicle.en || rec?.employeeName || employees[employeeId] || "",
+        marca: vehicle.marca || rec?.vehicle?.marca || "",
+        modelo: vehicle.modelo || rec?.vehicle?.modelo || "",
+        anio: vehicle.anio || rec?.vehicle?.anio || "",
+        placa: vehicle.placa || rec?.vehicle?.placa || "",
+        estado: vehicle.estado || rec?.status || "",
+        clientName: vehicle.clientName || rec?.client?.name || "",
+        clientPhone: vehicle.clientPhone || rec?.client?.phone || "",
+        motivo: vehicle.motivo || rec?.serviceReason || rec?.serviceType || ""
+      };
+    }
+    function vehicleFromReception(rec, employeeId) {
+      return {
+        id: String(rec?.id || "").replace(/^emp-/, "") || String(rec?.number || "").replace(/\W+/g, "_") || token(),
+        rec: rec?.number || "",
+        eid: rec?.employeeId || employeeId,
+        en: rec?.employeeName || employees[employeeId] || "",
+        fecha: String(rec?.tracking?.receptionDate || "").split(",")[0] || todayInput(),
+        hora: currentTimeInput(),
+        marca: rec?.vehicle?.marca || "",
+        modelo: rec?.vehicle?.modelo || "",
+        anio: rec?.vehicle?.anio || "",
+        color: rec?.vehicle?.color || "",
+        placa: rec?.vehicle?.placa || "",
+        vin: rec?.vehicle?.vin || "",
+        odometro: rec?.vehicle?.kilometraje || "",
+        estado: rec?.status || "EN RECEPCIÓN",
+        clientName: rec?.client?.name || "",
+        clientPhone: rec?.client?.phone || "",
+        motivo: rec?.serviceReason || rec?.serviceType || rec?.observations || "",
+        express: !!rec?.express,
+        photos: Array.isArray(rec?.photos) ? rec.photos.map((photo) => ({ ...photo })) : [],
+        inventory: Array.isArray(rec?.inventory) ? rec.inventory.map((item) => ({ ...item })) : [],
+        damages: Array.isArray(rec?.damages) ? rec.damages.map((damage) => ({ ...damage })) : []
+      };
     }
     function existingVehicleTitle(vehicle) {
       return [vehicle?.marca, vehicle?.modelo, vehicle?.anio].map((part) => String(part || "").trim()).filter(Boolean).join(" ") || "VEHÍCULO SIN DATOS";
@@ -300,8 +406,17 @@
     }
     function pendingSignatureVehicles(employeeId) {
       const state = loadEmployeeState();
-      return (Array.isArray(state.vehicles) ? state.vehicles : [])
-        .filter((vehicle) => String(vehicle.eid || "").toLowerCase() === employeeId)
+      const employeeVehicles = (Array.isArray(state.vehicles) ? state.vehicles : [])
+        .filter((vehicle) => String(vehicle.eid || "").toLowerCase() === employeeId);
+      const adminState = adminStateForSignature();
+      const activeReceptions = (Array.isArray(adminState.receptions) ? adminState.receptions : [])
+        .filter((rec) => recMatchesEmployee(rec, employeeId))
+        .filter((rec) => recIsDashboardActive(rec, adminState));
+      return activeReceptions
+        .map((rec) => {
+          const vehicle = employeeVehicles.find((item) => recMatchesVehicle(rec, item));
+          return mergeVehicleWithReception(vehicle || vehicleFromReception(rec, employeeId), rec, employeeId);
+        })
         .filter((vehicle) => !vehicleIsInactive(vehicle))
         .filter((vehicle) => !vehicleHasSignature(vehicle));
     }
@@ -436,8 +551,17 @@
     function updateExistingProfileAuthorization(data) {
       const employeeState = loadEmployeeState();
       const vehicles = Array.isArray(employeeState.vehicles) ? employeeState.vehicles : [];
-      const index = vehicles.findIndex((vehicle) => vehicle.id === data.employeeVehicleId || vehicle.rec === data.number);
-      if (index < 0) throw new Error("No se encontró el perfil original para guardar la firma.");
+      let index = vehicles.findIndex((vehicle) => vehicle.id === data.employeeVehicleId || vehicle.rec === data.number);
+      if (index < 0) {
+        vehicles.unshift({
+          ...(selectedExistingVehicle || {}),
+          id: data.employeeVehicleId,
+          rec: data.number,
+          eid: data.employeeId,
+          en: data.employeeName
+        });
+        index = 0;
+      }
       const current = vehicles[index];
       const evidence = {
         acceptedAtIso: new Date().toISOString(),
@@ -782,6 +906,33 @@
       document.getElementById("prevStep").classList.add("hidden");
       showStep("client");
     }
+    async function refreshExistingSignatureState() {
+      if (!window.AM_CLOUD_SYNC?.isReady?.()) return;
+      try {
+        if (window.AM_CLOUD_SYNC.loadLatest) await window.AM_CLOUD_SYNC.loadLatest();
+        else await window.AM_CLOUD_SYNC.ready();
+      } catch (error) {
+        console.warn("No se pudo sincronizar la lista de firmas.", error);
+      }
+    }
+    async function prefillExistingSignature() {
+      if (!existingSignatureMode) return;
+      const employeeId = String(launchParams.get("empleado") || "").toLowerCase();
+      const vehicleId = String(launchParams.get("vehicleId") || "");
+      existingProfileMode = false;
+      selectedExistingVehicle = null;
+      document.getElementById("existingEmployeeId").value = employees[employeeId] ? employeeId : "";
+      showStep("existing");
+      if (employees[employeeId]) {
+        document.getElementById("existingVehicleList").innerHTML = '<div class="empty-existing">Sincronizando vehículos activos del dashboard...</div>';
+      }
+      await refreshExistingSignatureState();
+      renderExistingVehicleList();
+      if (vehicleId) {
+        beginExistingSignature(vehicleId);
+        return;
+      }
+    }
 
     ["marca", "modelo", "fallaReportada", "clientName"].forEach((name) => {
       const input = form.elements[name];
@@ -816,7 +967,11 @@
       showStep("existing");
     });
     document.getElementById("backFromExisting").addEventListener("click", () => showStep("mode"));
-    document.getElementById("existingEmployeeId").addEventListener("change", renderExistingVehicleList);
+    document.getElementById("existingEmployeeId").addEventListener("change", async () => {
+      document.getElementById("existingVehicleList").innerHTML = '<div class="empty-existing">Sincronizando vehículos activos del dashboard...</div>';
+      await refreshExistingSignatureState();
+      renderExistingVehicleList();
+    });
     document.getElementById("existingVehicleList").addEventListener("click", (event) => {
       const button = event.target.closest("[data-existing-vehicle]");
       if (!button) return;
@@ -910,6 +1065,7 @@
     populateYearOptions();
     form.elements.time.value = currentTimeInput();
     prefillExpressSignature();
+    prefillExistingSignature();
     requestAnimationFrame(resizeSignature);
   </script>
 </body>

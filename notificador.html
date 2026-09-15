@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notificador - Automotriz Medina</title>
+  <link rel="stylesheet" href="assets/css/styles.css?v=20260821-photos1">
+  <script defer src="pwa-register.js?v=20260812-1"></script>
+  <style>
+    body[data-page="notificador"] {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 16% 10%, rgba(30, 124, 133, 0.18), transparent 28%),
+        radial-gradient(circle at 90% 0%, rgba(185, 36, 46, 0.12), transparent 30%),
+        linear-gradient(145deg, #eef6f7 0%, #f8fafc 58%, #fff5f5 100%);
+    }
+    .notifier-shell {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .notifier-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .notifier-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .notifier-brand img {
+      width: 72px;
+      height: 54px;
+      object-fit: contain;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow-soft);
+      flex: 0 0 auto;
+    }
+    .notifier-brand h1 {
+      margin: 0;
+      font-size: clamp(28px, 8vw, 42px);
+      letter-spacing: 0;
+      line-height: 1;
+    }
+    .notifier-brand p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+    }
+    .notifier-card {
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+    .notifier-card-header {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .notifier-card-header h2,
+    .notifier-card-header h3 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+    .notifier-card-header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+    .notifier-body {
+      padding: 18px;
+    }
+    .notifier-choice-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .notifier-choice {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px;
+      border: 1px solid #cfe0e6;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      min-height: 96px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+    }
+    .notifier-choice strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+    .notifier-choice span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.35;
+    }
+    .notifier-choice i {
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #e7f6f8;
+      color: #1e7c85;
+      font-style: normal;
+      font-size: 24px;
+      flex: 0 0 auto;
+    }
+    .notifier-form {
+      display: grid;
+      gap: 14px;
+    }
+    .notifier-form .field {
+      display: grid;
+      gap: 8px;
+    }
+    .notifier-form label {
+      font-weight: 800;
+      color: var(--muted);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    .notifier-form select,
+    .notifier-form input,
+    .notifier-form textarea {
+      width: 100%;
+      min-height: 56px;
+      font-size: 18px;
+      border-radius: 8px;
+    }
+    .notifier-form textarea {
+      min-height: 170px;
+      resize: vertical;
+    }
+    .notifier-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .notifier-actions .btn {
+      width: 100%;
+      min-height: 58px;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .notifier-actions.single {
+      display: flex;
+      justify-content: center;
+    }
+    .notifier-actions.single .btn {
+      width: auto;
+      min-width: min(100%, 280px);
+      padding-left: 28px;
+      padding-right: 28px;
+    }
+    .notifier-vehicle-summary {
+      margin: 0;
+      grid-template-columns: 1fr;
+    }
+    .notifier-vehicle-summary .metric {
+      min-height: auto;
+      padding: 14px;
+    }
+    @media (min-width: 720px) {
+      .notifier-choice-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .notifier-actions {
+        grid-template-columns: 0.8fr 1.2fr;
+      }
+      .notifier-vehicle-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 520px) {
+      .notifier-shell {
+        padding: 14px;
+      }
+      .notifier-hero {
+        align-items: flex-start;
+      }
+      .notifier-brand img {
+        width: 62px;
+        height: 48px;
+      }
+      .notifier-card-header,
+      .notifier-body {
+        padding: 16px;
+      }
+      .notifier-choice {
+        min-height: 104px;
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+<body data-page="notificador" lang="es" spellcheck="true">
+  <main class="notifier-shell">
+    <header class="notifier-hero">
+      <div class="notifier-brand">
+        <img src="automotriz-medina-logo.png" alt="Automotriz Medina">
+        <div>
+          <h1>Notificador</h1>
+        </div>
+      </div>
+    </header>
+
+    <section class="notifier-card" data-notifier-step="choice">
+      <div class="notifier-body">
+        <div class="notifier-choice-grid">
+          <button type="button" class="notifier-choice" data-action="set-notifier-mode" data-notifier-mode="general">
+            <span>
+              <strong>Notificacion general</strong>
+            </span>
+            <i>!</i>
+          </button>
+          <button type="button" class="notifier-choice" data-action="set-notifier-mode" data-notifier-mode="vehicle">
+            <span>
+              <strong>Notificacion por vehiculo</strong>
+            </span>
+            <i>></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="notifier-card hidden" data-notifier-step="general">
+      <div class="notifier-card-header">
+        <h3>Notificacion general</h3>
+      </div>
+      <div class="notifier-body">
+        <div class="notifier-form">
+          <div class="field">
+            <label>Empleado</label>
+            <select data-notifier-general-employee>
+              <option value="edwin">EDWIN</option>
+              <option value="rafael">RAFAEL</option>
+              <option value="cristian">CRISTIAN</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Prioridad</label>
+            <select data-notifier-general-priority>
+              <option value="warn">Amarillo / advertencia</option>
+              <option value="danger">Rojo / urgente</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Mensaje</label>
+            <textarea data-notifier-general-message placeholder="Escriba la notificacion general"></textarea>
+          </div>
+          <div class="notifier-actions single">
+            <button type="button" class="btn primary" data-action="send-notifier-general">Enviar notificacion</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="notifier-card hidden" data-notifier-step="vehicle">
+      <div class="notifier-card-header">
+        <h3>Notificacion por vehiculo</h3>
+      </div>
+      <div class="notifier-body">
+        <div class="notifier-form">
+          <div class="field">
+            <label>Tecnico</label>
+            <select data-notifier-vehicle-employee>
+              <option value="">Seleccione tecnico</option>
+              <option value="edwin">EDWIN</option>
+              <option value="rafael">RAFAEL</option>
+              <option value="cristian">CRISTIAN</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Vehiculo</label>
+            <select data-notifier-vehicle-select></select>
+          </div>
+          <div data-notifier-vehicle-preview>
+            <div class="notice">Seleccione tecnico y vehiculo para continuar.</div>
+          </div>
+          <div class="field">
+            <label>Prioridad</label>
+            <select data-notifier-vehicle-priority>
+              <option value="warn">Amarillo / advertencia</option>
+              <option value="danger">Rojo / urgente</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Mensaje</label>
+            <textarea data-notifier-vehicle-message placeholder="Escriba la notificacion para este vehiculo"></textarea>
+          </div>
+          <div class="notifier-actions single">
+            <button type="button" class="btn primary" data-action="send-notifier-vehicle">Enviar notificacion</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/js/cloud-sync.js?v=20260821-photos1"></script>
+  <script src="assets/js/store.js?v=20260812-1"></script>
+  <script src="assets/js/app.js?v=20260826-notificador2"></script>
+</body>
+</html>

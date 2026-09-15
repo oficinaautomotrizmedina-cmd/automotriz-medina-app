@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
   <title>Administrador - AM Recepción Símple</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=20260820-status3">
+  <link rel="stylesheet" href="assets/css/styles.css?v=admin-recepcion-mobile-1">
   <script defer src="pwa-register.js?v=20260812-1"></script>
 </head>
 <body data-page="admin" lang="es" spellcheck="true">
@@ -21,7 +21,8 @@
         <option value="dashboard">Dashboard</option>
         <option value="notificaciones">Notificaciones</option>
         <option value="vineta">Viñeta Virtual</option>
-        <option value="archivados">Archivados</option>
+        <option value="archived-dashboard">Archivados</option>
+        <option value="visor-local">Visor</option>
       </select>
       <nav class="nav">
         <button data-section-target="dashboard" data-icon="⌂">Dashboard</button>
@@ -35,8 +36,9 @@
           <button data-section-target="notificaciones" data-icon="✉">Notificaciones</button>
           <button data-section-target="vineta" data-icon="◇">Viñeta Virtual</button>
           <div class="nav-secondary-group">
-            <button data-section-target="archivados" data-icon="▤">Archivados</button>
+            <button data-admin-filter="archived" data-icon="▤">Archivados</button>
             <button data-admin-filter="trash" data-icon="×">Papelera de reciclaje</button>
+            <button data-section-target="visor-local" data-icon="◉">Visor</button>
           </div>
         </div>
         <div class="hidden" data-expediente-menu>
@@ -85,8 +87,9 @@
             </div>
           </article>
           <article class="panel">
-            <div class="panel-header"><div><h3>Recepciones</h3><p>Seleccione una recepción para abrir el perfil del cliente y expediente</p></div><a class="btn primary" href="empleado.html">Crear recepción como empleado</a></div>
-            <div class="table-wrap">
+            <div class="panel-header"><div><h3>Recepciones</h3><p>Seleccione una recepción para abrir el perfil del cliente y expediente</p></div><a class="btn primary dashboard-reception-link" href="empleado.html">Recepción</a></div>
+            <div class="mobile-vehicle-gallery" data-admin-mobile-gallery></div>
+            <div class="table-wrap mobile-hidden-table">
               <table>
                 <thead><tr><th>Vehículo</th><th>Fotografía</th><th>Tarjeta reverso</th><th>Tarjeta frente</th><th>Técnico</th><th>Tiempo límite</th><th>Estado</th><th>Autorización</th><th>Cliente</th><th>Motivo</th><th>Recepción</th></tr></thead>
                 <tbody data-reception-table></tbody>
@@ -104,10 +107,10 @@
           </article>
         </section>
 
-        <section data-section="archivados" class="hidden">
+        <section data-section="visor-local" class="hidden">
           <article class="panel">
             <div class="panel-header">
-              <div><h3>Archivados</h3><p>Expedientes guardados en la carpeta local configurada.</p></div>
+              <div><h3>Visor</h3><p>Expedientes descargados en la carpeta local configurada.</p></div>
               <div class="btn-row">
                 <button class="btn" data-action="configure-local-archive-folder">Configurar carpeta</button>
                 <button class="btn primary" data-action="load-local-archives">Cargar archivados</button>
@@ -115,7 +118,12 @@
             </div>
             <div class="panel-body">
               <div class="notice" data-local-archive-status>No hay carpeta local cargada.</div>
-              <div class="table-wrap">
+              <div class="field full local-archive-search-box">
+                <label>Buscar en visor local</label>
+                <input type="search" data-local-archive-search placeholder="Cliente, teléfono, marca, modelo, placa, VIN, técnico, estado o recepción">
+              </div>
+              <div class="mobile-vehicle-gallery" data-local-archive-gallery></div>
+              <div class="table-wrap mobile-hidden-table">
                 <table>
                   <thead><tr><th>Vehículo</th><th>Cliente</th><th>Técnico</th><th>Estado</th><th>Respaldo local</th><th>Acción</th></tr></thead>
                   <tbody data-local-archive-table></tbody>
@@ -166,7 +174,7 @@
             <div class="panel-body form-grid">
               <div class="field"><label>Empleado</label><select data-admin-notification-employee><option value="edwin">EDWIN</option><option value="rafael">RAFAEL</option><option value="cristian">CRISTIAN</option></select></div>
               <div class="field"><label>Prioridad</label><select data-admin-global-notification-priority><option value="warn">Amarillo / advertencia</option><option value="danger">Rojo / urgente</option></select></div>
-              <div class="field full"><label>Mensaje</label><textarea data-admin-global-notification-text placeholder="Escriba la notificación general para el empleado"></textarea></div>
+              <div class="field full"><label>Mensaje</label><textarea data-admin-global-notification-text placeholder="Escriba la notificación general para el empleado"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-global-notification-text]">Dictar</button></div></div>
               <div class="field full"><button type="button" class="btn primary" data-action="send-global-notification">Enviar notificación</button></div>
             </div>
           </article>
@@ -229,17 +237,19 @@
             <div class="panel-body grid">
               <div class="admin-folder-tabs">
                 <button type="button" data-admin-file-tab="seguimiento">Seguimiento</button>
-                <button type="button" data-admin-file-tab="archivo">Archivo</button>
-                <button type="button" data-admin-file-tab="notificaciones">Notificaciones</button>
                 <button type="button" data-admin-file-tab="bitacora">Bitácora</button>
-                <button type="button" data-admin-file-tab="autorización">Expediente de autorización</button>
+                <button type="button" data-admin-file-tab="facturas">Facturas</button>
+                <button type="button" data-admin-file-tab="archivo">Archivo</button>
+                <button type="button" data-admin-file-tab="autorización">Expediente</button>
+                <button type="button" data-admin-file-tab="notificaciones">Notificación</button>
               </div>
               <div class="tabs hidden">
                 <button data-tab-target="seguimiento">Seguimiento</button>
-                <button data-tab-target="archivo">Archivo</button>
-                <button data-tab-target="notificaciones">Notificaciones</button>
                 <button data-tab-target="bitacora">Bitácora</button>
-                <button data-tab-target="autorización">Expediente de autorización</button>
+                <button data-tab-target="facturas">Facturas</button>
+                <button data-tab-target="archivo">Archivo</button>
+                <button data-tab-target="autorización">Expediente</button>
+                <button data-tab-target="notificaciones">Notificación</button>
               </div>
               <section class="tab-panel" data-tab="autorización">
                 <div class="grid">
@@ -321,6 +331,10 @@
                   <article class="panel">
                     <div class="panel-header"><div><h3>Seguimiento del cliente</h3><p>Datos internos para revisión antes de publicar</p></div><div class="btn-row"><button class="btn" data-action="save-admin-tracking">Guardar seguimiento</button><button class="btn primary" data-action="save-progress">Publicar seguimiento</button></div></div>
                     <div class="panel-body form-grid">
+                      <div class="field full">
+                        <label>Link de seguimiento</label>
+                        <button type="button" class="admin-tracking-link" data-admin-tracking-link data-action="open-admin-tracking-link">seguimiento.html</button>
+                      </div>
                       <div class="field"><label>Recepción</label><input data-track-field="receptionDate"></div>
                       <div class="field"><label>Estimacion de entrega</label><input type="date" data-track-field="deliveryEstimate"></div>
                       <div class="field"><label>Vehículo visible</label><input data-track-field="vehicleTitle"></div>
@@ -331,7 +345,7 @@
                       <div class="field"><label>Estado del tiempo</label><input readonly data-admin-deadline-status value="Esperando cálculo de sistema"></div>
                       <div class="field"><label>Avance %</label><input type="range" min="0" max="100" data-admin-progress><strong data-progress-value>0%</strong></div>
                       <div class="field full"><label>Detalles del proceso actual por renglones</label><div class="detail-list" data-admin-detail-rows></div></div>
-                      <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-detail placeholder="Escriba un avance nuevo para el cliente"></textarea><button type="button" class="btn" data-action="admin-add-detail-row">Agregar renglón</button></div>
+                      <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-detail placeholder="Escriba un avance nuevo para el cliente"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-new-detail]">Dictar</button><button type="button" class="btn" data-action="admin-add-detail-row">Agregar renglón</button></div></div>
                     </div>
                   </article>
                 </div>
@@ -346,6 +360,18 @@
                   </div>
                 </article>
               </section>
+              <section class="tab-panel" data-tab="facturas">
+                <article class="panel">
+                  <div class="panel-header">
+                    <div><h3>Facturas</h3><p>Fotografías de facturas asociadas a este expediente.</p></div>
+                    <div class="btn-row">
+                      <label class="btn">Agregar factura<input class="hidden" type="file" accept="image/*" capture="environment" data-admin-invoice-upload multiple></label>
+                      <button class="btn primary" data-action="save-admin-invoices">Guardar facturas</button>
+                    </div>
+                  </div>
+                  <div class="panel-body photo-grid" data-admin-invoices></div>
+                </article>
+              </section>
               <section class="tab-panel" data-tab="notificaciones">
                 <article class="panel">
                   <div class="panel-header">
@@ -353,7 +379,7 @@
                   </div>
                   <div class="panel-body form-grid">
                     <div class="field"><label>Prioridad</label><select data-admin-vehicle-notification-priority><option value="warn">Amarillo / advertencia</option><option value="danger">Rojo / urgente</option></select></div>
-                    <div class="field full"><label>Mensaje</label><textarea data-admin-vehicle-notification-text placeholder="Escriba una notificación para este vehículo"></textarea></div>
+                    <div class="field full"><label>Mensaje</label><textarea data-admin-vehicle-notification-text placeholder="Escriba una notificación para este vehículo"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-vehicle-notification-text]">Dictar</button></div></div>
                     <div class="field full"><button type="button" class="btn primary" data-action="send-vehicle-notification">Enviar notificación del vehículo</button></div>
                   </div>
                 </article>
@@ -366,7 +392,7 @@
                 <article class="panel"><div class="panel-header"><div><h3>Bitácora interna</h3><p>Solo visible para administrador y taller</p></div><button class="btn primary" data-action="save-internal-log">Guardar bitácora</button></div>
                   <div class="panel-body form-grid">
                     <div class="field full"><label>Bitácora por renglones</label><div class="detail-list" data-admin-internal-rows></div></div>
-                    <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-internal placeholder="Escriba una nota interna"></textarea><button type="button" class="btn" data-action="admin-add-internal-row">Agregar renglón</button></div>
+                    <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-internal placeholder="Escriba una nota interna"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-new-internal]">Dictar</button><button type="button" class="btn" data-action="admin-add-internal-row">Agregar renglón</button></div></div>
                   </div>
                 </article>
               </section>
@@ -377,11 +403,21 @@
     </main>
   </div>
 <script src="assets/js/auth-guard.js?v=20260810-force3"></script>
-<script src="assets/js/cloud-sync.js?v=20260820-endpoint1"></script>
+<script src="assets/js/cloud-sync.js?v=contact-wa-27"></script>
   <script src="assets/js/store.js?v=20260730-cloudcompact1"></script>
-<script src="assets/js/app.js?v=20260820-status3"></script>
+<script src="assets/js/app.js?v=local-archive-client-folder-1"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
 
 
 

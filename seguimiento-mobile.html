@@ -1053,9 +1053,7 @@ function authorizationMessage(rec) {
   const link = absoluteHref("cliente-mobile.html", rec.clientToken);
   return [
     `Hola ${rec.client?.name || ""}.`,
-    `Le saluda Automotriz Medina.`,
-    `Le compartimos el link privado de autorización para revisar la recepción, fotografías, inventario, observaciones y términos del servicio de su vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}.`,
-    `Por favor abra el enlace y, si todo esta correcto, autorice el diagnóstico o reparación:`,
+    `Te compartimos el link privado de autorización para revisar la recepción, fotografías, inventario, observaciones y términos del servicio de Tu vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}. Por favor abre el enlace y, si todo esta correcto, autoriza el diagnóstico o reparación:`,
     link
   ].join("\n\n");
 }

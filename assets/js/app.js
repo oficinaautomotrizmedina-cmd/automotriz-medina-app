@@ -2,7 +2,17 @@
 function qsa(selector, scope = document) { return Array.from(scope.querySelectorAll(selector)); }
 function state() { return AM_SIMPLE_STORE.load(); }
 let adminLocalArchivePreviewRec = null;
+let adminLocalArchiveSearch = "";
+let notifierMode = "";
 function selected() { return adminLocalArchivePreviewRec || AM_SIMPLE_STORE.selected(); }
+function selectedAdminReceptionFromHash() {
+  if (adminLocalArchivePreviewRec) return adminLocalArchivePreviewRec;
+  const raw = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  const params = new URLSearchParams(raw);
+  const id = params.get("expediente") || "";
+  const current = state();
+  return current.receptions.find((rec) => rec.id === id) || AM_SIMPLE_STORE.selected(current);
+}
 function today() { return new Intl.DateTimeFormat("es-SV", { day: "numeric", month: "long", year: "numeric" }).format(new Date()); }
 
 function statusTone(status) {
@@ -69,8 +79,8 @@ function requireLocalAccess(page) {
   return true;
 }
 
-const AM_IMAGE_MAX = 560;
-const AM_IMAGE_QUALITY = 0.42;
+const AM_IMAGE_MAX = 2048;
+const AM_IMAGE_QUALITY = 0.9;
 
 function compressImageDataUrl(src, max = AM_IMAGE_MAX, quality = AM_IMAGE_QUALITY) {
   return new Promise((resolve) => {
@@ -117,17 +127,215 @@ function readFilePromise(input) {
   });
 }
 
+function readImageFilePromise(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve("");
+    const reader = new FileReader();
+    reader.onload = async () => resolve(await compressImageDataUrl(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("No se pudo leer la imagen."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isTrackingVideoMedia(value) {
+  if (typeof value === "string") return /^data:video\//i.test(value);
+  return !!(value && typeof value === "object" && (value.type === "video" || /^data:video\//i.test(value.dataUrl || "")));
+}
+
+function trackingMediaDataUrl(value) {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  return value.dataUrl || value.src || value.url || "";
+}
+
+function trackingMediaThumb(value) {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  return value.thumbnail || value.thumb || value.dataUrl || "";
+}
+
+function renderTrackingMediaThumb(media, label, removeAttrs = "") {
+  const src = trackingMediaDataUrl(media);
+  const thumb = trackingMediaThumb(media);
+  const isVideo = isTrackingVideoMedia(media);
+  const action = isVideo ? "open-video-preview-direct" : "open-image-preview-direct";
+  const cls = isVideo ? "photo-box has-image has-video" : "photo-box has-image";
+  const style = thumb ? `background-image:url('${thumb}')` : "";
+  const remove = removeAttrs ? `<button type="button" class="tracking-thumb-remove" ${removeAttrs} title="Eliminar archivo">X</button>` : "";
+  return `<div class="tracking-thumb"><button type="button" class="${cls}" data-action="${action}" data-src="${esc(src)}" data-label="${esc(label)}" style="${style}">${isVideo ? '<span class="video-play-mark">▶</span>' : ""}</button>${remove}</div>`;
+}
+
+function videoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const duration = Number(video.duration || 0);
+      cleanup();
+      resolve(duration);
+    };
+    video.onerror = () => {
+      cleanup();
+      reject(new Error("No se pudo leer la duración del video."));
+    };
+    video.src = url;
+  });
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result || "");
+    reader.onerror = () => reject(reader.error || new Error("No se pudo leer el archivo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function videoPosterDataUrl(file) {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.onloadeddata = () => {
+      try {
+        video.currentTime = Math.min(0.25, Math.max(0, (video.duration || 1) / 8));
+      } catch {
+        finish();
+      }
+    };
+    video.onseeked = finish;
+    video.onerror = () => {
+      cleanup();
+      resolve("");
+    };
+    function finish() {
+      try {
+        const maxWidth = 480;
+        const scale = Math.min(1, maxWidth / (video.videoWidth || maxWidth));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round((video.videoWidth || maxWidth) * scale));
+        canvas.height = Math.max(1, Math.round((video.videoHeight || 270) * scale));
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        cleanup();
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      } catch {
+        cleanup();
+        resolve("");
+      }
+    }
+    video.src = url;
+  });
+}
+
+async function compressVideoFile(file, duration) {
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return "";
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    const cleanup = () => URL.revokeObjectURL(url);
+    const done = (value = "") => {
+      cleanup();
+      resolve(value);
+    };
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.onloadedmetadata = async () => {
+      try {
+        const maxWidth = 640;
+        const width = video.videoWidth || maxWidth;
+        const height = video.videoHeight || 360;
+        const scale = Math.min(1, maxWidth / width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+        const ctx = canvas.getContext("2d");
+        const stream = canvas.captureStream(12);
+        const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+          ? "video/webm;codecs=vp8"
+          : "video/webm";
+        if (!MediaRecorder.isTypeSupported(mimeType)) return done("");
+        const chunks = [];
+        const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 650000 });
+        let stopped = false;
+        const stop = () => {
+          if (stopped) return;
+          stopped = true;
+          try { recorder.stop(); } catch {}
+          try { stream.getTracks().forEach((track) => track.stop()); } catch {}
+          try { video.pause(); } catch {}
+        };
+        const draw = () => {
+          if (stopped) return;
+          try { ctx.drawImage(video, 0, 0, canvas.width, canvas.height); } catch {}
+          requestAnimationFrame(draw);
+        };
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size) chunks.push(event.data);
+        };
+        recorder.onstop = () => {
+          if (!chunks.length) return done("");
+          const blob = new Blob(chunks, { type: mimeType });
+          const reader = new FileReader();
+          reader.onload = () => done(reader.result || "");
+          reader.onerror = () => done("");
+          reader.readAsDataURL(blob);
+        };
+        video.onended = stop;
+        recorder.start();
+        draw();
+        await video.play();
+        setTimeout(stop, Math.min(10, Math.max(1, duration || 10)) * 1000 + 250);
+      } catch {
+        done("");
+      }
+    };
+    video.onerror = () => done("");
+    video.src = url;
+  });
+}
+
+async function readTrackingMediaFile(file) {
+  if (!file) return "";
+  if (/^video\//i.test(file.type || "")) {
+    const duration = await videoDuration(file);
+    if (duration > 10.25) throw new Error("El video debe durar máximo 10 segundos.");
+    const compressedDataUrl = await compressVideoFile(file, duration);
+    const dataUrl = compressedDataUrl || await fileToDataUrl(file);
+    const thumbnail = await videoPosterDataUrl(file);
+    return {
+      type: "video",
+      dataUrl,
+      thumbnail,
+      name: file.name || "video-seguimiento",
+      duration: Math.round(duration * 10) / 10,
+      compressed: !!compressedDataUrl
+    };
+  }
+  return readImageFilePromise(file);
+}
+
 function photoVisual(photo) {
   if (!photo) {
     return '<div class="photo-box" data-label="Foto">Foto pendiente</div>';
   }
   if (photo.dataUrl) {
-    return `<button type="button" class="photo-box has-image" data-action="open-image-preview-direct" data-src="${esc(photo.dataUrl)}" data-label="${esc(photo.label)}" style="background-image:url('${photo.dataUrl}')"></button>`;
+    return `<button type="button" class="photo-box has-image" data-action="open-image-preview-direct" data-src="${esc(photo.dataUrl)}" data-label="${esc(photo.label)}"><img src="${esc(photo.dataUrl)}" alt="${esc(photo.label)}" loading="lazy"></button>`;
   }
   return `<div class="photo-box" data-label="${photo.label}" style="background:linear-gradient(135deg, ${photo.color || "#206f78"}, #eef2f5)">Foto pendiente</div>`;
 }
 
 const WORK_STATUSES = ["EN REVISIÓN", "EN DIAGNÓSTICO", "EN REPARACIÓN", "ESPERA DE REPUESTOS", "EN PAUSA", "FINALIZADO", "ENTREGADO"];
+const CLIENT_REQUEST_TYPES = {
+  none: { label: "Sin solicitud", button: "", done: "" },
+  authorization: { label: "Solicitar autorizacion", button: "Autorizar solicitud", done: "Solicitud autorizada por el cliente." },
+  call: { label: "Confirmar disponibilidad de contacto", button: "Confirmar", done: "Disponibilidad de contacto confirmada." }
+};
 
 function esc(value) {
   return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
@@ -175,10 +383,41 @@ function deadlineInfo(deadline, startedAt = "") {
 
 function deadlineBadge(rec) {
   const info = deadlineInfo(rec?.employeeDeadline, rec?.employeeDeadlineSetAt);
-  if (!info.active) return '<span class="pill info">Esperando cálculo de sistema</span>';
+  const recId = esc(rec?.id || rec?.number || "");
+  if (!info.active) return `<span data-deadline-rec="${recId}"><span class="pill info">Esperando cálculo de sistema</span></span>`;
   const tokens = Number(rec?.employeeDeadlineTokensAvailable ?? 3);
   const request = rec?.employeeDeadlineUnlockRequested ? '<br><span class="pill danger">Solicitud de desbloqueo</span>' : "";
-  return `<span class="pill ${info.tone}">${esc(info.label)}</span><br><small>${tokens} token(s) disponible(s)</small>${request}`;
+  return `<span data-deadline-rec="${recId}"><span class="pill ${info.tone}">${esc(info.label)}</span><br><small>${tokens} token(s) disponible(s)</small>${request}</span>`;
+}
+
+function deadlineMobileGauge(rec) {
+  const info = deadlineInfo(rec?.employeeDeadline, rec?.employeeDeadlineSetAt);
+  const recId = esc(rec?.id || rec?.number || "");
+  const label = info.active ? info.label : "Sin tiempo asignado";
+  const progress = info.active ? info.progress : 0;
+  const tone = info.active ? info.tone : "info";
+  return `<div class="mobile-deadline-gauge ${tone}" data-mobile-deadline-rec="${recId}" style="--deadline-progress:${progress}%"><span class="mobile-deadline-clock"></span><span><strong>${esc(label)}</strong><small>Tiempo límite</small></span></div>`;
+}
+
+function refreshAdminDeadlineBadges() {
+  if (document.body.dataset.page !== "admin") return;
+  const dashboard = qs('[data-section="dashboard"]');
+  if (!dashboard || dashboard.classList.contains("hidden")) return;
+  const current = state();
+  qsa("[data-deadline-rec]").forEach((host) => {
+    const id = host.dataset.deadlineRec || "";
+    const rec = current.receptions.find((item) => item.id === id || item.number === id);
+    if (!rec) return;
+    const html = deadlineBadge(rec);
+    if (host.outerHTML !== html) host.outerHTML = html;
+  });
+  qsa("[data-mobile-deadline-rec]").forEach((host) => {
+    const id = host.dataset.mobileDeadlineRec || "";
+    const rec = current.receptions.find((item) => item.id === id || item.number === id);
+    if (!rec) return;
+    const html = deadlineMobileGauge(rec);
+    if (host.outerHTML !== html) host.outerHTML = html;
+  });
 }
 
 function statusOptions(value) {
@@ -260,8 +499,67 @@ function processRows(rec) {
 function collectAdminProcessRows() {
   return qsa("[data-admin-process-row]").map((input) => ({
     status: input.dataset.detailStatus || "pending",
-    text: input.value.trim()
+    text: input.value.trim(),
+    clientRequest: qs(`[data-admin-client-request="${input.dataset.adminProcessRow}"]`)?.value || ""
   })).filter((item) => item.text);
+}
+
+function normalizeClientRequestType(type) {
+  return CLIENT_REQUEST_TYPES[type] ? type : "";
+}
+
+function requestTypeForRow(row, existingRequest) {
+  if (row && Object.prototype.hasOwnProperty.call(row, "clientRequest")) {
+    return normalizeClientRequestType(row.clientRequest || "");
+  }
+  return normalizeClientRequestType(existingRequest?.type || "");
+}
+
+function trackingRequestsForRows(rec, rows = []) {
+  const requests = Array.isArray(rec?.trackingRequests) ? rec.trackingRequests : [];
+  return rows.map((row, index) => {
+    const existing = requests[index] || {};
+    const type = requestTypeForRow(row, existing);
+    const previousType = normalizeClientRequestType(existing.type || "");
+    const fingerprint = clientRequestFingerprint(row);
+    const previousFingerprint = existing.fingerprint || "";
+    const keepConfirmation = type && type === previousType && (!previousFingerprint || previousFingerprint === fingerprint);
+    return {
+      type,
+      fingerprint,
+      confirmedAt: keepConfirmation ? existing.confirmedAt || "" : "",
+      confirmedLabel: keepConfirmation ? existing.confirmedLabel || "" : ""
+    };
+  });
+}
+
+function attachClientRequestsToRows(rows = [], requests = []) {
+  return rows.map((row, index) => ({
+    ...row,
+    clientRequest: normalizeClientRequestType(row?.clientRequest || requests[index]?.type || "")
+  }));
+}
+
+function moveAdminTrackingItem(list, from, to) {
+  if (!Array.isArray(list) || from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return false;
+  const [item] = list.splice(from, 1);
+  list.splice(to, 0, item);
+  return true;
+}
+
+function reorderAdminTrackingDraft(rec, from, to) {
+  if (!rec) return false;
+  const draft = captureAdminTrackingDraftFromDom(rec);
+  if (!moveAdminTrackingItem(draft.rows, from, to)) return false;
+  moveAdminTrackingItem(draft.images, from, to);
+  moveAdminTrackingItem(draft.requests, from, to);
+  AM_SIMPLE_STORE.mutate((current) => {
+    persistAdminTrackingDraft(current, draft, false);
+  });
+  syncSelectedAdminReceptionToEmployee();
+  renderAdmin();
+  toast("Renglón movido. Presione Guardar seguimiento para respaldarlo.", "ok");
+  return true;
 }
 
 function adminTrackingProfileSnapshot(rec, sourceProfile = trackingProfile(rec)) {
@@ -285,19 +583,22 @@ function createAdminTrackingDraft(rec) {
       sourcePendingAt: savedDraft.sourcePendingAt || "",
       profile: { ...adminTrackingProfileSnapshot(rec, profile), ...(savedDraft.profile || {}) },
       progress: Number(savedDraft.progress ?? rec?.progress ?? 0),
-      rows: Array.isArray(savedDraft.rows) ? savedDraft.rows : processRowItems(rec),
+      rows: attachClientRequestsToRows(Array.isArray(savedDraft.rows) ? savedDraft.rows : processRowItems(rec), savedDraft.requests || rec?.trackingRequests || []),
       images: Array.isArray(savedDraft.images) ? savedDraft.images : (Array.isArray(rec?.trackingImages) ? rec.trackingImages : []),
-      deadline: savedDraft.deadline ?? rec?.employeeDeadline ?? ""
+      deadline: savedDraft.deadline ?? rec?.employeeDeadline ?? "",
+      requests: Array.isArray(savedDraft.requests) ? savedDraft.requests : trackingRequestsForRows(rec, savedDraft.rows || processRowItems(rec))
     };
   }
+  const baseRows = pending ? adminProcessRowItems(rec) : processRowItems(rec);
   return {
     id: rec?.id || "",
     sourcePendingAt: pending?.submittedAt || "",
     profile: pending ? { ...adminTrackingProfileSnapshot(rec, profile), state: pending.state || profile.state || rec.status } : adminTrackingProfileSnapshot(rec, profile),
     progress: pending ? Number(pending.progress || 0) : Number(rec?.progress || 0),
-    rows: pending ? adminProcessRowItems(rec) : processRowItems(rec),
+    rows: attachClientRequestsToRows(baseRows, rec?.trackingRequests || []),
     images: pending ? adminTrackingImages(rec) : (Array.isArray(rec?.trackingImages) ? rec.trackingImages : []),
-    deadline: rec?.employeeDeadline || ""
+    deadline: rec?.employeeDeadline || "",
+    requests: trackingRequestsForRows(rec, baseRows)
   };
 }
 
@@ -320,6 +621,7 @@ function captureAdminTrackingDraftFromDom(rec) {
   if (rows.length || qsa("[data-admin-process-row]").length) {
     draft.rows = rows;
     draft.images = (draft.images || []).slice(0, rows.length);
+    draft.requests = trackingRequestsForRows({ ...rec, trackingRequests: draft.requests || rec?.trackingRequests || [] }, rows);
   }
   draft.deadline = qs("[data-admin-deadline]")?.value || draft.deadline || "";
   return draft;
@@ -331,6 +633,10 @@ function persistAdminTrackingDraft(current, draft, publish = false) {
   const profile = trackingProfile(rec);
   const rows = (draft.rows || []).filter((row) => String(row?.text || "").trim());
   const images = (draft.images || []).slice(0, rows.length).map((rowImages) => Array.isArray(rowImages) ? rowImages : []);
+  const requestSource = {
+    ...rec,
+    trackingRequests: Array.isArray(draft.requests) ? draft.requests : rec.trackingRequests
+  };
   const privateDraft = {
     id: rec.id,
     sourcePendingAt: draft.sourcePendingAt || "",
@@ -339,7 +645,8 @@ function persistAdminTrackingDraft(current, draft, publish = false) {
     progress: Number(draft.progress || 0),
     rows,
     images,
-    deadline: draft.deadline || ""
+    deadline: draft.deadline || "",
+    requests: trackingRequestsForRows(requestSource, rows)
   };
   rec.adminTrackingDraft = privateDraft;
   rec.pendingTracking = {
@@ -352,7 +659,8 @@ function persistAdminTrackingDraft(current, draft, publish = false) {
     state: privateDraft.profile.state || rec.status || "EN REVISIÓN",
     progress: privateDraft.progress,
     processDetails: rows.map(formatProcessRow).join("\n"),
-    images
+    images,
+    requests: privateDraft.requests
   };
 
   const deadlineValue = draft.deadline || "";
@@ -375,6 +683,7 @@ function persistAdminTrackingDraft(current, draft, publish = false) {
   rec.publishedProgress = rec.progress;
   profile.processDetails = rows.map(formatProcessRow).join("\n");
   rec.trackingImages = images;
+  rec.trackingRequests = trackingRequestsForRows(requestSource, rows);
   rec.status = profile.state || rec.status;
   rec.progressLabel = profile.state || "En proceso";
   if (pendingTracking(rec)) {
@@ -401,6 +710,69 @@ function whatsappPhone(phone) {
 function absoluteHref(page, token) {
   const base = location.href.replace(/[^/\\]*$/, "");
   return `${base}${tokenHref(page, token)}`;
+}
+
+function absolutePhotoReviewHref(token) {
+  const base = location.href.replace(/[^/\\]*$/, "");
+  return `${base}${photoReviewHref(token)}`;
+}
+
+let activeDictation = null;
+
+function startAdminDictation(button) {
+  if (window.innerWidth <= 920) {
+    toast("El dictado por micrófono está disponible solo en escritorio.", "warn");
+    return;
+  }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    toast("Este navegador no permite dictado por micrófono.", "warn");
+    return;
+  }
+  const target = qs(button.dataset.dictationTarget || "");
+  if (!target) {
+    toast("No se encontró el campo para dictar.", "warn");
+    return;
+  }
+  if (activeDictation) {
+    try { activeDictation.stop(); } catch {}
+    activeDictation = null;
+  }
+  const originalText = button.textContent;
+  const recognition = new SpeechRecognition();
+  activeDictation = recognition;
+  recognition.lang = "es-GT";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  button.disabled = true;
+  button.textContent = "Escuchando...";
+  target.focus();
+  recognition.onresult = (event) => {
+    const spoken = Array.from(event.results || [])
+      .map((result) => result[0]?.transcript || "")
+      .join(" ")
+      .trim();
+    if (!spoken) return;
+    const current = target.value.trim();
+    target.value = current ? `${current} ${spoken}` : spoken;
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  recognition.onerror = () => {
+    toast("No se pudo tomar el dictado. Revise permiso de micrófono.", "warn");
+  };
+  recognition.onend = () => {
+    if (activeDictation === recognition) activeDictation = null;
+    button.disabled = false;
+    button.textContent = originalText;
+  };
+  try {
+    recognition.start();
+  } catch {
+    activeDictation = null;
+    button.disabled = false;
+    button.textContent = originalText;
+    toast("No se pudo iniciar el micrófono.", "warn");
+  }
 }
 
 function closeActionMenus(except = null) {
@@ -527,20 +899,16 @@ function authorizationMessage(rec) {
   const link = absoluteHref("cliente.html", rec.clientToken);
   return [
     `Hola ${rec.client?.name || ""}.`,
-    `Le saluda Automotriz Medina.`,
-    `Le compartimos el link privado de autorización para revisar la recepción, fotografías, inventario, observaciones y términos del servicio de su vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}.`,
-    `Por favor abra el enlace y, si todo esta correcto, autorice el diagnóstico o reparación:`,
+    `Te compartimos el link privado de autorización para revisar la recepción, fotografías, inventario, observaciones y términos del servicio de Tu vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}. Por favor abre el enlace y, si todo esta correcto, autoriza el diagnóstico o reparación:`,
     link
   ].join("\n\n");
 }
 
 function photoReviewMessage(rec) {
-  const link = absoluteHref("cliente.html", rec.clientToken);
+  const link = absolutePhotoReviewHref(rec.clientToken);
   return [
     `Hola ${rec.client?.name || ""}.`,
-    `Le saluda Automotriz Medina.`,
-    `Su autorización ya fue firmada en recepción. Le compartimos este enlace privado para revisar las fotografías e información visual registrada de su vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}.`,
-    `Al terminar la revisión, presione Siguiente para abrir el seguimiento de su vehículo:`,
+    `Tu autorización ya fue firmada en recepción. Te compartimos este enlace privado para que puedas revisar las fotografías e información visual registrada de Tu vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}. Al terminar la revisión, presiona Siguiente para abrir el seguimiento de Tu vehículo:`,
     link
   ].join("\n\n");
 }
@@ -549,9 +917,7 @@ function trackingMessage(rec) {
   const link = absoluteHref("seguimiento.html", rec.trackingToken);
   return [
     `Hola ${rec.client?.name || ""}.`,
-    `Le saluda Automotriz Medina.`,
-    `Le compartimos el link privado de seguimiento de su vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}.`,
-    `Normalmente los avances se actualizan cada 24 a 48 horas según el proceso y la información disponible del taller:`,
+    `Te compartimos el link privado de seguimiento de Tu vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}.`,
     link
   ].join("\n\n");
 }
@@ -694,13 +1060,14 @@ function archiveFolderParts(rec) {
   ];
 }
 
-function localArchiveFileName(rec) {
+function localArchiveFileName(rec, mode = "full") {
   const vehicle = safeFileName(`${rec.vehicle?.marca || ""}-${rec.vehicle?.modelo || ""}-${rec.vehicle?.anio || ""}` || "vehiculo");
-  return `${safeFileName(rec.number || rec.id)}-${vehicle}`;
+  const suffix = mode === "partial" ? "-parcial" : "";
+  return `${safeFileName(rec.number || rec.id)}-${vehicle}${suffix}`;
 }
 
-function localArchivePath(rec) {
-  return [...archiveFolderParts(rec), `${localArchiveFileName(rec)}.amr`].join("/");
+function localArchivePath(rec, mode = "full") {
+  return [...archiveFolderParts(rec), `${localArchiveFileName(rec, mode)}.amr`].join("/");
 }
 
 function openLocalArchiveDb() {
@@ -777,6 +1144,49 @@ async function getOrCreateFolder(root, parts) {
   return current;
 }
 
+async function existingChildFolder(root, name) {
+  try {
+    return await root.getDirectoryHandle(name, { create: false });
+  } catch {
+    return null;
+  }
+}
+
+async function selectLocalArchiveTarget(root, rec) {
+  const parts = archiveFolderParts(rec);
+  const [clientFolderName, ...restParts] = parts;
+  const existingClientFolder = await existingChildFolder(root, clientFolderName);
+  if (!existingClientFolder) {
+    return {
+      folder: await getOrCreateFolder(root, parts),
+      pathParts: parts
+    };
+  }
+
+  const useExisting = confirm(`Ya existe una carpeta para el cliente:\n\n${clientFolderName}\n\nAceptar: guardar dentro de esa carpeta existente.\nCancelar: elegir o crear otra carpeta para este cliente.`);
+  if (useExisting) {
+    return {
+      folder: await getOrCreateFolder(existingClientFolder, restParts),
+      pathParts: parts
+    };
+  }
+
+  alert("Seleccione o cree la carpeta correcta para este cliente. Dentro de esa carpeta se guardará el vehículo, año, mes y expediente.");
+  let selectedClientFolder = null;
+  try {
+    selectedClientFolder = await window.showDirectoryPicker({ mode: "readwrite" });
+  } catch (error) {
+    if (error && error.name === "AbortError") return null;
+    throw error;
+  }
+  const ok = await verifyDirectoryPermission(selectedClientFolder, true);
+  if (!ok) throw new Error("No se concedió permiso para escribir en la carpeta seleccionada.");
+  return {
+    folder: await getOrCreateFolder(selectedClientFolder, restParts),
+    pathParts: [safeFolderName(selectedClientFolder.name || "CARPETA SELECCIONADA", "CARPETA SELECCIONADA"), ...restParts]
+  };
+}
+
 async function writeTextFile(folder, name, content, type = "text/plain;charset=utf-8") {
   const fileHandle = await folder.getFileHandle(name, { create: true });
   const writable = await fileHandle.createWritable();
@@ -786,18 +1196,32 @@ async function writeTextFile(folder, name, content, type = "text/plain;charset=u
   return file.size > 0;
 }
 
-async function writeLocalArchiveBackup(rec) {
+async function writeLocalArchiveBackup(rec, mode = "full") {
   const root = await ensureLocalArchiveFolder();
   if (!root) throw new Error("Configure primero la carpeta local de archivados.");
-  const backup = buildReceptionBackup(rec);
-  const folder = await getOrCreateFolder(root, archiveFolderParts(rec));
-  const base = localArchiveFileName(rec);
+  const archiveMode = mode === "partial" ? "partial" : "full";
+  const backupRec = archiveMode === "partial" ? partialReceptionForLocalArchive(rec) : rec;
+  const backup = buildReceptionBackup(backupRec);
+  backup.archiveMode = archiveMode;
+  backup.archiveModeLabel = archiveMode === "partial" ? "Parcial" : "Completo";
+  if (archiveMode === "partial") {
+    const partialHtml = backupWorkbook(backupRec);
+    backup.files = {
+      expedienteHtml: partialHtml,
+      archivoTallerHtml: partialHtml
+    };
+    backup.archives = { master: {}, quick: {} };
+  }
+  const target = await selectLocalArchiveTarget(root, rec);
+  if (!target) throw new Error("Descarga cancelada.");
+  const folder = target.folder;
+  const base = localArchiveFileName(rec, archiveMode);
   const json = JSON.stringify(backup, null, 2);
   const wroteBackup = await writeTextFile(folder, `${base}.amr`, json, "application/json;charset=utf-8");
-  const wroteHtml = await writeTextFile(folder, `${base}.html`, backup.files?.expedienteHtml || backupWorkbook(rec), "text/html;charset=utf-8");
-  const wroteArchiveHtml = await writeTextFile(folder, `${base}-archivo.html`, backup.files?.archivoTallerHtml || backup.files?.expedienteHtml || backupWorkbook(rec), "text/html;charset=utf-8");
+  const wroteHtml = await writeTextFile(folder, `${base}.html`, backup.files?.expedienteHtml || backupWorkbook(backupRec), "text/html;charset=utf-8");
+  const wroteArchiveHtml = await writeTextFile(folder, `${base}-archivo.html`, backup.files?.archivoTallerHtml || backup.files?.expedienteHtml || backupWorkbook(backupRec), "text/html;charset=utf-8");
   if (!wroteBackup || !wroteHtml || !wroteArchiveHtml) throw new Error("No se pudo verificar el respaldo local.");
-  return { path: localArchivePath(rec), exportedAt: backup.exportedAt };
+  return { path: [...target.pathParts, `${base}.amr`].join("/"), exportedAt: backup.exportedAt, mode: archiveMode };
 }
 
 async function deleteLocalArchiveBackup(entry) {
@@ -813,10 +1237,12 @@ async function deleteLocalArchiveBackup(entry) {
   const names = new Set([fileName]);
   const rec = entry?.backup?.reception;
   if (rec) {
-    const base = localArchiveFileName(rec);
-    names.add(`${base}.amr`);
-    names.add(`${base}.html`);
-    names.add(`${base}-archivo.html`);
+    ["full", "partial"].forEach((mode) => {
+      const base = localArchiveFileName(rec, mode);
+      names.add(`${base}.amr`);
+      names.add(`${base}.html`);
+      names.add(`${base}-archivo.html`);
+    });
   }
   for (const name of names) {
     try {
@@ -864,7 +1290,9 @@ async function readLocalArchiveFiles(dirHandle, prefix = "") {
 async function loadLocalArchivedBackups() {
   const root = await getLocalArchiveFolder(false);
   if (!root) {
+    adminLocalArchivedBackups = [];
     renderLocalArchiveStatus("Configure la carpeta local para cargar archivados.");
+    renderLocalArchiveTable();
     return [];
   }
   adminLocalArchivedBackups = await readLocalArchiveFiles(root);
@@ -883,17 +1311,28 @@ function renderLocalArchiveStatus(message = "") {
 
 function renderLocalArchiveTable() {
   const tbody = qs("[data-local-archive-table]");
-  if (!tbody) return;
+  const gallery = qs("[data-local-archive-gallery]");
+  if (!tbody && !gallery) return;
   const current = state();
-  tbody.innerHTML = adminLocalArchivedBackups.map((entry, index) => {
+  const entries = adminLocalArchivedBackups
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => localArchiveMatchesSearch(entry));
+  if (gallery) {
+    gallery.innerHTML = entries.length
+      ? entries.map(({ entry, index }) => renderLocalArchiveMobileCard(entry, index)).join("")
+      : '<div class="mobile-gallery-empty">No hay expedientes archivados en este filtro.</div>';
+  }
+  if (!tbody) return;
+  tbody.innerHTML = entries.map(({ entry, index }) => {
     const rec = entry.backup.reception;
     const cloudRec = current.receptions.find((item) => item.id === rec.id || item.number === rec.number);
+    const archiveModeLabel = entry.backup.archiveModeLabel || (entry.backup.archiveMode === "partial" || /-parcial\.amr$/i.test(entry.path) ? "Parcial" : "Completo");
     return `<tr>
       <td><strong>${esc(`${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim() || rec.number)}</strong><br><small>${esc(rec.vehicle?.placa || rec.number || "")}</small></td>
       <td>${esc(rec.client?.name || "Cliente pendiente")}<br><small>${esc(rec.client?.phone || "")}</small></td>
       <td>${esc(rec.employeeName || "")}</td>
       <td><span class="pill ${statusTone(rec.status)}">${esc(rec.status || "")}</span></td>
-      <td><small>${esc(entry.path)}</small></td>
+      <td><small>${esc(entry.path)}</small><br><span class="pill info">${esc(archiveModeLabel)}</span></td>
       <td><div class="table-actions">
         <button class="btn" data-action="restore-local-archive-preview" data-local-archive-index="${index}">Ver</button>
         <button class="btn primary" data-action="restore-local-archive-dashboard" data-local-archive-index="${index}">Restaurar</button>
@@ -902,6 +1341,53 @@ function renderLocalArchiveTable() {
       </div></td>
     </tr>`;
   }).join("") || '<tr><td colspan="6">No hay expedientes archivados en la carpeta local.</td></tr>';
+}
+
+function localArchiveSearchText(entry) {
+  const rec = entry?.backup?.reception || {};
+  const vehicle = rec.vehicle || {};
+  const client = rec.client || {};
+  return [
+    rec.number,
+    rec.id,
+    rec.status,
+    rec.employeeName,
+    client.name,
+    client.phone,
+    vehicle.marca,
+    vehicle.modelo,
+    vehicle.anio,
+    vehicle.color,
+    vehicle.placa,
+    vehicle.vin,
+    serviceReason(rec),
+    entry.path
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function localArchiveMatchesSearch(entry) {
+  const query = String(adminLocalArchiveSearch || "").trim().toLowerCase();
+  if (!query) return true;
+  return query.split(/\s+/).every((part) => localArchiveSearchText(entry).includes(part));
+}
+
+function renderLocalArchiveMobileCard(entry, index) {
+  const rec = entry?.backup?.reception || {};
+  const photo = mobileVehiclePhoto(rec);
+  const title = mobileVehicleTitle(rec);
+  const archiveModeLabel = entry?.backup?.archiveModeLabel || (entry?.backup?.archiveMode === "partial" || /-parcial\.amr$/i.test(entry?.path || "") ? "Parcial" : "Completo");
+  return `
+    <article class="mobile-vehicle-card" data-action="restore-local-archive-preview" data-local-archive-index="${index}" role="button" tabindex="0">
+      <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
+        ${photo ? `<img src="${photo}" alt="${esc(title)}">` : `<span>${esc(rec.number || "AM")}</span>`}
+      </div>
+      <div class="mobile-vehicle-info">
+        <span class="mobile-vehicle-status ${mobileVehicleStatusClass(rec.status || "ARCHIVADO")}">${esc(rec.status || "ARCHIVADO")}</span>
+        <strong>${esc(title)}</strong>
+        <small>${esc(rec.employeeName || "Sin técnico")}</small>
+        <em>${esc(`${rec.client?.name || "Cliente pendiente"} · ${rec.number || ""} · ${archiveModeLabel}`)}</em>
+      </div>
+    </article>`;
 }
 
 function archiveDataFromHtml(html = "") {
@@ -1141,6 +1627,7 @@ function employeeVehicleFromReception(rec) {
     deadlineTokensUsed: Number(rec.employeeDeadlineTokensUsed || 0),
     deadlineUnlockRequested: !!rec.employeeDeadlineUnlockRequested,
     notifications: Array.isArray(rec.employeeNotifications) ? rec.employeeNotifications.map((item) => ({ ...item })) : [],
+    invoices: Array.isArray(rec.invoices) ? rec.invoices.map((item) => ({ ...item })) : [],
     photos: Array.isArray(rec.photos) ? rec.photos.map((photo) => ({ ...photo })) : [],
     inventory: Array.isArray(rec.inventory) ? rec.inventory.map((item) => ({ ...item })) : [],
     damages: Array.isArray(rec.damages) ? rec.damages.map((damage) => ({ ...damage })) : []
@@ -1149,7 +1636,7 @@ function employeeVehicleFromReception(rec) {
 
 function mergeEmployeeVehicle(existing = {}, incoming = {}) {
   const merged = { ...existing, ...incoming };
-  ["photos", "inventory", "damages", "detalles", "detalleImages", "bitacora", "notifications"].forEach((key) => {
+  ["photos", "inventory", "damages", "detalles", "detalleImages", "bitacora", "notifications", "invoices"].forEach((key) => {
     const incomingArray = Array.isArray(incoming[key]) ? incoming[key] : null;
     const existingArray = Array.isArray(existing[key]) ? existing[key] : [];
     if (incomingArray && incomingArray.length) merged[key] = incomingArray;
@@ -1192,6 +1679,57 @@ function buildReceptionBackup(rec) {
       quick: {}
     }
   };
+}
+
+function partialReceptionForLocalArchive(rec) {
+  const clone = JSON.parse(JSON.stringify(rec || {}));
+  const keepPhotos = [];
+  const keepByLabel = (label, fallback = "") => {
+    const photo = receptionPhotoByLabel(clone, label, fallback) || (label === "Frente" ? frontReceptionPhoto(clone) : null);
+    if (photo?.dataUrl && !keepPhotos.some((item) => item.dataUrl === photo.dataUrl && item.label === photo.label)) {
+      keepPhotos.push({ ...photo });
+    }
+  };
+  keepByLabel("Frente");
+  keepByLabel("Tarjeta frente", "frente tarjeta");
+  keepByLabel("Tarjeta reverso", "reverso tarjeta");
+  clone.photos = keepPhotos;
+  clone.damages = Array.isArray(clone.damages)
+    ? clone.damages.map((damage) => ({
+      ...damage,
+      photos: Array.isArray(damage.photos) ? damage.photos.map(stripPhotoPayload) : []
+    }))
+    : [];
+  clone.detalleImages = Array.isArray(clone.detalleImages) ? clone.detalleImages.map(stripPhotoPayload) : [];
+  clone.trackingImages = Array.isArray(clone.trackingImages) ? clone.trackingImages.map(stripPhotoPayload) : [];
+  clone.invoices = Array.isArray(clone.invoices)
+    ? clone.invoices.map((invoice) => stripPhotoPayload(invoice))
+    : [];
+  clone.localArchiveMode = "partial";
+  return clone;
+}
+
+function stripPhotoPayload(value) {
+  if (typeof value === "string") return "";
+  if (!value || typeof value !== "object") return value;
+  const copy = { ...value };
+  ["dataUrl", "image", "src", "url", "thumbnail", "thumb"].forEach((key) => {
+    if (typeof copy[key] === "string" && /^data:image\//i.test(copy[key])) copy[key] = "";
+  });
+  return copy;
+}
+
+function askLocalArchiveDownloadMode(rec) {
+  const answer = prompt(
+    `Descargar expediente ${rec?.number || ""}\n\nEscriba COMPLETO para guardar todo el expediente con todas sus fotografías.\nEscriba PARCIAL para guardar todo el expediente, pero solo con estas fotografías: frente del vehículo, tarjeta frente y tarjeta reverso.`,
+    "COMPLETO"
+  );
+  if (answer == null) return "";
+  const value = String(answer).trim().toLowerCase();
+  if (["completo", "complete", "full", "todo"].includes(value)) return "full";
+  if (["parcial", "partial"].includes(value)) return "partial";
+  toast("Descarga cancelada. Debe escribir COMPLETO o PARCIAL.", "danger");
+  return "";
 }
 
 function buildFullProgramBackup() {
@@ -1276,13 +1814,26 @@ function syncSelectedAdminReceptionToEmployee() {
 }
 
 async function handleAdminTrackingAction(action, button, event) {
-  if (!["save-admin-tracking", "save-progress", "admin-add-detail-row", "admin-detail-status", "admin-remove-detail-row"].includes(action)) return false;
+  if (!["start-dictation", "open-admin-tracking-link", "save-admin-tracking", "save-progress", "admin-add-detail-row", "admin-detail-status", "admin-move-detail-row", "admin-remove-detail-row", "admin-remove-detail-image"].includes(action)) return false;
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation?.();
-  const rec = selected();
+  if (action === "start-dictation") {
+    startAdminDictation(button);
+    return true;
+  }
+  const rec = selectedAdminReceptionFromHash();
   if (!rec) {
     toast("Seleccione un expediente para modificar seguimiento.", "warn");
+    return true;
+  }
+  if (action === "open-admin-tracking-link") {
+    const href = button.dataset.href || tokenHref("seguimiento.html", rec.trackingToken);
+    if (window.innerWidth <= 920) {
+      window.location.assign(href);
+    } else {
+      window.open(href, "_blank", "noopener");
+    }
     return true;
   }
   if (action === "admin-detail-status") {
@@ -1327,6 +1878,21 @@ async function handleAdminTrackingAction(action, button, event) {
     draft.rows.splice(index, 1);
     draft.images.splice(index, 1);
   }
+  if (action === "admin-remove-detail-image") {
+    const rowIndex = Number(button.dataset.rowIndex);
+    const imageIndex = Number(button.dataset.imageIndex);
+    if (!Number.isFinite(rowIndex) || !Number.isFinite(imageIndex)) return true;
+    if (!Array.isArray(draft.images?.[rowIndex])) return true;
+    if (!confirm("¿Eliminar esta imagen del renglón?")) return true;
+    draft.images[rowIndex].splice(imageIndex, 1);
+  }
+  if (action === "admin-move-detail-row") {
+    const from = Number(button.dataset.index);
+    const to = from + Number(button.dataset.direction || 0);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return true;
+    reorderAdminTrackingDraft(rec, from, to);
+    return true;
+  }
   AM_SIMPLE_STORE.mutate((current) => {
     persistAdminTrackingDraft(current, draft, false);
   });
@@ -1340,7 +1906,7 @@ async function handleAdminTrackingImageChange(input, event) {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation?.();
-  const rec = selected();
+  const rec = selectedAdminReceptionFromHash();
   if (!rec) {
     toast("Seleccione un expediente para agregar imagen.", "warn");
     input.value = "";
@@ -1348,12 +1914,14 @@ async function handleAdminTrackingImageChange(input, event) {
   }
   const rowIndex = Number(input.dataset.adminDetailImage);
   try {
-    const dataUrl = await readFilePromise(input);
-    if (!dataUrl || !Number.isFinite(rowIndex)) return true;
+    const files = Array.from(input.files || []);
+    if (!files.length || !Number.isFinite(rowIndex)) return true;
+    const dataUrls = (await Promise.all(files.map((file) => readTrackingMediaFile(file)))).filter(Boolean);
+    if (!dataUrls.length) return true;
     const draft = captureAdminTrackingDraftFromDom(rec);
     while (draft.images.length <= rowIndex) draft.images.push([]);
     if (!Array.isArray(draft.images[rowIndex])) draft.images[rowIndex] = [];
-    draft.images[rowIndex].push(dataUrl);
+    draft.images[rowIndex].push(...dataUrls);
     AM_SIMPLE_STORE.mutate((current) => {
       persistAdminTrackingDraft(current, draft, false);
     });
@@ -1811,14 +2379,23 @@ function renderNav() {
     showSection(button.dataset.sectionTarget, { fromExpediente: button.hasAttribute("data-expediente-vineta") });
     if (button.dataset.sectionTarget === "dashboard") renderReceptionTable();
     if (button.dataset.sectionTarget === "clientes") renderClientCatalog();
-    if (button.dataset.sectionTarget === "archivados") loadLocalArchivedBackups().catch((error) => {
+    if (button.dataset.sectionTarget === "visor-local") loadLocalArchivedBackups().catch((error) => {
       console.warn("No se pudieron cargar archivados locales", error);
       renderLocalArchiveStatus("No se pudieron cargar los archivados locales.");
     });
   }));
   if (mobile) mobile.addEventListener("change", (event) => {
+    if (event.target.value === "archived-dashboard") {
+      adminDashboardFilter = "archived";
+      adminEmployeeFilter = "";
+      adminLocalArchivePreviewRec = null;
+      showSection("dashboard");
+      renderReceptionTable();
+      pushAdminHash("dashboard");
+      return;
+    }
     showSection(event.target.value);
-    if (event.target.value === "archivados") loadLocalArchivedBackups().catch((error) => {
+    if (event.target.value === "visor-local") loadLocalArchivedBackups().catch((error) => {
       console.warn("No se pudieron cargar archivados locales", error);
       renderLocalArchiveStatus("No se pudieron cargar los archivados locales.");
     });
@@ -1905,10 +2482,71 @@ function notificationDate(value) {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("es-SV");
 }
 
-const ALERTZY_ACCOUNT_KEY = "vyeddqocw7iw9jk";
+const ALERTZY_EMPLOYEE_ACCOUNT_KEY = "vyeddqocw7iw9jk";
+const ALERTZY_ADMIN_ACCOUNT_KEY = "pjxh9op73pp1z21";
+const ALERTZY_ACCOUNT_KEY = ALERTZY_EMPLOYEE_ACCOUNT_KEY;
 
 function alertzyPriorityLabel(priority) {
   return priority === "danger" ? "Código rojo urgente" : "Código amarillo";
+}
+
+function alertzyBody(title, message, accountKey = ALERTZY_ACCOUNT_KEY) {
+  const params = new URLSearchParams();
+  params.set("accountKey", accountKey);
+  params.set("title", title || "Automotriz Medina");
+  params.set("message", message || "");
+  params.set("group", "Automotriz Medina");
+  return params;
+}
+
+async function sendAlertzySilent(title, message, accountKey = ALERTZY_ACCOUNT_KEY) {
+  if (!accountKey) return false;
+  const url = "https://alertzy.app/send";
+  const body = alertzyBody(title, message, accountKey);
+  try {
+    await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      cache: "no-store",
+      keepalive: true,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    });
+    return true;
+  } catch (error) {
+    console.warn("No se pudo enviar alerta externa por fetch", error);
+  }
+  try {
+    const id = `alertzy-frame-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const frame = document.createElement("iframe");
+    frame.name = id;
+    frame.title = "alertzy";
+    frame.style.cssText = "position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;border:0;opacity:0;pointer-events:none;";
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = url;
+    form.target = id;
+    form.enctype = "multipart/form-data";
+    form.style.cssText = "position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;opacity:0;pointer-events:none;";
+    body.forEach((value, key) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+    document.body.appendChild(frame);
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(() => {
+      form.remove();
+      frame.remove();
+    }, 12000);
+    return true;
+  } catch (error) {
+    console.warn("No se pudo enviar alerta externa", error);
+    return false;
+  }
 }
 
 async function sendAlertzyNotification({ employeeName, type, priority, message, recNumber, vehicleTitle, plate }) {
@@ -1924,14 +2562,79 @@ async function sendAlertzyNotification({ employeeName, type, priority, message, 
   if (plate) lines.push(`Placa: ${plate}`);
   lines.push("", message || "");
   const body = lines.join("\n");
-  const url = `https://alertzy.app/send?accountKey=${encodeURIComponent(ALERTZY_ACCOUNT_KEY)}&title=${encodeURIComponent(title)}&message=${encodeURIComponent(body)}`;
+  return sendAlertzySilent(title, body);
+}
+
+function clientAvailabilityMessage(rec) {
+  return `Hola Automotriz Medina, confirmo que estoy disponible para ser contactado sobre mi vehiculo, expediente ${rec?.number || "N/D"}. Quedo atento.`;
+}
+
+function clientAvailabilityWhatsappUrl(rec) {
+  return `https://wa.me/50371660867?text=${encodeURIComponent(clientAvailabilityMessage(rec))}`;
+}
+
+function whatsappLogoSvg() {
+  return '<svg class="whatsapp-logo" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>';
+}
+
+function clientRequestFingerprint(row) {
+  return String(row?.text || "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
+}
+
+function clientRequestConfirmationKey(rec, rowIndex, type, row) {
+  const token = rec?.trackingToken || rec?.clientToken || rec?.id || rec?.number || "tracking";
+  return `am_client_request_confirmed_${token}_${rowIndex}_${type}_${clientRequestFingerprint(row)}`;
+}
+
+function readClientRequestConfirmation(rec, rowIndex, type, row) {
   try {
-    await fetch(url, { mode: "no-cors", cache: "no-store" });
-    return true;
+    const raw = localStorage.getItem(clientRequestConfirmationKey(rec, rowIndex, type, row));
+    return raw ? JSON.parse(raw) : null;
   } catch (error) {
-    console.warn("No se pudo enviar notificación Alertzy", error);
-    return false;
+    return null;
   }
+}
+
+function rememberClientRequestConfirmation(rec, rowIndex, type, row) {
+  const confirmation = {
+    type,
+    confirmedAt: new Date().toLocaleString("es-SV"),
+    confirmedLabel: CLIENT_REQUEST_TYPES[type]?.done || "Confirmado por el cliente."
+  };
+  try {
+    localStorage.setItem(clientRequestConfirmationKey(rec, rowIndex, type, row), JSON.stringify(confirmation));
+  } catch (error) {
+    console.warn("No se pudo guardar confirmacion local del cliente", error);
+  }
+  return confirmation;
+}
+
+async function sendClientAvailabilityAlertzy(rec, rowIndex) {
+  if (!ALERTZY_ADMIN_ACCOUNT_KEY || !rec) return false;
+  const vehicleTitle = [rec.vehicle?.marca, rec.vehicle?.modelo, rec.vehicle?.anio].filter(Boolean).join(" ").trim();
+  const lines = [
+    "Cliente confirmo disponibilidad para ser contactado.",
+    `Recepcion: ${rec.number || "N/D"}`,
+    `Cliente: ${rec.client?.name || "N/D"}`,
+    `Telefono: ${rec.client?.phone || "N/D"}`,
+    vehicleTitle ? `Vehiculo: ${vehicleTitle}` : "",
+    Number.isFinite(rowIndex) ? `Renglon seguimiento: ${rowIndex + 1}` : ""
+  ].filter(Boolean);
+  return sendAlertzySilent("Cliente disponible para contacto", lines.join("\n"), ALERTZY_ADMIN_ACCOUNT_KEY);
+}
+
+async function sendClientAuthorizationAlertzy(rec, rowIndex) {
+  if (!ALERTZY_ADMIN_ACCOUNT_KEY || !rec) return false;
+  const vehicleTitle = [rec.vehicle?.marca, rec.vehicle?.modelo, rec.vehicle?.anio].filter(Boolean).join(" ").trim();
+  const lines = [
+    "Cliente autorizo una solicitud del seguimiento.",
+    `Recepcion: ${rec.number || "N/D"}`,
+    `Cliente: ${rec.client?.name || "N/D"}`,
+    `Telefono: ${rec.client?.phone || "N/D"}`,
+    vehicleTitle ? `Vehiculo: ${vehicleTitle}` : "",
+    Number.isFinite(rowIndex) ? `Renglon seguimiento: ${rowIndex + 1}` : ""
+  ].filter(Boolean);
+  return sendAlertzySilent("Cliente autorizo solicitud", lines.join("\n"), ALERTZY_ADMIN_ACCOUNT_KEY);
 }
 
 function ensureEmployeeNotifications(current) {
@@ -1965,6 +2668,179 @@ function renderNotificationCards(items, emptyText = "Sin notificaciones.") {
         ${item.completedAt && item.adminAckAt ? `<button type="button" class="btn" data-action="reactivate-notification" data-id="${esc(item.id)}">Reactivar notificación</button>` : ""}
       </div>
     </article>`).join("");
+}
+
+function notifierReceptions(employeeId = "") {
+  const current = state();
+  return (current.receptions || [])
+    .filter((rec) => !isDeleted(rec) && !isArchived(rec))
+    .filter((rec) => {
+      if (!employeeId) return true;
+      const recEmployee = String(rec.employeeId || rec.employeeName || "").toLowerCase();
+      return recEmployee === employeeId || normalizeSearchText(rec.employeeName || "") === employeeId;
+    })
+    .sort((a, b) => String(b.number || "").localeCompare(String(a.number || "")));
+}
+
+function notifierVehicleLabel(rec) {
+  const vehicle = `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim() || "Vehículo";
+  const client = rec.client?.name || "Cliente pendiente";
+  const employee = rec.employeeName || employeeDisplayName(rec.employeeId || "");
+  return `${rec.number || "Sin recepción"} · ${vehicle} · ${client} · ${employee}`;
+}
+
+function notifierVehicleSearchText(rec) {
+  return normalizeSearchText([
+    rec.number,
+    rec.client?.name,
+    rec.client?.phone,
+    rec.employeeName,
+    rec.employeeId,
+    rec.vehicle?.marca,
+    rec.vehicle?.modelo,
+    rec.vehicle?.anio,
+    rec.vehicle?.placa,
+    rec.vehicle?.vin,
+    serviceReason(rec)
+  ].filter(Boolean).join(" "));
+}
+
+function renderNotifierVehicles() {
+  const select = qs("[data-notifier-vehicle-select]");
+  if (!select) return;
+  const employeeId = qs("[data-notifier-vehicle-employee]")?.value || "";
+  const search = normalizeSearchText(qs("[data-notifier-vehicle-search]")?.value || "");
+  const previous = select.value;
+  const records = notifierReceptions(employeeId).filter((rec) => !search || notifierVehicleSearchText(rec).includes(search));
+  if (!employeeId) {
+    select.innerHTML = '<option value="">Primero seleccione tecnico</option>';
+  } else if (!records.length) {
+    select.innerHTML = '<option value="">No hay vehiculos para este tecnico</option>';
+  } else {
+    select.innerHTML = records.map((rec) => `<option value="${esc(rec.id)}">${esc(notifierVehicleLabel(rec))}</option>`).join("");
+  }
+  if (records.some((rec) => rec.id === previous)) select.value = previous;
+  renderNotifierVehiclePreview();
+}
+
+function renderNotifierVehiclePreview() {
+  const host = qs("[data-notifier-vehicle-preview]");
+  if (!host) return;
+  const recId = qs("[data-notifier-vehicle-select]")?.value || "";
+  const rec = notifierReceptions().find((item) => item.id === recId);
+  if (!rec) {
+    host.innerHTML = '<div class="notice">Seleccione tecnico y vehiculo para continuar.</div>';
+    return;
+  }
+  const vehicle = `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim() || "Vehículo";
+  host.innerHTML = `
+    <div class="grid cols-3 notifier-vehicle-summary">
+      <div class="metric"><span>Recepción</span><strong>${esc(rec.number || "")}</strong><small>${esc(rec.status || "")}</small></div>
+      <div class="metric"><span>Vehículo</span><strong>${esc(vehicle)}</strong><small>${esc(rec.vehicle?.placa || rec.vehicle?.vin || "Sin placa")}</small></div>
+      <div class="metric"><span>Responsable</span><strong>${esc(rec.employeeName || employeeDisplayName(rec.employeeId || ""))}</strong><small>${esc(rec.client?.name || "Cliente pendiente")}</small></div>
+    </div>`;
+}
+
+function renderNotifier() {
+  qsa("[data-notifier-step]").forEach((item) => {
+    const step = item.dataset.notifierStep || "";
+    item.classList.toggle("hidden", step !== (notifierMode || "choice"));
+  });
+  qsa("[data-notifier-mode]").forEach((button) => {
+    button.classList.toggle("primary", button.dataset.notifierMode === notifierMode);
+  });
+  renderNotifierVehicles();
+}
+
+function setNotifierMode(mode, pushHistory = true) {
+  const nextMode = mode || "choice";
+  if (pushHistory && document.body.dataset.page === "notificador" && nextMode !== "choice") {
+    history.pushState({ notifierMode: nextMode }, "", `#${nextMode}`);
+  }
+  notifierMode = nextMode;
+  renderNotifier();
+}
+
+async function sendNotifierGlobal() {
+  const employeeId = qs("[data-notifier-general-employee]")?.value || "";
+  const priority = qs("[data-notifier-general-priority]")?.value || "warn";
+  const textField = qs("[data-notifier-general-message]");
+  const message = textField?.value.trim() || "";
+  if (!employeeId || !message) {
+    toast("Seleccione empleado y escriba la notificación.", "warn");
+    return;
+  }
+  const employeeName = employeeDisplayName(employeeId);
+  AM_SIMPLE_STORE.mutate((current) => {
+    ensureEmployeeNotifications(current).unshift({
+      id: notificationId(),
+      employeeId,
+      employeeName,
+      message,
+      priority,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+  });
+  const saved = await confirmCloudSaved("Notificación general enviada.", "notifier-global");
+  if (!saved) return;
+  const alertSent = await sendAlertzyNotification({
+    employeeName,
+    type: "Notificación general",
+    priority,
+    message
+  });
+  if (!alertSent) toast("Quedó guardada, pero Alertzy no confirmó el aviso externo.", "warn");
+  if (textField) textField.value = "";
+  renderNotifier();
+}
+
+async function sendNotifierVehicle() {
+  const recId = qs("[data-notifier-vehicle-select]")?.value || "";
+  const priority = qs("[data-notifier-vehicle-priority]")?.value || "warn";
+  const textField = qs("[data-notifier-vehicle-message]");
+  const message = textField?.value.trim() || "";
+  if (!recId || !message) {
+    toast("Seleccione vehículo y escriba la notificación.", "warn");
+    return;
+  }
+  let alertPayload = null;
+  AM_SIMPLE_STORE.mutate((current) => {
+    const rec = (current.receptions || []).find((item) => item.id === recId);
+    if (!rec) return;
+    const employeeId = rec.employeeId || String(rec.employeeName || "edwin").toLowerCase();
+    const employeeName = rec.employeeName || employeeDisplayName(employeeId);
+    const vehicleTitle = `${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}`.trim();
+    alertPayload = {
+      employeeName,
+      type: "Notificación de vehículo",
+      priority,
+      message,
+      recNumber: rec.number,
+      vehicleTitle,
+      plate: rec.vehicle?.placa || ""
+    };
+    ensureReceptionNotifications(rec).unshift({
+      id: notificationId(),
+      employeeId,
+      employeeName,
+      recId: rec.id,
+      recNumber: rec.number,
+      message,
+      priority,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    upsertEmployeeVehicle(employeeVehicleFromReception(rec));
+  });
+  const saved = await confirmCloudSaved("Notificación del vehículo enviada.", "notifier-vehicle");
+  if (!saved) return;
+  if (alertPayload) {
+    const alertSent = await sendAlertzyNotification(alertPayload);
+    if (!alertSent) toast("Quedó guardada, pero Alertzy no confirmó el aviso externo.", "warn");
+  }
+  if (textField) textField.value = "";
+  renderNotifier();
 }
 
 function allAdminNotifications(current = state()) {
@@ -2368,6 +3244,7 @@ function setAdminMasterFrameForReception(rec) {
 
 function showAdminFileTab(target = adminFileTab) {
   adminFileTab = target || "";
+  document.body.classList.toggle("admin-mobile-folder", window.innerWidth <= 920 && !!adminFileTab && !qs('[data-section="expediente"]')?.classList.contains("hidden"));
   qsa("[data-admin-file-tab]").forEach((button) => {
     button.classList.toggle("active", !!adminFileTab && button.dataset.adminFileTab === adminFileTab);
   });
@@ -2380,6 +3257,7 @@ function showAdminFileTab(target = adminFileTab) {
       setAdminMasterFrameForReception(rec);
     }
   }
+  if (adminFileTab === "facturas") renderAdminInvoices();
 }
 
 function initTheme() {
@@ -2426,11 +3304,7 @@ function signatureNeedsAdminReview(rec) {
 
 function adminSignatureReviewNotice(rec) {
   if (!signatureNeedsAdminReview(rec)) return "";
-  return `
-    <div class="notice warn signature-review-alert">
-      <strong>Firma del cliente pendiente de revisión administrativa.</strong><br>
-      Revise la constancia de autorización y autorice el expediente para habilitar el trabajo del empleado.
-    </div>`;
+  return "";
 }
 
 function adminAuthorizationCell(rec) {
@@ -2461,6 +3335,48 @@ function makePrivateTokens() {
 
 function tokenHref(page, token) {
   return `${page}#token=${encodeURIComponent(token)}`;
+}
+
+function photoReviewHref(token) {
+  return `cliente.html?modo=fotos#token=${encodeURIComponent(token || "")}`;
+}
+
+const CONSUMED_CLIENT_LINKS_KEY = "am_consumed_client_links_v1";
+
+function consumedClientLinks() {
+  try {
+    return JSON.parse(localStorage.getItem(CONSUMED_CLIENT_LINKS_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function markConsumedClientLink(clientToken, trackingToken) {
+  const token = String(clientToken || "").trim();
+  const tracking = String(trackingToken || "").trim();
+  if (!token || !tracking) return;
+  const consumed = consumedClientLinks();
+  consumed[token] = { trackingToken: tracking, consumedAt: new Date().toISOString() };
+  localStorage.setItem(CONSUMED_CLIENT_LINKS_KEY, JSON.stringify(consumed));
+}
+
+function forgetConsumedClientLink(clientToken) {
+  const token = String(clientToken || "").trim();
+  if (!token) return;
+  const consumed = consumedClientLinks();
+  delete consumed[token];
+  localStorage.setItem(CONSUMED_CLIENT_LINKS_KEY, JSON.stringify(consumed));
+}
+
+function consumedClientTrackingHref(clientToken) {
+  const token = String(clientToken || "").trim();
+  if (!token) return "";
+  const consumed = consumedClientLinks()[token];
+  return consumed?.trackingToken ? tokenHref("seguimiento.html", consumed.trackingToken) : "";
+}
+
+function adminPreviewLinkAttrs() {
+  return window.innerWidth <= 920 ? "" : ' target="_blank" rel="noopener"';
 }
 
 function syncEmployeeModuleVehiclesIntoAdmin() {
@@ -2656,8 +3572,175 @@ function receptionTableThumb(rec, label = "Frente", fallback = "", className = "
   return `<div class="table-thumb table-thumb-empty ${className}">${esc(shortLabel)}</div>`;
 }
 
+function mobileVehiclePhoto(rec) {
+  return frontReceptionPhoto(rec)?.dataUrl || "";
+}
+
+function mobileVehicleCardBackPhoto(rec) {
+  return receptionPhotoByLabel(rec, "Tarjeta reverso")?.dataUrl || "";
+}
+
+function mobileVehicleStatusClass(status = "") {
+  const value = String(status || "").toUpperCase();
+  if (value.includes("FINALIZADO") || value.includes("ENTREGADO")) return "mobile-status-ok";
+  if (value.includes("PAUSA") || value.includes("PENDIENTE") || value.includes("ESPERA")) return "mobile-status-warn";
+  if (value.includes("PROBLEMA") || value.includes("ERROR")) return "mobile-status-danger";
+  return "mobile-status-info";
+}
+
+function mobileVehicleTitle(rec) {
+  const vehicle = rec.vehicle || {};
+  return `${vehicle.marca || ""} ${vehicle.modelo || ""} ${vehicle.anio || ""}`.trim() || "Vehículo";
+}
+
+function renderMobileVehicleCard(rec, options = {}) {
+  const photo = mobileVehiclePhoto(rec);
+  const cardBackPhoto = mobileVehicleCardBackPhoto(rec);
+  const status = options.status || rec.status || "EN PROCESO";
+  const owner = options.owner || rec.employeeName || "Sin técnico";
+  const subtitle = options.subtitle || rec.number || rec.vehicle?.placa || "";
+  const notificationCount = mobileVehicleNotificationCount(rec);
+  const notificationBadge = notificationCount
+    ? `<button type="button" class="mobile-notification-badge" data-action="open-mobile-notification-detail" data-id="${esc(rec.id)}" aria-label="${notificationCount} notificaciones pendientes">${notificationCount}</button>`
+    : "";
+  const attrs = options.employee
+    ? `data-action="open-employee-vehicle" data-id="${esc(rec.id)}"`
+    : `data-open-file-row="${esc(rec.id)}"`;
+  const reviewBadge = signatureNeedsAdminReview(rec) ? '<span class="mobile-vehicle-alert">Firma</span>' : "";
+  return `
+    <article class="mobile-vehicle-card" ${attrs} role="button" tabindex="0">
+      <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
+        ${notificationBadge}
+        ${photo ? `<img src="${photo}" alt="${esc(mobileVehicleTitle(rec))}">` : `<span>${esc(rec.number || "AM")}</span>`}
+      </div>
+      <div class="mobile-vehicle-info">
+        <span class="mobile-vehicle-status ${mobileVehicleStatusClass(status)}">${esc(status)}</span>
+        ${reviewBadge}
+        <strong>${esc(mobileVehicleTitle(rec))}</strong>
+        <small>${esc(owner)}</small>
+        ${subtitle ? `<em>${esc(subtitle)}</em>` : ""}
+        ${deadlineMobileGauge(rec)}
+        <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
+      </div>
+    </article>`;
+}
+
+function mobileVehicleNotificationCount(rec) {
+  const list = Array.isArray(rec?.employeeNotifications) ? rec.employeeNotifications : [];
+  const employeePending = list.filter((item) => item && !item.deleted && !item.adminAckAt).length;
+  const clientPending = receptionNotificationAckCount(rec);
+  const signaturePending = signatureNeedsAdminReview(rec) ? 1 : 0;
+  return employeePending + clientPending + signaturePending;
+}
+
+function mobileVehicleNotificationSummary(rec) {
+  const messages = [];
+  if (signatureNeedsAdminReview(rec)) messages.push("Hay firma pendiente de revisión.");
+  const clientPending = receptionNotificationAckCount(rec);
+  if (clientPending) messages.push(`${clientPending} confirmación(es) del cliente pendiente(s) de revisar.`);
+  const list = Array.isArray(rec?.employeeNotifications) ? rec.employeeNotifications : [];
+  const employeePending = list.filter((item) => item && !item.deleted && !item.adminAckAt);
+  if (employeePending.length) {
+    const first = employeePending[0]?.message ? ` ${employeePending[0].message}` : "";
+    messages.push(`${employeePending.length} notificación(es) del vehículo pendiente(s).${first}`);
+  }
+  return messages.length ? messages.join("\n") : "No hay notificaciones pendientes para este expediente.";
+}
+
+function openMobileNotificationDetail(recId) {
+  const rec = state().receptions.find((item) => item.id === recId);
+  if (!rec) return;
+  alert(mobileVehicleNotificationSummary(rec));
+  const targetTab = signatureNeedsAdminReview(rec) ? "autorización" : "notificaciones";
+  openAdminReceptionFile(rec.id, false);
+  adminFileTab = targetTab;
+  showAdminFileTab(targetTab);
+  pushAdminHash(`expediente=${encodeURIComponent(rec.id)}&tab=${encodeURIComponent(targetTab)}`);
+}
+
+function renderAdminMobileGallery(records) {
+  const host = qs("[data-admin-mobile-gallery]");
+  if (!host) return;
+  host.innerHTML = records.length
+    ? records.map((rec) => renderMobileVehicleCard(rec, {
+        owner: rec.employeeName || "Sin técnico",
+        subtitle: `${rec.client?.name || "Cliente pendiente"} · ${rec.number || ""}`
+      })).join("")
+    : '<div class="mobile-gallery-empty">No hay vehículos en este filtro.</div>';
+}
+
 function closeImagePreview() {
   qs("[data-image-modal]")?.classList.add("hidden");
+}
+
+function dataUrlToFile(dataUrl, fileName = "tarjeta-reverso.jpg") {
+  const parts = String(dataUrl || "").split(",");
+  const match = /^data:(.*?);base64$/i.exec(parts[0] || "");
+  if (!match || !parts[1]) return null;
+  const binary = atob(parts[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new File([bytes], fileName, { type: match[1] || "image/jpeg" });
+}
+
+async function shareMobileCardBack(recId) {
+  const rec = state().receptions.find((item) => item.id === recId);
+  const dataUrl = mobileVehicleCardBackPhoto(rec);
+  if (!rec || !dataUrl) {
+    toast("Este expediente no tiene tarjeta reverso cargada.", "warn");
+    return;
+  }
+  const title = `Tarjeta ${rec.number || ""}`.trim();
+  const text = `${title} - ${mobileVehicleTitle(rec)}`;
+  const file = dataUrlToFile(dataUrl, `${(rec.number || "tarjeta").replace(/[^\w-]+/g, "-")}-reverso.jpg`);
+  try {
+    if (file && navigator.canShare?.({ files: [file] }) && navigator.share) {
+      await navigator.share({ title, text, files: [file] });
+      return;
+    }
+    if (navigator.share) {
+      await navigator.share({ title, text });
+      return;
+    }
+    const whatsappText = encodeURIComponent(`${text}\n\nAbra el expediente para revisar la tarjeta.`);
+    window.location.href = `whatsapp://send?text=${whatsappText}`;
+    setTimeout(() => toast("Si no abrió WhatsApp, pruebe este botón desde el enlace publicado en GitHub Pages.", "warn"), 900);
+  } catch (error) {
+    if (error?.name !== "AbortError") toast("No se pudo abrir el menú para compartir.", "danger");
+  }
+}
+
+function closeMobileCardBackViewer() {
+  qs("[data-mobile-card-viewer]")?.remove();
+}
+
+function openMobileCardBackViewer(recId) {
+  const rec = state().receptions.find((item) => item.id === recId);
+  const dataUrl = mobileVehicleCardBackPhoto(rec);
+  if (!rec || !dataUrl) {
+    toast("Este expediente no tiene tarjeta reverso cargada.", "warn");
+    return;
+  }
+  closeMobileCardBackViewer();
+  const modal = document.createElement("div");
+  modal.className = "mobile-card-viewer";
+  modal.dataset.mobileCardViewer = "1";
+  modal.innerHTML = `
+    <article class="mobile-card-viewer-panel" role="dialog" aria-modal="true">
+      <div class="mobile-card-viewer-head">
+        <button type="button" class="btn" data-action="close-mobile-card-photo">Atrás</button>
+        <div>
+          <strong>Tarjeta</strong>
+          <small>${esc(rec.number || mobileVehicleTitle(rec))}</small>
+        </div>
+        <button type="button" class="btn primary" data-action="share-mobile-card-photo" data-id="${esc(rec.id)}">Compartir</button>
+      </div>
+      <div class="mobile-card-viewer-body">
+        <img src="${dataUrl}" alt="Tarjeta reverso ${esc(mobileVehicleTitle(rec))}">
+      </div>
+    </article>`;
+  document.body.appendChild(modal);
+  if (!history.state?.mobileCardViewer) history.pushState({ ...(history.state || {}), mobileCardViewer: true }, "", location.href);
 }
 
 function openImagePreview(recId, label) {
@@ -2681,28 +3764,55 @@ function openImagePreviewFromData(dataUrl, title = "Imagen", alt = "") {
           <h3 data-image-modal-title>Imagen</h3>
           <button type="button" class="btn" data-action="close-image-preview">Cerrar</button>
         </div>
-        <div class="image-modal-body"><img data-image-modal-img alt=""></div>
+        <div class="image-modal-body"><img data-image-modal-img alt=""><video class="hidden" data-image-modal-video controls playsinline></video></div>
       </div>`;
     document.body.appendChild(modal);
   }
   qs("[data-image-modal-title]", modal).textContent = title;
   const img = qs("[data-image-modal-img]", modal);
+  const video = qs("[data-image-modal-video]", modal);
+  if (video) {
+    video.pause?.();
+    video.removeAttribute("src");
+    video.load?.();
+    video.classList.add("hidden");
+  }
+  img.classList.remove("hidden");
   img.src = dataUrl;
   img.alt = alt || title;
   modal.classList.remove("hidden");
 }
 
+function openVideoPreviewFromData(dataUrl, title = "Video") {
+  if (!dataUrl) return;
+  openImagePreviewFromData(dataUrl, title, title);
+  const modal = qs("[data-image-modal]");
+  const img = qs("[data-image-modal-img]", modal);
+  const video = qs("[data-image-modal-video]", modal);
+  if (!video) return;
+  img?.classList.add("hidden");
+  video.src = dataUrl;
+  video.classList.remove("hidden");
+  video.load?.();
+}
+
 function authorizationTermsHtml() {
   return `
     <h3>Contrato de servicio</h3>
-    <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos y verificaciones necesarias para determinar el estado del vehículo y el trabajo requerido.</p>
+    <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos, desmontajes y verificaciones necesarias para determinar el estado del vehículo, la falla reportada y el trabajo requerido.</p>
+    <p>El cliente o persona responsable del vehículo acepta que todo diagnóstico, revisión, prueba, desmontaje, verificación, mano de obra, reparación, repuesto o servicio realizado deberá ser cancelado en su totalidad. Si después del diagnóstico el cliente decide no aprobar el presupuesto de reparación, igualmente deberá cancelar el costo correspondiente al diagnóstico, revisión, pruebas o procedimientos realizados hasta ese momento. Dicho costo podrá determinarse al finalizar el proceso de revisión o diagnóstico, según el tiempo, pruebas y procedimientos necesarios.</p>
+    <p>Cuando el cliente autorice una reparación, acepta pagar el costo total de los trabajos realizados, repuestos utilizados, mano de obra y cualquier cargo relacionado informado por Automotriz Medina al finalizar el servicio. Automotriz Medina podrá retener el vehículo hasta que el cliente cancele por completo facturas, repuestos, mano de obra, diagnósticos, almacenaje, custodia u otros cargos autorizados o derivados del servicio.</p>
+    <p>El cliente acepta que reparaciones, repuestos, trabajos adicionales o intervenciones especiales que excedan el diagnóstico inicial o el motivo principal de ingreso podrán requerir autorización previa del cliente o persona responsable, según criterio de Automotriz Medina. Los procedimientos necesarios para diagnosticar, verificar o confirmar la falla reportada podrán realizarse como parte del proceso de revisión autorizado.</p>
+    <p>El cliente autoriza a Automotriz Medina y a su personal encargado a hacer uso del vehículo para realizar pruebas de funcionamiento, pruebas de manejo y pruebas de carretera cuando sean necesarias para diagnóstico, verificación de fallas, confirmación de reparación o validación del trabajo realizado.</p>
+    <p>El cliente acepta que las autorizaciones, confirmaciones, fotografías, presupuestos, avisos y comunicaciones relacionadas con el servicio podrán realizarse por medios digitales, incluyendo enlaces privados, mensajes de WhatsApp u otros canales proporcionados por el cliente. Dichas confirmaciones tendrán validez como constancia de autorización o comunicación del servicio.</p>
     <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción. Automotriz Medina no se responsabiliza por fallas previas, desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo.</p>
-    <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda y siempre que el vehículo no haya sido intervenido por terceros. Componentes eléctricos, electrónicos, sensores, módulos, computadoras, piezas usadas, piezas reparadas y repuestos proporcionados por el cliente quedan excluidos de garantía salvo acuerdo escrito distinto.</p>
-    <p>El cliente declara haber revisado las fotografías, el inventario, las observaciones y los daños registrados. Dinero, documentos, herramientas, objetos personales o accesorios no declarados en esta recepción quedan bajo responsabilidad del cliente.</p>
+    <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda y siempre que el vehículo no haya sido intervenido por terceros. Componentes eléctricos, electrónicos, sensores, módulos, computadoras, piezas usadas, piezas reparadas y repuestos proporcionados por el cliente quedan excluidos de garantía salvo acuerdo escrito distinto. Cuando el cliente proporcione repuestos, Automotriz Medina no será responsable por defectos, incompatibilidad, mala calidad, funcionamiento incorrecto o daños derivados de dichos repuestos.</p>
+    <p>El cliente o persona responsable declara que, antes de entregar el vehículo a Automotriz Medina, tuvo la oportunidad de revisarlo y de informar cualquier daño, faltante, condición especial, objeto personal, accesorio, documento, herramienta o situación relevante. Declara además haber retirado dinero, objetos de valor y pertenencias personales importantes antes de entregar el vehículo. Al aceptar estos términos, reconoce que está enterado de las condiciones en que entrega el vehículo y que la información, fotografías, inventario, observaciones y daños registrados reflejan la condición conocida al momento de la recepción. Cualquier condición, objeto o daño no informado o no declarado al momento de la recepción no será responsabilidad de Automotriz Medina.</p>
+    <p>El cliente acepta que el vehículo debe contar con combustible, batería y condiciones mínimas necesarias para realizar pruebas, diagnóstico o movilización interna. Si se requiere combustible, carga de batería, grúa u otro apoyo externo para continuar el diagnóstico, reparación, traslado o prueba del vehículo, dichos costos podrán ser cargados al cliente.</p>
+    <p>El cliente comprende que durante diagnósticos, desmontajes, revisiones o reparaciones pueden dañarse componentes frágiles, deteriorados, resecos, quebradizos, corroídos, vencidos o previamente manipulados, sin que esto constituya responsabilidad de Automotriz Medina.</p>
     <p>Una vez notificado que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia.</p>
     <p>Sí el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación, podrá considerarse abandonado y Automotriz Medina podrá iniciar las gestiones legales correspondientes para recuperar saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos relacionados.</p>
-    <p>Automotriz Medina podrá retener el vehículo hasta que el cliente cancele por completo facturas, repuestos, mano de obra, diagnósticos, almacenaje, custodia u otros cargos autorizados o derivados del servicio.</p>
-    <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación segun la información acordada con el taller.</p>`;
+    <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación según la información acordada con el taller, autoriza el uso del vehículo para pruebas necesarias, y acepta las responsabilidades de pago, resguardo, comunicación digital y condiciones aquí descritas.</p>`;
 }
 
 function authorizationProofHtml(rec) {
@@ -2768,13 +3878,12 @@ function receptionRowActions(rec) {
   }
   if (isArchived(rec)) {
     return `
-      <button class="btn" data-action="download-backup" data-id="${rec.id}" title="Descargar respaldo individual">Descargar</button>
+      <button class="btn primary" data-action="download-local-archive" data-id="${rec.id}" title="Guardar este expediente en la carpeta local configurada">Descargar</button>
       <button class="btn" data-action="unarchive-reception" data-id="${rec.id}" title="Sacar de archivados">Desarchivar</button>
       ${rec.localArchiveConfirmedAt ? `<button class="btn danger" data-action="delete-cloud-archived" data-id="${rec.id}" title="Eliminar este expediente del respaldo activo de nube">Borrar de la nube</button>` : ""}
       <button class="btn danger icon-remove table-remove" data-action="delete-reception" data-id="${rec.id}" title="Mover a papelera">X</button>`;
   }
   return `
-    <button class="btn" data-action="download-backup" data-id="${rec.id}" title="Descargar respaldo individual">Descargar</button>
     <button class="btn" data-action="grant-deadline-token" data-id="${rec.id}" title="Habilitar tokens extra">Token +</button>
     ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? `<button class="btn primary" data-action="reactivate-reception" data-id="${rec.id}" title="Reactivar y devolver a vehículos en taller">Reactivar</button>` : ""}
     <button class="btn" data-action="archive-reception" data-id="${rec.id}" title="Archivar expediente">Archivar</button>
@@ -2803,6 +3912,7 @@ function renderReceptionTable() {
   })).filter(matchesDashboardQuickSearch);
   syncDashboardQuickSearchInput();
   qsa("[data-admin-search-count]").forEach((input) => { input.value = `${filtered.length} expediente(s)`; });
+  renderAdminMobileGallery(filtered);
   tbody.innerHTML = filtered.map((rec) => `
     <tr class="clickable-row ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? "row-finalized" : ""} ${signatureNeedsAdminReview(rec) ? "row-signature-review" : ""}" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
       <td data-label="Vehículo">${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small></td>
@@ -2962,6 +4072,22 @@ function pushAdminHash(hash) {
   history.pushState(null, "", next);
 }
 
+function isMobileReload() {
+  const navEntry = performance.getEntriesByType?.("navigation")?.[0];
+  return window.innerWidth <= 920 && (navEntry?.type === "reload" || performance.navigation?.type === 1);
+}
+
+function resetAdminInitialViewToDashboard() {
+  if (document.body.dataset.page !== "admin") return;
+  adminLocalArchivePreviewRec = null;
+  adminFileTab = "";
+  AM_SIMPLE_STORE.setSelectedId("");
+  AM_SIMPLE_STORE.mutate((current) => { current.selectedId = ""; }, { markLocalWrite: false });
+  if (location.hash !== "#dashboard") {
+    history.replaceState({ amAdminView: "dashboard" }, "", `${location.pathname}${location.search}#dashboard`);
+  }
+}
+
 function applyAdminHashRoute() {
   if (document.body.dataset.page !== "admin") return;
   const params = adminHashParams();
@@ -2969,7 +4095,9 @@ function applyAdminHashRoute() {
   if (fileId) {
     const current = state();
     if (current.receptions.some((rec) => rec.id === fileId)) AM_SIMPLE_STORE.setSelectedId(fileId);
-    adminFileTab = params.get("tab") || adminFileTab || "seguimiento";
+    const requestedTab = params.get("tab");
+    const mobileAdmin = window.innerWidth <= 920;
+    adminFileTab = requestedTab || (mobileAdmin ? "" : adminFileTab || "seguimiento");
     renderAdmin();
     showSection("expediente");
     showAdminFileTab(adminFileTab);
@@ -2988,16 +4116,21 @@ function openAdminReceptionFile(id, shouldPush = true) {
     return;
   }
   AM_SIMPLE_STORE.setSelectedId(id);
-  if (shouldPush) pushAdminHash(`expediente=${encodeURIComponent(id)}&tab=seguimiento`);
-  adminFileTab = "seguimiento";
+  const initialTab = window.innerWidth <= 920 ? "" : "seguimiento";
+  if (shouldPush) {
+    const hash = initialTab ? `expediente=${encodeURIComponent(id)}&tab=${encodeURIComponent(initialTab)}` : `expediente=${encodeURIComponent(id)}`;
+    pushAdminHash(hash);
+  }
+  adminFileTab = initialTab;
   renderAdmin();
   showSection("expediente");
-  showAdminFileTab("seguimiento");
+  showAdminFileTab(adminFileTab);
   toast("Expediente abierto.");
 }
 
 function showSection(target, options = {}) {
   qsa("[data-section]").forEach((section) => section.classList.toggle("hidden", section.dataset.section !== target));
+  if (target !== "expediente") document.body.classList.remove("admin-mobile-folder");
   qsa("[data-section-target]").forEach((button) => button.classList.toggle("active", button.dataset.sectionTarget === target));
   const dashboardFilters = qs("[data-dashboard-filter-menu]");
   const searchPanel = qs("[data-admin-search-panel]");
@@ -3133,10 +4266,12 @@ function renderAdmin() {
   if (summary) renderReceptionSummary(summary, rec);
   const links = qs("[data-client-links]");
   if (links) {
+    const previewAttrs = adminPreviewLinkAttrs();
     links.innerHTML = rec ? `
       <div class="notice">
-        Autorización cliente: <a href="${tokenHref("cliente.html", rec.clientToken)}">${tokenHref("cliente.html", rec.clientToken)}</a><br>
-        Seguimiento: <a href="${tokenHref("seguimiento.html", rec.trackingToken)}">${tokenHref("seguimiento.html", rec.trackingToken)}</a>
+        Autorización cliente: <a href="${tokenHref("cliente.html", rec.clientToken)}"${previewAttrs}>${tokenHref("cliente.html", rec.clientToken)}</a><br>
+        Revisión de fotos: <a href="${photoReviewHref(rec.clientToken)}"${previewAttrs}>${photoReviewHref(rec.clientToken)}</a><br>
+        Seguimiento: <a href="${tokenHref("seguimiento.html", rec.trackingToken)}"${previewAttrs}>${tokenHref("seguimiento.html", rec.trackingToken)}</a>
       </div>` : '<div class="notice">Seleccione un expediente para ver enlaces.</div>';
   }
   const openClient = qs("[data-open-client]");
@@ -3145,6 +4280,7 @@ function renderAdmin() {
   if (openTracking && rec) openTracking.href = tokenHref("seguimiento.html", rec.trackingToken);
   renderAdminFile(rec);
   renderTrackingAdmin();
+  renderAdminInvoices();
   renderTabs();
   showAdminFileTab(adminFileTab);
   syncAdminSearchInputs();
@@ -3213,10 +4349,13 @@ function renderAdminFile(rec) {
   });
   const links = qs("[data-admin-file-links]");
   if (links) {
+    const previewAttrs = adminPreviewLinkAttrs();
     links.innerHTML = `
       <div class="notice">
-        <strong>Link de autorización:</strong> <a href="${tokenHref("cliente.html", rec.clientToken)}">${tokenHref("cliente.html", rec.clientToken)}</a><br>
-        <strong>Link de seguimiento:</strong> <a href="${tokenHref("seguimiento.html", rec.trackingToken)}">${tokenHref("seguimiento.html", rec.trackingToken)}</a>
+        <strong>Link de autorización:</strong> <a href="${tokenHref("cliente.html", rec.clientToken)}"${previewAttrs}>${tokenHref("cliente.html", rec.clientToken)}</a><br>
+        <strong>Link de revisión de fotos:</strong> <a href="${photoReviewHref(rec.clientToken)}"${previewAttrs}>${photoReviewHref(rec.clientToken)}</a><br>
+        <button type="button" class="btn small" data-action="admin-regenerate-photo-review-link">Generar nuevo link de revisión de fotos</button><br>
+        <strong>Link de seguimiento:</strong> <a href="${tokenHref("seguimiento.html", rec.trackingToken)}"${previewAttrs}>${tokenHref("seguimiento.html", rec.trackingToken)}</a>
       </div>`;
   }
   setAdminMasterFrameForReception(rec);
@@ -3310,10 +4449,101 @@ function renderEmployee() {
   if (finalSummary) showEmployeeStep(wizardOrder.indexOf(qs("[data-section]:not(.hidden)")?.dataset.section || "datos"));
 }
 
-function renderTrackingAdmin() {
+function renderAdminInvoices() {
+  const host = qs("[data-admin-invoices]");
+  if (!host) return;
+  const rec = selected();
+  if (!rec) {
+    host.innerHTML = '<div class="notice">Seleccione un expediente para ver facturas.</div>';
+    return;
+  }
+  const invoices = Array.isArray(rec.invoices) ? rec.invoices : [];
+  host.innerHTML = invoices.map((item, index) => {
+    const label = item.label || `Factura ${index + 1}`;
+    const src = item.dataUrl || "";
+    return `
+      <article class="invoice-card">
+        <button type="button" class="photo-box ${src ? "has-image" : ""}" data-action="open-image-preview-direct" data-src="${esc(src)}" data-label="${esc(label)}" style="${src ? `background-image:url('${src}')` : ""}">
+          ${src ? "" : "Sin imagen"}
+        </button>
+        <input type="text" data-admin-invoice-label="${index}" value="${esc(label)}" aria-label="Nombre de factura">
+        <button type="button" class="btn danger" data-action="remove-admin-invoice" data-index="${index}">Eliminar factura</button>
+      </article>`;
+  }).join("") || '<div class="notice">Sin facturas registradas para este vehículo.</div>';
+}
+
+function captureAdminInvoicesFromDom(rec) {
+  const current = Array.isArray(rec?.invoices) ? rec.invoices : [];
+  qsa("[data-admin-invoice-label]").forEach((input) => {
+    const index = Number(input.dataset.adminInvoiceLabel);
+    if (current[index]) current[index].label = input.value.trim() || `Factura ${index + 1}`;
+  });
+  return current.map((item, index) => ({
+    label: item.label || `Factura ${index + 1}`,
+    dataUrl: item.dataUrl || ""
+  }));
+}
+
+async function addAdminInvoices(input) {
+  const rec = selected();
+  const files = Array.from(input?.files || []);
+  if (!rec || !files.length) return;
+  const images = (await Promise.all(files.map(readImageFilePromise))).filter(Boolean);
+  if (!images.length) return;
+  AM_SIMPLE_STORE.mutate((current) => {
+    const selectedRec = AM_SIMPLE_STORE.selected(current);
+    if (!selectedRec) return;
+    if (!Array.isArray(selectedRec.invoices)) selectedRec.invoices = [];
+    const base = selectedRec.invoices.length;
+    images.forEach((dataUrl, index) => {
+      selectedRec.invoices.push({ label: `Factura ${base + index + 1}`, dataUrl });
+    });
+  });
+  syncSelectedAdminReceptionToEmployee();
+  renderAdmin();
+  toast("Factura agregada. Presione Guardar facturas para respaldar en nube.", "ok");
+}
+
+async function saveAdminInvoices() {
+  const rec = selected();
+  if (!rec) {
+    toast("Seleccione un expediente para guardar facturas.", "warn");
+    return;
+  }
+  AM_SIMPLE_STORE.mutate((current) => {
+    const selectedRec = AM_SIMPLE_STORE.selected(current);
+    if (selectedRec) selectedRec.invoices = captureAdminInvoicesFromDom(rec);
+  });
+  syncSelectedAdminReceptionToEmployee();
+  renderAdmin();
+  if (!await confirmCloudSaved("Facturas guardadas.", "save-admin-invoices")) return;
+  renderAdmin();
+}
+
+function removeAdminInvoice(index) {
   const rec = selected();
   if (!rec) return;
+  if (!confirm("¿Está seguro de que desea eliminar esta factura?")) return;
+  AM_SIMPLE_STORE.mutate((current) => {
+    const selectedRec = AM_SIMPLE_STORE.selected(current);
+    if (!selectedRec || !Array.isArray(selectedRec.invoices)) return;
+    selectedRec.invoices.splice(index, 1);
+  });
+  syncSelectedAdminReceptionToEmployee();
+  renderAdmin();
+  toast("Factura eliminada. Presione Guardar facturas para respaldar en nube.", "ok");
+}
+
+function renderTrackingAdmin() {
+  const rec = selectedAdminReceptionFromHash();
+  if (!rec) return;
   const draft = ensureAdminTrackingDraft(rec);
+  const trackingLink = qs("[data-admin-tracking-link]");
+  if (trackingLink) {
+    const href = tokenHref("seguimiento.html", rec.trackingToken);
+    trackingLink.dataset.href = href;
+    trackingLink.textContent = href;
+  }
   qsa("[data-track-field]").forEach((input) => {
     input.value = draft.profile[input.dataset.trackField] || "";
   });
@@ -3336,8 +4566,14 @@ function renderTrackingAdmin() {
     const rows = draft.rows || [];
     const images = draft.images || [];
     detailHost.innerHTML = rows.map((row, index) => `
-      <div class="admin-detail-row">
-        <span>${index + 1}</span>
+      <div class="admin-detail-row" draggable="true" data-admin-detail-draggable="${index}">
+        <div class="admin-detail-order">
+          <span title="Arrastre para cambiar el orden">${index + 1}</span>
+          <div class="admin-detail-move">
+            <button type="button" class="btn" data-action="admin-move-detail-row" data-index="${index}" data-direction="-1" ${index === 0 ? "disabled" : ""} title="Subir renglón">↑</button>
+            <button type="button" class="btn" data-action="admin-move-detail-row" data-index="${index}" data-direction="1" ${index === rows.length - 1 ? "disabled" : ""} title="Bajar renglón">↓</button>
+          </div>
+        </div>
         <div class="admin-detail-status">
           <button type="button" class="btn ${row.status === "pending" ? "primary" : ""}" data-action="admin-detail-status" data-index="${index}" data-status="pending" title="En proceso">⏳</button>
           <button type="button" class="btn ${row.status === "done" ? "primary" : ""}" data-action="admin-detail-status" data-index="${index}" data-status="done" title="Finalizado satisfactoriamente">✓</button>
@@ -3345,10 +4581,18 @@ function renderTrackingAdmin() {
         </div>
         <div class="admin-detail-content">
           <textarea data-admin-process-row="${index}" data-detail-status="${row.status}">${esc(row.text)}</textarea>
-          <div class="photo-grid">${(Array.isArray(images?.[index]) ? images[index] : []).map((src, imgIndex) => `<button type="button" class="photo-box has-image" data-action="open-image-preview-direct" data-src="${esc(src)}" data-label="Avance ${index + 1}.${imgIndex + 1}" style="background-image:url('${src}')"></button>`).join("")}</div>
+          <div class="admin-client-request-row">
+            <label>Accion para cliente</label>
+            <select data-admin-client-request="${index}">
+              <option value="" ${!row.clientRequest ? "selected" : ""}>Sin solicitud</option>
+              <option value="authorization" ${row.clientRequest === "authorization" ? "selected" : ""}>Solicitar autorizacion</option>
+              <option value="call" ${row.clientRequest === "call" ? "selected" : ""}>Confirmar disponibilidad de contacto</option>
+            </select>
+          </div>
+          <div class="photo-grid">${(Array.isArray(images?.[index]) ? images[index] : []).map((media, imgIndex) => renderTrackingMediaThumb(media, `Avance ${index + 1}.${imgIndex + 1}`, `data-action="admin-remove-detail-image" data-row-index="${index}" data-image-index="${imgIndex}"`)).join("")}</div>
           <label class="btn admin-inline-upload">
-            Agregar imagen
-            <input class="hidden" type="file" accept="image/*" capture="environment" data-admin-detail-image="${index}">
+            Agregar imagen / video
+            <input class="hidden" type="file" accept="image/*,video/*" capture="environment" data-admin-detail-image="${index}" multiple>
           </label>
         </div>
         <button type="button" class="btn icon-remove" data-action="admin-remove-detail-row" data-index="${index}">X</button>
@@ -3405,21 +4649,21 @@ function renderEmployeeLists(employee) {
   if (activeList) {
     activeList.innerHTML = active.map((rec) => `
       <tr>
-        <td><strong>${rec.number}</strong><br><small>${rec.tracking?.receptionDate || ""}</small></td>
-        <td>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}<br><small>${rec.vehicle.placa || "N/D"}</small></td>
-        <td><span class="pill ${statusTone(rec.status)}">${rec.status}</span></td>
-        <td>${rec.signed ? '<span class="pill ok">Autorizado</span>' : '<span class="pill warn">Pendiente</span>'}</td>
-        <td><button class="btn primary" data-action="open-employee-vehicle" data-id="${rec.id}">Abrir vehículo</button></td>
+        <td data-label="Recepción"><strong>${rec.number}</strong><br><small>${rec.tracking?.receptionDate || ""}</small></td>
+        <td data-label="Vehículo">${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}<br><small>${rec.vehicle.placa || "N/D"}</small></td>
+        <td data-label="Estado"><span class="pill ${statusTone(rec.status)}">${rec.status}</span></td>
+        <td data-label="Autorización">${rec.signed ? '<span class="pill ok">Autorizado</span>' : '<span class="pill warn">Pendiente</span>'}</td>
+        <td data-label="Acción"><button class="btn primary" data-action="open-employee-vehicle" data-id="${rec.id}">Abrir vehículo</button></td>
       </tr>`).join("") || '<tr><td colspan="5">No hay vehículos activos para este empleado.</td></tr>';
   }
   const finishedList = qs("[data-employee-finished-list]");
   if (finishedList) {
     finishedList.innerHTML = finished.map((rec) => `
       <tr>
-        <td><strong>${rec.number}</strong></td>
-        <td>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</td>
-        <td><span class="pill ok">${rec.status}</span></td>
-        <td><button class="btn" data-action="open-employee-vehicle" data-id="${rec.id}">Ver</button></td>
+        <td data-label="Recepción"><strong>${rec.number}</strong></td>
+        <td data-label="Vehículo">${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</td>
+        <td data-label="Estado"><span class="pill ok">${rec.status}</span></td>
+        <td data-label="Acción"><button class="btn" data-action="open-employee-vehicle" data-id="${rec.id}">Ver</button></td>
       </tr>`).join("") || '<tr><td colspan="4">No hay vehículos finalizados.</td></tr>';
   }
 }
@@ -3618,15 +4862,35 @@ function renderEmployee() {
 
 let carouselIndex = 0;
 function renderClient() {
+  const rawClientHash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+  const clientParamsForRedirect = new URLSearchParams(location.search);
+  const clientHashParamsForRedirect = new URLSearchParams(rawClientHash);
+  clientHashParamsForRedirect.forEach((value, name) => {
+    if (!clientParamsForRedirect.has(name)) clientParamsForRedirect.set(name, value);
+  });
+  const consumedHref = consumedClientTrackingHref(clientParamsForRedirect.get("token"));
+  if (consumedHref) {
+    location.replace(consumedHref);
+    return;
+  }
   const rec = findReceptionByParam("clientToken");
   if (!rec) return renderMissingToken();
+  const clientParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+  const photoReviewMode = (clientParams.get("modo") || hashParams.get("modo") || "") === "fotos";
+  if (rec.photoAcknowledged) {
+    location.replace(tokenHref("seguimiento.html", rec.trackingToken));
+    return;
+  }
   const flow = qs("[data-authorization-flow]");
   const authorizedOnly = qs("[data-authorized-only]");
   const processingOnly = qs("[data-processing-only]");
-  const signedInShopNeedsPhotoAck = !!(rec.quickAuthorization && rec.signed && !rec.photoAcknowledged);
+  const hasAuthorization = !!rec.signed;
+  const showTermsPanel = !photoReviewMode && !hasAuthorization;
+  const showPhotoAckPanel = photoReviewMode || hasAuthorization;
   if (processingOnly) processingOnly.classList.add("hidden");
-  if (flow) flow.classList.toggle("hidden", rec.signed && !signedInShopNeedsPhotoAck);
-  if (authorizedOnly) authorizedOnly.classList.toggle("hidden", !rec.signed || signedInShopNeedsPhotoAck);
+  if (flow) flow.classList.remove("hidden");
+  if (authorizedOnly) authorizedOnly.classList.add("hidden");
   const summary = qs("[data-client-summary]");
   if (summary) {
     renderReceptionSummary(summary, rec);
@@ -3644,11 +4908,29 @@ function renderClient() {
   const observations = qs("[data-client-observations]");
   if (observations) observations.innerHTML = `<strong>Observaciones generales:</strong><br>${rec.observations || "Sin observaciones registradas."}`;
   const authorizeButton = qs("[data-action='authorize-client']");
-  if (authorizeButton) authorizeButton.classList.toggle("hidden", rec.signed);
+  if (authorizeButton) authorizeButton.classList.toggle("hidden", hasAuthorization || photoReviewMode);
   const termsPanel = qs("[data-client-terms-panel]");
-  if (termsPanel) termsPanel.classList.toggle("hidden", signedInShopNeedsPhotoAck);
+  if (termsPanel) termsPanel.classList.toggle("hidden", !showTermsPanel);
+  const termsBox = qs("[data-client-terms-box]");
+  if (termsBox) termsBox.innerHTML = authorizationTermsHtml();
   const photoAckPanel = qs("[data-photo-ack-panel]");
-  if (photoAckPanel) photoAckPanel.classList.toggle("hidden", !signedInShopNeedsPhotoAck);
+  if (photoAckPanel) photoAckPanel.classList.toggle("hidden", !showPhotoAckPanel);
+  const photoAckStatus = qs("[data-photo-ack-status]");
+  const photoAckTitle = qs("[data-photo-ack-title]");
+  const photoAckPrimary = qs("[data-photo-ack-primary]");
+  const photoAckSecondary = qs("[data-photo-ack-secondary]");
+  if (photoAckStatus) photoAckStatus.classList.toggle("hidden", !hasAuthorization);
+  if (photoAckTitle) photoAckTitle.textContent = "Autorización registrada";
+  if (photoAckPrimary) {
+    photoAckPrimary.classList.toggle("hidden", !hasAuthorization);
+    photoAckPrimary.textContent = hasAuthorization ? "La autorización del vehículo ya fue firmada de manera presencial en el taller." : "";
+  }
+  if (photoAckSecondary) {
+    photoAckSecondary.classList.add("hidden");
+    photoAckSecondary.textContent = "";
+  }
+  const photoAckSignature = qs("[data-photo-ack-signature]");
+  if (photoAckSignature) photoAckSignature.innerHTML = renderReadonlyClientSignature(rec);
   const termsCheck = qs("[data-terms-check]");
   if (termsCheck) {
     termsCheck.checked = rec.signed;
@@ -3658,19 +4940,73 @@ function renderClient() {
   if (trackingLink) trackingLink.href = tokenHref("seguimiento.html", rec.trackingToken);
 }
 
+function renderReadonlyClientSignature(rec) {
+  const evidence = rec?.authorizationEvidence || {};
+  const signature = rec?.signatureDataUrl || evidence.signatureDataUrl || "";
+  const name = rec?.signatureName || evidence.signatureName || rec?.client?.name || "Cliente";
+  const date = rec?.signatureDate || evidence.signatureDate || rec?.termsAcceptedAt || "";
+  if (!signature) {
+    return '<div class="notice">Firma registrada presencialmente en el taller.</div>';
+  }
+  return `
+    <div class="signature-preview client-signature-readonly">
+      <strong>Firma registrada presencialmente:</strong>
+      <img src="${esc(signature)}" alt="Firma del cliente">
+      <small>${esc(name)}${date ? ` · ${esc(date)}` : ""}</small>
+    </div>`;
+}
+
 function renderClientCarousel(rec) {
   const host = qs("[data-carousel]");
   if (!host) return;
   const photos = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label));
+  if (!photos.length) {
+    host.innerHTML = '<div class="notice">No hay fotografias de recepcion disponibles.</div>';
+    return;
+  }
+  if (carouselIndex >= photos.length) carouselIndex = 0;
   const photo = photos[carouselIndex] || photos[0];
+  const dots = photos.map((_, index) => `<span class="${index === carouselIndex ? "active" : ""}"></span>`).join("");
   host.innerHTML = `
-    <div class="carousel-stage">${photoVisual(photo)}</div>
+    <div class="client-photo-viewer" data-client-carousel>
+      <button class="client-photo-main" type="button" data-action="open-image-preview-direct" data-src="${esc(photo.dataUrl || "")}" data-label="${esc(photo.label || "Foto")}">
+        ${photo.dataUrl ? `<img src="${esc(photo.dataUrl)}" alt="${esc(photo.label || "Foto")}" decoding="async">` : `<span>${esc(photo.label || "Foto pendiente")}</span>`}
+      </button>
+      <button class="client-photo-arrow prev" type="button" data-action="prev-photo" aria-label="Foto anterior">&#8249;</button>
+      <button class="client-photo-arrow next" type="button" data-action="next-photo" aria-label="Foto siguiente">&#8250;</button>
+      <div class="client-photo-dots" aria-hidden="true">${dots}</div>
+    </div>
     <div class="carousel-caption">${carouselIndex + 1} de ${photos.length}: ${photo.label}</div>
-    <div class="btn-row">
-      <button class="btn" data-action="prev-photo">Anterior</button>
-      <button class="btn primary" data-action="next-photo">Siguiente</button>
-    </div>`;
+    <div class="client-swipe-hint">Deslice la imagen o toque para ampliar.</div>`;
 }
+
+function moveClientCarousel(direction) {
+  const rec = findReceptionByParam("clientToken");
+  if (!rec) return;
+  const total = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label)).length;
+  if (!total) return;
+  carouselIndex = direction > 0 ? (carouselIndex + 1) % total : (carouselIndex - 1 + total) % total;
+  renderClientCarousel(rec);
+}
+
+let clientCarouselTouch = null;
+document.addEventListener("touchstart", (event) => {
+  const target = event.target.closest("[data-client-carousel]");
+  if (!target || !event.changedTouches.length) return;
+  const touch = event.changedTouches[0];
+  clientCarouselTouch = { x: touch.clientX, y: touch.clientY };
+}, { passive: true });
+
+document.addEventListener("touchend", (event) => {
+  if (!clientCarouselTouch || !event.changedTouches.length) return;
+  const target = event.target.closest("[data-client-carousel]");
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - clientCarouselTouch.x;
+  const dy = touch.clientY - clientCarouselTouch.y;
+  clientCarouselTouch = null;
+  if (!target || Math.abs(dx) < 44 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+  moveClientCarousel(dx < 0 ? 1 : -1);
+}, { passive: true });
 
 function renderClientInventory(rec) {
   const host = qs("[data-client-inventory]");
@@ -3690,6 +5026,32 @@ function renderClientDamages(rec) {
       <div class="panel-header"><div><h3>${damage.área}</h3><p>${damage.detail}</p></div></div>
       <div class="panel-body photo-grid">${damage.photos.map(photoVisual).join("")}</div>
     </article>`).join("") || '<div class="notice">No se registraron daños adicionales.</div>';
+}
+
+function renderTrackingClientRequest(rec, row, index) {
+  const request = (Array.isArray(rec.trackingRequests) ? rec.trackingRequests[index] : null) || {};
+  const type = normalizeClientRequestType(row.clientRequest || request.type || "");
+  if (!type) return "";
+  const config = CLIENT_REQUEST_TYPES[type];
+  const localConfirmation = readClientRequestConfirmation(rec, index, type, row);
+  const confirmedAt = request.confirmedAt || localConfirmation?.confirmedAt || "";
+  if (confirmedAt) return "";
+  const message = type === "call"
+    ? "El taller necesita contactarle sobre este avance. Si esta disponible para ser contactado, por favor confirme aqui."
+    : "El taller solicita su autorizacion para continuar con este avance.";
+  if (type === "call") {
+    return `
+      <div class="tracking-client-request whatsapp-request">
+        <span>${esc(message)}</span>
+        <button type="button" class="tracking-client-request-btn whatsapp-confirm-btn" data-action="confirm-tracking-request" data-row="${index}" data-request-type="${esc(type)}"><span class="whatsapp-btn-icon">${whatsappLogoSvg()}</span>${esc(config.button)}</button>
+      </div>`;
+  }
+  return `
+    <div class="tracking-client-request authorization-request">
+      <strong>${esc(config.label)}</strong>
+      <span>${esc(message)}</span>
+      <button type="button" class="tracking-client-request-btn" data-action="confirm-tracking-request" data-row="${index}" data-request-type="${esc(type)}">${esc(config.button)}</button>
+    </div>`;
 }
 
 function renderTracking() {
@@ -3762,7 +5124,8 @@ function renderTracking() {
               <time class="${normalizeProcessStatus(row.status)}">${processStatusIcon(row.status)}</time>
               <div>
                 <p>${esc(row.text)}</p>
-                <div class="photo-grid">${(Array.isArray(rec.trackingImages?.[index]) ? rec.trackingImages[index] : []).map((src, imgIndex) => `<button type="button" class="photo-box has-image" data-action="open-image-preview-direct" data-src="${esc(src)}" data-label="Avance ${index + 1}.${imgIndex + 1}" style="background-image:url('${src}')"></button>`).join("")}</div>
+                ${renderTrackingClientRequest(rec, row, index)}
+                <div class="photo-grid">${(Array.isArray(rec.trackingImages?.[index]) ? rec.trackingImages[index] : []).map((media, imgIndex) => renderTrackingMediaThumb(media, `Avance ${index + 1}.${imgIndex + 1}`)).join("")}</div>
               </div>
             </div>`).join("") || "<p>Sin avances publicados.</p>"}
         </div>
@@ -3774,13 +5137,21 @@ function renderTracking() {
 
 function findReceptionByParam(key) {
   const rawHash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
-  const params = new URLSearchParams(location.search || rawHash);
+  const params = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(rawHash);
+  hashParams.forEach((value, name) => {
+    if (!params.has(name)) params.set(name, value);
+  });
   const token = params.get("token");
   const current = state();
   if (!token && (key === "clientToken" || key === "trackingToken")) return null;
   if (!token) return AM_SIMPLE_STORE.selected(current);
   const found = current.receptions.find((rec) => rec[key] === token);
   if (found) return found;
+  if (key === "clientToken") {
+    const consumed = current.receptions.find((rec) => rec.photoAcknowledged && rec.photoAcknowledgementEvidence?.token === token);
+    if (consumed) return consumed;
+  }
   return null;
 }
 
@@ -3974,6 +5345,37 @@ function handleActions() {
     const input = event.target;
     await handleAdminTrackingImageChange(input, event);
   }, true);
+  document.addEventListener("dragstart", (event) => {
+    const row = event.target.closest?.("[data-admin-detail-draggable]");
+    if (!row) return;
+    window.__amAdminTrackingDragIndex = Number(row.dataset.adminDetailDraggable);
+    row.classList.add("dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(window.__amAdminTrackingDragIndex));
+  });
+  document.addEventListener("dragover", (event) => {
+    const row = event.target.closest?.("[data-admin-detail-draggable]");
+    if (!row || !Number.isFinite(window.__amAdminTrackingDragIndex)) return;
+    event.preventDefault();
+    row.classList.add("drag-over");
+  });
+  document.addEventListener("dragleave", (event) => {
+    event.target.closest?.("[data-admin-detail-draggable]")?.classList.remove("drag-over");
+  });
+  document.addEventListener("drop", (event) => {
+    const row = event.target.closest?.("[data-admin-detail-draggable]");
+    if (!row || !Number.isFinite(window.__amAdminTrackingDragIndex)) return;
+    event.preventDefault();
+    const rec = selectedAdminReceptionFromHash();
+    const to = Number(row.dataset.adminDetailDraggable);
+    reorderAdminTrackingDraft(rec, window.__amAdminTrackingDragIndex, to);
+    qsa("[data-admin-detail-draggable]").forEach((item) => item.classList.remove("dragging", "drag-over"));
+    window.__amAdminTrackingDragIndex = null;
+  });
+  document.addEventListener("dragend", () => {
+    qsa("[data-admin-detail-draggable]").forEach((item) => item.classList.remove("dragging", "drag-over"));
+    window.__amAdminTrackingDragIndex = null;
+  });
   document.addEventListener("click", async (event) => {
     const clickedMenu = event.target.closest?.(".action-menu");
     if (!clickedMenu) closeActionMenus();
@@ -4030,10 +5432,22 @@ function handleActions() {
     if (!button) return;
     const action = button.dataset.action;
     if (button.closest(".action-menu")) setTimeout(() => closeActionMenus(), 0);
+    if (action === "start-dictation") {
+      event.preventDefault();
+      event.stopPropagation();
+      startAdminDictation(button);
+      return;
+    }
     if (action === "open-image-preview") {
       event.preventDefault();
       event.stopPropagation();
       openImagePreview(button.dataset.id, button.dataset.label || "Imagen");
+      return;
+    }
+    if (action === "open-mobile-notification-detail") {
+      event.preventDefault();
+      event.stopPropagation();
+      openMobileNotificationDetail(button.dataset.id);
       return;
     }
     if (action === "open-image-preview-direct") {
@@ -4042,9 +5456,106 @@ function handleActions() {
       openImagePreviewFromData(button.dataset.src || "", button.dataset.label || "Imagen");
       return;
     }
+    if (action === "open-video-preview-direct") {
+      event.preventDefault();
+      event.stopPropagation();
+      openVideoPreviewFromData(button.dataset.src || "", button.dataset.label || "Video");
+      return;
+    }
+    if (action === "open-mobile-card-photo") {
+      event.preventDefault();
+      event.stopPropagation();
+      openMobileCardBackViewer(button.dataset.id || "");
+      return;
+    }
+    if (action === "close-mobile-card-photo") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (history.state?.mobileCardViewer) history.back();
+      else closeMobileCardBackViewer();
+      return;
+    }
+    if (action === "share-mobile-card-photo") {
+      event.preventDefault();
+      event.stopPropagation();
+      await shareMobileCardBack(button.dataset.id || "");
+      return;
+    }
+    if (action === "confirm-tracking-request") {
+      event.preventDefault();
+      event.stopPropagation();
+      const rec = findReceptionByParam("trackingToken");
+      const rowIndex = Number(button.dataset.row);
+      const type = normalizeClientRequestType(button.dataset.requestType || "");
+      if (!rec || !Number.isFinite(rowIndex) || !type) return;
+      const card = button.closest(".tracking-client-request");
+      button.disabled = true;
+      if (type === "call") {
+        button.textContent = "Abriendo WhatsApp...";
+      } else {
+        card?.classList.add("request-sending");
+        button.innerHTML = '<span class="request-spinner" aria-hidden="true"></span>Enviando autorización...';
+      }
+      const rows = processRowItems(rec);
+      const confirmation = rememberClientRequestConfirmation(rec, rowIndex, type, rows[rowIndex]);
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = current.receptions.find((candidate) => candidate.id === rec.id);
+        if (!item) return;
+        const itemRows = processRowItems(item);
+        if (!Array.isArray(item.trackingRequests)) item.trackingRequests = trackingRequestsForRows(item, itemRows);
+        while (item.trackingRequests.length <= rowIndex) item.trackingRequests.push({ type: "", confirmedAt: "", confirmedLabel: "" });
+        item.trackingRequests[rowIndex] = {
+          ...(item.trackingRequests[rowIndex] || {}),
+          type,
+          fingerprint: clientRequestFingerprint(itemRows[rowIndex]),
+          confirmedAt: confirmation.confirmedAt,
+          confirmedLabel: confirmation.confirmedLabel
+        };
+      });
+      if (type === "call") {
+        await sendClientAvailabilityAlertzy(rec, rowIndex);
+        renderTracking();
+        const target = clientAvailabilityWhatsappUrl(rec);
+        setTimeout(() => {
+          const opened = window.open(target, "_blank", "noopener");
+          if (!opened) window.location.href = target;
+        }, 1300);
+      } else {
+        await sendClientAuthorizationAlertzy(rec, rowIndex);
+        card?.classList.remove("request-sending");
+        card?.classList.add("request-sent");
+        const label = card?.querySelector("strong");
+        const text = card?.querySelector("span");
+        if (label) label.textContent = "Autorización enviada";
+        if (text) text.textContent = "Gracias por tu autorización. Esto nos ayuda a agilizar nuestro trabajo.";
+        button.textContent = "Listo";
+        setTimeout(() => renderTracking(), 2200);
+      }
+      return;
+    }
+    if (action === "save-admin-invoices") {
+      event.preventDefault();
+      await saveAdminInvoices();
+      return;
+    }
+    if (action === "remove-admin-invoice") {
+      event.preventDefault();
+      removeAdminInvoice(Number(button.dataset.index));
+      return;
+    }
     if (action === "open-admin-notification-summary") {
       event.preventDefault();
       openAdminNotificationSummary();
+      return;
+    }
+    if (action === "set-notifier-mode") {
+      event.preventDefault();
+      setNotifierMode(button.dataset.notifierMode || "choice");
+      return;
+    }
+    if (action === "back-notifier-choice") {
+      event.preventDefault();
+      setNotifierMode("choice");
       return;
     }
     if (action === "close-admin-notification-summary") {
@@ -4263,6 +5774,16 @@ function handleActions() {
       if (!alertSent) toast("La notificación quedó guardada, pero Alertzy no confirmó el envío externo.", "warn");
       if (textField) textField.value = "";
       renderAdmin();
+    }
+    if (action === "send-notifier-general") {
+      event.preventDefault();
+      await sendNotifierGlobal();
+      return;
+    }
+    if (action === "send-notifier-vehicle") {
+      event.preventDefault();
+      await sendNotifierVehicle();
+      return;
     }
     if (action === "send-vehicle-notification") {
       event.preventDefault();
@@ -4572,39 +6093,54 @@ function handleActions() {
     }
     if (action === "archive-reception") {
       event.preventDefault();
-      let rec = state().receptions.find((item) => item.id === button.dataset.id);
+      const rec = state().receptions.find((item) => item.id === button.dataset.id);
       if (!rec) return;
-      let localResult = null;
-      try {
-        toast("Leyendo respaldo de nube para preparar archivado local...");
-        rec = await freshReceptionForLocalArchive(rec);
-        if (!rec) throw new Error("No se pudo localizar el expediente actualizado para archivar.");
-        rec = JSON.parse(JSON.stringify(rec));
-        if (!rec.client?.name) {
-          const clientName = prompt(`Este expediente no tiene nombre de cliente. Escriba el nombre de la carpeta para ${rec.number}:`, "");
-          if (!clientName) return;
-          rec.client = { ...(rec.client || {}), name: clientName };
-        }
-        const archivePath = localArchivePath(rec);
-        if (!confirm(`Se guardará el expediente en esta ubicación:\n\n${archivePath}\n\n¿Desea archivar aquí?`)) return;
-        toast("Guardando expediente completo en carpeta local...");
-        localResult = await writeLocalArchiveBackup(rec);
-      } catch (error) {
-        console.error(error);
-        toast(error.message || "No se pudo guardar el respaldo local. No se archivó nada.", "danger");
-        return;
-      }
+      if (!confirm(`Archivar ${rec.number}? El expediente saldrá del dashboard y quedará disponible en Archivados. Luego podrá usar Descargar para guardarlo en la carpeta local configurada.`)) return;
       AM_SIMPLE_STORE.mutate((current) => {
         const item = current.receptions.find((candidate) => candidate.id === rec.id);
         if (!item) return;
         item.archivedAt = new Date().toISOString();
         item.deletedAt = "";
         item.archivedBy = "Administrador";
-        item.localArchiveConfirmedAt = localResult.exportedAt || new Date().toISOString();
-        item.localArchivePath = localResult.path || "";
       });
       renderAdmin();
-      if (!await confirmCloudSaved("Expediente archivado y respaldado localmente.", "archive-reception")) return;
+      if (!await confirmCloudSaved("Expediente archivado.", "archive-reception")) return;
+    }
+    if (action === "download-local-archive") {
+      event.preventDefault();
+      let rec = state().receptions.find((item) => item.id === button.dataset.id);
+      if (!rec) return;
+      let localResult = null;
+      try {
+        toast("Preparando descarga local del expediente...");
+        rec = await freshReceptionForLocalArchive(rec);
+        if (!rec) throw new Error("No se pudo localizar el expediente actualizado para descargar.");
+        rec = JSON.parse(JSON.stringify(rec));
+        if (!rec.client?.name) {
+          const clientName = prompt(`Este expediente no tiene nombre de cliente. Escriba el nombre de la carpeta para ${rec.number}:`, "");
+          if (!clientName) return;
+          rec.client = { ...(rec.client || {}), name: clientName };
+        }
+        const archiveMode = askLocalArchiveDownloadMode(rec);
+        if (!archiveMode) return;
+        const archiveLabel = archiveMode === "partial" ? "PARCIAL" : "COMPLETO";
+        if (!confirm(`Se descargará el expediente ${archiveLabel} en la carpeta local de archivados.\n\nSi ya existe una carpeta con el mismo nombre del cliente, el sistema le preguntará si desea usarla o escoger otra.\n\n¿Desea continuar?`)) return;
+        toast(`Guardando expediente ${archiveLabel.toLowerCase()} en carpeta local...`);
+        localResult = await writeLocalArchiveBackup(rec, archiveMode);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || "No se pudo descargar el expediente en la carpeta local.", "danger");
+        return;
+      }
+      AM_SIMPLE_STORE.mutate((current) => {
+        const item = current.receptions.find((candidate) => candidate.id === rec.id || candidate.number === rec.number);
+        if (!item) return;
+        item.localArchiveConfirmedAt = localResult.exportedAt || new Date().toISOString();
+        item.localArchivePath = localResult.path || "";
+        item.localArchiveMode = localResult.mode || "full";
+      });
+      renderAdmin();
+      await confirmCloudSaved("Expediente descargado localmente.", "download-local-archive");
       await loadLocalArchivedBackups().catch(() => {});
     }
     if (action === "unarchive-reception") {
@@ -4647,14 +6183,38 @@ function handleActions() {
       if (!confirm(`Borrar ${rec.number} de la nube? El expediente debe permanecer respaldado en la carpeta local.`)) return;
       const previous = JSON.parse(JSON.stringify(rec));
       AM_SIMPLE_STORE.mutate((current) => {
-        current.receptions = current.receptions.filter((item) => item.id !== rec.id);
+        if (!Array.isArray(current.deletedReceptionNumbers)) current.deletedReceptionNumbers = [];
+        [rec.number, rec.id].filter(Boolean).forEach((key) => {
+          if (!current.deletedReceptionNumbers.includes(key)) current.deletedReceptionNumbers.push(key);
+        });
+        current.receptions = current.receptions.filter((item) => item.id !== rec.id && item.number !== rec.number);
+        if (current.employeeState && Array.isArray(current.employeeState.vehicles)) {
+          const recCoreId = String(rec.id || "").replace(/^emp-/, "");
+          current.employeeState.vehicles = current.employeeState.vehicles.filter((vehicle) => {
+            const vehicleCoreId = String(vehicle.id || "").replace(/^emp-/, "");
+            return vehicle.id !== rec.id
+              && vehicle.rec !== rec.number
+              && vehicle.number !== rec.number
+              && vehicle.reception !== rec.number
+              && (!recCoreId || vehicleCoreId !== recCoreId);
+          });
+        }
         if (current.selectedId === rec.id) current.selectedId = "";
       });
       renderAdmin();
       const saved = await confirmCloudSaved("Expediente borrado de la nube.", "delete-cloud-archived");
       if (!saved) {
         AM_SIMPLE_STORE.mutate((current) => {
+          if (Array.isArray(current.deletedReceptionNumbers)) {
+            current.deletedReceptionNumbers = current.deletedReceptionNumbers.filter((key) => key !== previous.number && key !== previous.id);
+          }
           if (!current.receptions.some((item) => item.id === previous.id)) current.receptions.push(previous);
+          if (current.employeeState && Array.isArray(current.employeeState.vehicles)) {
+            const restoredVehicle = employeeVehicleFromReception(previous);
+            if (!current.employeeState.vehicles.some((vehicle) => vehicle.id === restoredVehicle.id || vehicle.rec === restoredVehicle.rec)) {
+              current.employeeState.vehicles.unshift(restoredVehicle);
+            }
+          }
         });
         renderAdmin();
         toast("No se confirmó el borrado en nube. Se restauró el expediente localmente para reintentar.", "danger");
@@ -4718,6 +6278,34 @@ function handleActions() {
       renderAdmin();
       if (target) window.open(target, "_blank");
       if (!await confirmCloudSaved("Link de revisión de fotografías generado para WhatsApp.", "send-client-photos")) return;
+    }
+    if (action === "admin-regenerate-photo-review-link") {
+      const selectedRec = AM_SIMPLE_STORE.selected(state());
+      if (!selectedRec) return;
+      if (!confirm(`Generar un nuevo link de revisión de fotos para ${selectedRec.number}? El link anterior dejará de servir para revisar fotos.`)) return;
+      let nextPhotoLink = "";
+      AM_SIMPLE_STORE.mutate((current) => {
+        const rec = AM_SIMPLE_STORE.selected(current);
+        if (!rec) return;
+        forgetConsumedClientLink(rec.clientToken);
+        rec.photoAcknowledged = false;
+        rec.photoAcknowledgedAt = "";
+        rec.photoAcknowledgementEvidence = null;
+        rec.photoReviewSentAt = "";
+        rec.clientToken = "cli_" + AM_SIMPLE_STORE.cryptoToken();
+        nextPhotoLink = photoReviewHref(rec.clientToken);
+      });
+      renderAdmin();
+      await confirmCloudSaved("Nuevo link de revisión de fotos generado.", "regenerate-photo-review-link");
+      if (nextPhotoLink) {
+        try {
+          await navigator.clipboard?.writeText(new URL(nextPhotoLink, location.href).href);
+          toast("Nuevo link de revisión de fotos copiado al portapapeles.", "ok");
+        } catch {
+          toast("Nuevo link de revisión de fotos generado.", "ok");
+        }
+      }
+      renderAdmin();
     }
     if (action === "send-client-tracking") {
       let target = "";
@@ -4791,24 +6379,22 @@ function handleActions() {
       let updatedRec = null;
       AM_SIMPLE_STORE.mutate((current) => {
         const item = AM_SIMPLE_STORE.selected(current);
-        const keepClientSignature = hasCapturedClientSignature(item);
-        item.signed = keepClientSignature;
-        item.sentToClient = keepClientSignature;
+        item.signed = false;
+        item.sentToClient = false;
         item.manualAuthorization = false;
         item.adminSignatureReviewedAt = "";
         item.adminSignatureReviewedBy = "";
-        if (!keepClientSignature) {
-          item.signatureName = "";
-          item.signatureDate = "";
-          item.signatureDataUrl = "";
-          item.termsAcceptedAt = "";
-          item.quickAuthorization = false;
-        } else {
-          item.quickAuthorization = true;
-        }
+        item.signatureName = "";
+        item.signatureDate = "";
+        item.signatureDataUrl = "";
+        item.termsAcceptedAt = "";
+        item.quickAuthorization = false;
+        item.photoAcknowledged = false;
+        item.photoAcknowledgedAt = "";
+        item.photoAcknowledgementEvidence = null;
+        item.clientToken = "cli_" + AM_SIMPLE_STORE.cryptoToken();
         item.status = "Pendiente de autorización";
         item.authorizationEvidence = {
-          ...(keepClientSignature && item.authorizationEvidence ? item.authorizationEvidence : {}),
           removedAtIso: new Date().toISOString(),
           authorizationType: "Autorización eliminada",
           registeredBy: "Administrador",
@@ -4920,6 +6506,9 @@ function handleActions() {
         rec.progressLabel = profile.state || "En proceso";
         rec.status = profile.state || rec.status;
         rec.trackingImages = Array.isArray(pending.images) ? pending.images : [];
+        rec.trackingRequests = Array.isArray(pending.requests)
+          ? pending.requests
+          : trackingRequestsForRows(rec, processRowItems(rec));
         rec.pendingTracking = {
           ...pending,
           status: "published",
@@ -4948,6 +6537,9 @@ function handleActions() {
         updated.progressLabel = "FINALIZADO";
         updated.finalizationPublishedAt = new Date().toISOString();
         if (updated.pendingTracking) {
+          if (Array.isArray(updated.pendingTracking.requests)) {
+            updated.trackingRequests = updated.pendingTracking.requests;
+          }
           updated.pendingTracking = {
             ...updated.pendingTracking,
             status: "published",
@@ -5212,18 +6804,19 @@ function handleActions() {
       toast("Avance publicado en seguimiento.");
     }
     if (action === "prev-photo" || action === "next-photo") {
-      const rec = findReceptionByParam("clientToken");
-      const total = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label)).length;
-      carouselIndex = action === "next-photo" ? (carouselIndex + 1) % total : (carouselIndex - 1 + total) % total;
-      renderClientCarousel(rec);
+      moveClientCarousel(action === "next-photo" ? 1 : -1);
     }
     if (action === "authorize-client") {
       const rec = findReceptionByParam("clientToken");
       const flow = qs("[data-authorization-flow]");
       const processingOnly = qs("[data-processing-only]");
       const authorizedOnly = qs("[data-authorized-only]");
+      const processingTitle = qs("[data-processing-title]");
+      const processingMessage = qs("[data-processing-message]");
       if (flow) flow.classList.add("hidden");
       if (authorizedOnly) authorizedOnly.classList.add("hidden");
+      if (processingTitle) processingTitle.textContent = "Habilitando seguimiento";
+      if (processingMessage) processingMessage.textContent = "En este momento se habilitará tu link de seguimiento.";
       if (processingOnly) processingOnly.classList.remove("hidden");
       setTimeout(() => {
         AM_SIMPLE_STORE.mutate((current) => {
@@ -5253,12 +6846,21 @@ function handleActions() {
       const flow = qs("[data-authorization-flow]");
       const processingOnly = qs("[data-processing-only]");
       const authorizedOnly = qs("[data-authorized-only]");
+      const processingTitle = qs("[data-processing-title]");
+      const processingMessage = qs("[data-processing-message]");
       if (flow) flow.classList.add("hidden");
       if (authorizedOnly) authorizedOnly.classList.add("hidden");
+      if (processingTitle) processingTitle.textContent = "Habilitando seguimiento";
+      if (processingMessage) processingMessage.textContent = "En este momento se habilitará tu link de seguimiento.";
       if (processingOnly) processingOnly.classList.remove("hidden");
-      setTimeout(() => {
+      setTimeout(async () => {
+        let trackingTarget = "";
+        let consumedToken = "";
+        let consumedTrackingToken = "";
         AM_SIMPLE_STORE.mutate((current) => {
           const item = current.receptions.find((candidate) => candidate.id === rec.id);
+          consumedToken = item.clientToken;
+          consumedTrackingToken = item.trackingToken;
           item.photoAcknowledged = true;
           item.photoAcknowledgedAt = new Date().toLocaleString("es-SV");
           item.photoAcknowledgementEvidence = {
@@ -5271,10 +6873,28 @@ function handleActions() {
             screen: `${screen.width}x${screen.height}`,
             viewport: `${innerWidth}x${innerHeight}`
           };
+          item.clientToken = "cli_" + AM_SIMPLE_STORE.cryptoToken();
+          trackingTarget = tokenHref("seguimiento.html", item.trackingToken);
         });
-        renderClient();
-        toast("Fotografías revisadas. Seguimiento habilitado.");
-      }, 1400);
+        markConsumedClientLink(consumedToken, consumedTrackingToken);
+        if (globalThis.AM_CLOUD_SYNC?.isReady?.()) {
+          try {
+            const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
+            await Promise.race([
+              (async () => {
+                await AM_CLOUD_SYNC.saveNow("client-photo-review-consumed", fixedSnapshot);
+                const confirmed = await fetchConfirmedCloudSnapshot(fixedSnapshot?.exportedAt);
+                AM_CLOUD_SYNC.applySnapshot?.(confirmed);
+              })(),
+              sleep(3500)
+            ]);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+        if (trackingTarget) window.location.replace(trackingTarget);
+        else renderClient();
+      }, 2000);
     }
   });
 
@@ -5283,6 +6903,11 @@ function handleActions() {
     if (input.matches?.("[data-dashboard-quick-search]")) {
       adminDashboardQuickSearch = input.value || "";
       renderReceptionTable();
+      return;
+    }
+    if (input.matches?.("[data-local-archive-search]")) {
+      adminLocalArchiveSearch = input.value || "";
+      renderLocalArchiveTable();
       return;
     }
     if (input.matches?.("[data-admin-search], [data-admin-date-from], [data-admin-date-to], [data-admin-vehicle-year]")) {
@@ -5294,10 +6919,21 @@ function handleActions() {
       renderReceptionTable();
       renderClientCatalog();
     }
+    if (input.matches?.("[data-notifier-vehicle-search]")) {
+      renderNotifierVehicles();
+    }
   });
 
   document.addEventListener("change", async (event) => {
     const input = event.target;
+    if (input.matches?.("[data-notifier-vehicle-select]")) {
+      renderNotifierVehiclePreview();
+      return;
+    }
+    if (input.matches?.("[data-notifier-vehicle-employee]")) {
+      renderNotifierVehicles();
+      return;
+    }
     if (input.matches?.("[data-admin-search], [data-admin-date-from], [data-admin-date-to], [data-admin-vehicle-year]")) {
       adminSearchFilters.text = qs("[data-admin-search]")?.value || "";
       adminSearchFilters.dateFrom = qs("[data-admin-date-from]")?.value || "";
@@ -5360,12 +6996,13 @@ function handleActions() {
       const rec = selected();
       const rowIndex = Number(input.dataset.adminDetailImage);
       try {
-        const dataUrl = await readFilePromise(input);
-        if (!dataUrl) return;
+        const files = Array.from(input.files || []);
+        const dataUrls = (await Promise.all(files.map((file) => readTrackingMediaFile(file)))).filter(Boolean);
+        if (!dataUrls.length) return;
         const draft = captureAdminTrackingDraftFromDom(rec);
         while (draft.images.length <= rowIndex) draft.images.push([]);
         if (!Array.isArray(draft.images[rowIndex])) draft.images[rowIndex] = [];
-        draft.images[rowIndex].push(dataUrl);
+        draft.images[rowIndex].push(...dataUrls);
         AM_SIMPLE_STORE.mutate((current) => {
           persistAdminTrackingDraft(current, draft, false);
         });
@@ -5375,6 +7012,17 @@ function handleActions() {
       } catch (error) {
         console.error(error);
         toast(error.message || "No se pudo guardar la imagen.", "danger");
+      } finally {
+        input.value = "";
+      }
+      return;
+    }
+    if (input.matches("[data-admin-invoice-upload]")) {
+      try {
+        await addAdminInvoices(input);
+      } catch (error) {
+        console.error(error);
+        toast(error.message || "No se pudo agregar la factura.", "danger");
       } finally {
         input.value = "";
       }
@@ -5594,7 +7242,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const page = document.body.dataset.page;
   if (page === "admin") compactLocalArchiveStores();
   if ((page === "admin" || page === "employee") && !requireLocalAccess(page)) return;
-  if (globalThis.AM_CLOUD_SYNC?.isReady?.() && ["admin", "client", "tracking"].includes(page)) {
+  if (page === "notificador" && !requireLocalAccess("admin")) return;
+  if (globalThis.AM_CLOUD_SYNC?.isReady?.() && ["admin", "client", "tracking", "notificador"].includes(page)) {
     try {
       await AM_CLOUD_SYNC.ready();
       if (page === "admin") cloudLog("Datos cargados desde nube.", "ok");
@@ -5606,17 +7255,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderNav();
   renderTabs();
   if (page === "admin") {
+    resetAdminInitialViewToDashboard();
     applyAdminHashRoute();
   }
   if (page === "employee") renderEmployee();
   if (page === "client") renderClient();
   if (page === "tracking") renderTracking();
+  if (page === "notificador") {
+    history.replaceState({ notifierMode: "choice" }, "", location.pathname + location.search);
+    setNotifierMode("choice", false);
+  }
   enableSpanishSpellcheck();
   if (page === "admin") {
-    setInterval(() => {
-      const dashboard = qs('[data-section="dashboard"]');
-      if (dashboard && !dashboard.classList.contains("hidden")) renderReceptionTable();
-    }, 1000);
+    setInterval(refreshAdminDeadlineBadges, 1000);
   }
 });
 
@@ -5624,12 +7275,32 @@ document.addEventListener("focusin", (event) => {
   if (event.target.matches?.("input, textarea")) enableSpanishSpellcheck(document);
 });
 
+window.addEventListener("pageshow", (event) => {
+  if (document.body.dataset.page !== "client") return;
+  if (event.persisted) renderClient();
+});
+
 window.addEventListener("hashchange", () => {
   if (document.body.dataset.page !== "admin") return;
   applyAdminHashRoute();
 });
 
+window.addEventListener("popstate", (event) => {
+  if (document.body.dataset.page !== "notificador") return;
+  setNotifierMode(event.state?.notifierMode || "choice", false);
+});
+
 window.addEventListener("popstate", () => {
+  if (qs("[data-mobile-card-viewer]")) {
+    closeMobileCardBackViewer();
+    return;
+  }
+  if (document.body.dataset.page === "admin") {
+    applyAdminHashRoute();
+  }
+  if (document.body.dataset.page === "client") {
+    renderClient();
+  }
   if (hasOpenActionMenu()) closeActionMenus();
 });
 

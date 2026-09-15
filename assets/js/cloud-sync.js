@@ -18,9 +18,9 @@
   let saveTail = Promise.resolve();
   let activeSavePromise = null;
   let initialLoadPromise = null;
-  const IMAGE_MAX = 560;
-  const IMAGE_QUALITY = 0.42;
-  const IMAGE_LIMIT = 70000;
+  const IMAGE_MAX = 2048;
+  const IMAGE_QUALITY = 0.9;
+  const IMAGE_LIMIT = 220000;
 
   function readJson(key, fallback = null) {
     try {
@@ -113,7 +113,17 @@
     if (!Array.isArray(rows)) return;
     for (const row of rows) {
       if (!Array.isArray(row)) continue;
-      for (let i = 0; i < row.length; i += 1) row[i] = await compressImageDataUrl(row[i]);
+      for (let i = 0; i < row.length; i += 1) {
+        const media = row[i];
+        if (typeof media === "string") {
+          if (/^data:image\//i.test(media)) row[i] = await compressImageDataUrl(media);
+          continue;
+        }
+        if (!media || typeof media !== "object") continue;
+        if (media.type === "video" || /^data:video\//i.test(media.dataUrl || "")) continue;
+        if (media.dataUrl && /^data:image\//i.test(media.dataUrl)) media.dataUrl = await compressImageDataUrl(media.dataUrl);
+        if (media.thumbnail && /^data:image\//i.test(media.thumbnail)) media.thumbnail = await compressImageDataUrl(media.thumbnail);
+      }
     }
   }
 
