@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
   <title>Autorización cliente - AM Recepción Símple</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=contact-wa-27">
+  <link rel="stylesheet" href="assets/css/styles.css?v=mobile-followup-fix-4">
   <script defer src="pwa-register.js?v=20260812-1"></script>
   <style>
     .client-loading-screen {
@@ -21,6 +21,9 @@
       place-items: center;
       padding: 24px;
       overflow: hidden;
+      width: 100%;
+      max-width: 100%;
+      justify-items: center;
       background:
         linear-gradient(rgba(11, 35, 63, 0.06) 1px, transparent 1px),
         linear-gradient(90deg, rgba(11, 35, 63, 0.06) 1px, transparent 1px),
@@ -34,7 +37,9 @@
     .client-loading-screen.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .client-loading-card {
       position: relative;
-      width: min(560px, 94vw);
+      width: min(560px, 100%);
+      max-width: 100%;
+      margin-inline: auto;
       min-height: 520px;
       padding: 36px 28px 32px;
       text-align: center;
@@ -380,7 +385,8 @@
       24% { opacity: 0; transform: translateY(-8px) scale(0.98); }
     }
     @media (max-width: 520px) {
-      .client-loading-card { min-height: 520px; padding: 28px 18px 24px; }
+      .client-loading-screen { padding: 16px; }
+      .client-loading-card { width: 100%; max-width: 100%; min-height: 520px; padding: 28px 18px 24px; }
       .client-loading-logo-wrap { min-height: 118px; }
       .client-sync-core { width: 152px; }
     }

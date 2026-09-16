@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
   <title>Administrador - AM Recepción Símple</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=admin-recepcion-mobile-1">
+  <link rel="stylesheet" href="assets/css/styles.css?v=mobile-followup-fix-4">
   <script defer src="pwa-register.js?v=20260812-1"></script>
 </head>
 <body data-page="admin" lang="es" spellcheck="true">
@@ -345,7 +345,7 @@
                       <div class="field"><label>Estado del tiempo</label><input readonly data-admin-deadline-status value="Esperando cálculo de sistema"></div>
                       <div class="field"><label>Avance %</label><input type="range" min="0" max="100" data-admin-progress><strong data-progress-value>0%</strong></div>
                       <div class="field full"><label>Detalles del proceso actual por renglones</label><div class="detail-list" data-admin-detail-rows></div></div>
-                      <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-detail placeholder="Escriba un avance nuevo para el cliente"></textarea><div class="desktop-dictation-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-new-detail]">Dictar</button><button type="button" class="btn" data-action="admin-add-detail-row">Agregar renglón</button></div></div>
+                      <div class="field full"><label>Nuevo renglón</label><textarea data-admin-new-detail placeholder="Escriba un avance nuevo para el cliente"></textarea><div class="desktop-dictation-row tracking-detail-action-row"><button type="button" class="btn dictation-btn" data-action="start-dictation" data-dictation-target="[data-admin-new-detail]">Dictar</button><button type="button" class="btn" data-action="admin-add-detail-row">Agregar renglón</button></div></div>
                     </div>
                   </article>
                 </div>
