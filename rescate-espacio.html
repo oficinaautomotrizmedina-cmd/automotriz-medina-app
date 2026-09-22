@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10243a">
+  <title>Rescate de guardado - Automotriz Medina</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#0e1722;color:#17202a;font:16px/1.45 Arial,sans-serif}.card{width:min(560px,100%);background:#fff;border-radius:8px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.38)}h1{margin:0 0 10px;font-size:25px}p{margin:8px 0;color:#465465}.warning{border-left:4px solid #d28a00;background:#fff7e7;padding:12px;margin:18px 0;border-radius:6px}.actions{display:grid;gap:10px;margin-top:18px}button{min-height:52px;border:0;border-radius:8px;background:#1769d2;color:#fff;font:800 16px Arial,sans-serif;padding:12px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.status{display:none;margin-top:16px;border-left:4px solid #21894f;background:#ecf8f0;padding:12px;border-radius:6px;color:#173d28}.status.show{display:block}.small{font-size:13px;color:#687585}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Rescatar el perfil abierto</h1>
+    <p>Esta herramienta libera espacio ocupado por copias locales pesadas. Conserva los datos, nombres y registros; solamente retira fotografías incrustadas de las copias antiguas del navegador.</p>
+    <div class="warning"><strong>No cierres ni recargues la pestaña donde llenaste el perfil.</strong> Esta página debe estar abierta como una segunda pestaña.</div>
+    <div class="actions"><button id="rescue" type="button">Liberar espacio para guardar</button></div>
+    <div id="status" class="status"><strong>Espacio liberado.</strong><br>Regresa a la pestaña del perfil, sin recargarla, y vuelve a pulsar <b>Guardar cambios</b>.</div>
+    <p class="small">El respaldo definitivo seguirá enviándose al servidor configurado de Automotriz Medina.</p>
+  </main>
+  <script>
+    const KEYS=['am_employee_module_safe_v2','am_recepci\u00f3n_local_v1','am_recepción_local_v1','am_quick_taller_archives_v1','am_master_taller_archives_v1'];
+    function lightweight(value){return JSON.parse(JSON.stringify(value,(key,item)=>typeof item==='string'&&/^data:(?:image|video)\//i.test(item)?'':item))}
+    document.getElementById('rescue').addEventListener('click',()=>{const button=document.getElementById('rescue');button.disabled=true;KEYS.forEach(key=>{try{const raw=localStorage.getItem(key);if(!raw)return;const value=JSON.parse(raw);localStorage.removeItem(key);localStorage.setItem(key,JSON.stringify(lightweight(value)))}catch(error){try{localStorage.removeItem(key)}catch{}}});try{localStorage.removeItem('am_cloud_snapshot_cache_v1')}catch{}document.getElementById('status').classList.add('show');button.textContent='Espacio liberado'});
+  </script>
+</body>
+</html>
