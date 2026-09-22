@@ -566,6 +566,8 @@ function adminTrackingProfileSnapshot(rec, sourceProfile = trackingProfile(rec))
   return {
     receptionDate: sourceProfile.receptionDate || "",
     deliveryEstimate: sourceProfile.deliveryEstimate || "",
+    finalDeliveryDate: sourceProfile.finalDeliveryDate || rec?.finalDelivery?.date || "",
+    finalDeliveryTime: sourceProfile.finalDeliveryTime || rec?.finalDelivery?.time || "",
     vehicleTitle: sourceProfile.vehicleTitle || "",
     odometer: sourceProfile.odometer || "",
     plate: sourceProfile.plate || "",
@@ -586,6 +588,7 @@ function createAdminTrackingDraft(rec) {
       rows: attachClientRequestsToRows(Array.isArray(savedDraft.rows) ? savedDraft.rows : processRowItems(rec), savedDraft.requests || rec?.trackingRequests || []),
       images: Array.isArray(savedDraft.images) ? savedDraft.images : (Array.isArray(rec?.trackingImages) ? rec.trackingImages : []),
       deadline: savedDraft.deadline ?? rec?.employeeDeadline ?? "",
+      finalDeliveryTime: savedDraft.finalDeliveryTime || finalDeliverySchedule(rec, profile).time || "",
       requests: Array.isArray(savedDraft.requests) ? savedDraft.requests : trackingRequestsForRows(rec, savedDraft.rows || processRowItems(rec))
     };
   }
@@ -598,6 +601,7 @@ function createAdminTrackingDraft(rec) {
     rows: attachClientRequestsToRows(baseRows, rec?.trackingRequests || []),
     images: pending ? adminTrackingImages(rec) : (Array.isArray(rec?.trackingImages) ? rec.trackingImages : []),
     deadline: rec?.employeeDeadline || "",
+    finalDeliveryTime: finalDeliverySchedule(rec, profile).time || "",
     requests: trackingRequestsForRows(rec, baseRows)
   };
 }
@@ -624,6 +628,7 @@ function captureAdminTrackingDraftFromDom(rec) {
     draft.requests = trackingRequestsForRows({ ...rec, trackingRequests: draft.requests || rec?.trackingRequests || [] }, rows);
   }
   draft.deadline = qs("[data-admin-deadline]")?.value || draft.deadline || "";
+  draft.finalDeliveryTime = qs("[data-final-delivery-time]")?.value || draft.finalDeliveryTime || "";
   return draft;
 }
 
@@ -646,6 +651,7 @@ function persistAdminTrackingDraft(current, draft, publish = false) {
     rows,
     images,
     deadline: draft.deadline || "",
+    finalDeliveryTime: draft.finalDeliveryTime || "",
     requests: trackingRequestsForRows(requestSource, rows)
   };
   rec.adminTrackingDraft = privateDraft;
@@ -1848,8 +1854,36 @@ async function handleAdminTrackingAction(action, button, event) {
   }
   const draft = captureAdminTrackingDraftFromDom(rec);
   if (action === "save-admin-tracking" || action === "save-progress") {
+    let deliverySchedule = null;
+    if (action === "save-progress" && String(draft.profile.state || "").toUpperCase() === "FINALIZADO") {
+      const deliveryDate = draft.profile.deliveryEstimate || "";
+      const deliveryTime = draft.finalDeliveryTime || "";
+      if (!deliveryDate) {
+        toast("Seleccione la estimación de entrega antes de publicar la finalización.", "warn");
+        qs('[data-track-field="deliveryEstimate"]')?.focus();
+        return true;
+      }
+      if (!deliveryTime) {
+        toast("Escriba la hora de entrega antes de publicar la finalización.", "warn");
+        qs("[data-final-delivery-time]")?.focus();
+        return true;
+      }
+      draft.progress = 100;
+      draft.profile.finalDeliveryDate = deliveryDate;
+      draft.profile.finalDeliveryTime = deliveryTime;
+      deliverySchedule = { date: deliveryDate, time: deliveryTime };
+    }
     AM_SIMPLE_STORE.mutate((current) => {
       persistAdminTrackingDraft(current, draft, action === "save-progress");
+      const updated = current.receptions.find((item) => item.id === rec.id);
+      if (deliverySchedule && updated) {
+        applyFinalDeliverySchedule(updated, deliverySchedule);
+        updated.status = "FINALIZADO";
+        updated.progress = 100;
+        updated.publishedProgress = 100;
+        updated.progressLabel = "FINALIZADO";
+        updated.finalizationPublishedAt = new Date().toISOString();
+      }
     });
     if (action === "save-progress") adminTrackingDraft = null;
     syncSelectedAdminReceptionToEmployee();
@@ -2577,6 +2611,51 @@ function whatsappLogoSvg() {
   return '<svg class="whatsapp-logo" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><path fill="currentColor" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>';
 }
 
+function finalDeliverySchedule(rec, profile = trackingProfile(rec)) {
+  return {
+    date: profile?.finalDeliveryDate || rec?.finalDelivery?.date || "",
+    time: profile?.finalDeliveryTime || rec?.finalDelivery?.time || ""
+  };
+}
+
+function formatFinalDeliveryDate(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return String(value || "");
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+  return date.toLocaleDateString("es-SV", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+function formatFinalDeliveryTime(value) {
+  const match = String(value || "").match(/^(\d{2}):(\d{2})/);
+  if (!match) return String(value || "");
+  const date = new Date(2000, 0, 1, Number(match[1]), Number(match[2]));
+  return date.toLocaleTimeString("es-SV", { hour: "numeric", minute: "2-digit" });
+}
+
+function finalDeliveryWhatsappUrl(rec, dateText, timeText) {
+  const message = `Hola, Automotriz Medina. He visto que mi vehículo, expediente ${rec?.number || "N/D"}, estará disponible para entrega el ${dateText} a las ${timeText}. Quisiera comunicarme con ustedes sobre la entrega. Gracias.`;
+  return `https://wa.me/50371660867?text=${encodeURIComponent(message)}`;
+}
+
+function needsFinalDeliverySchedule(rec, nextState) {
+  if (String(nextState || "").toUpperCase() !== "FINALIZADO") return false;
+  const currentState = String(rec?.tracking?.state || "").toUpperCase();
+  const schedule = finalDeliverySchedule(rec, rec?.tracking || {});
+  return currentState !== "FINALIZADO" || !schedule.date || !schedule.time;
+}
+
+function applyFinalDeliverySchedule(rec, schedule) {
+  if (!rec || !schedule) return;
+  const profile = trackingProfile(rec);
+  rec.finalDelivery = {
+    date: schedule.date,
+    time: schedule.time,
+    scheduledAt: new Date().toISOString()
+  };
+  profile.finalDeliveryDate = schedule.date;
+  profile.finalDeliveryTime = schedule.time;
+}
+
 function clientRequestFingerprint(row) {
   return String(row?.text || "").trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120);
 }
@@ -2989,6 +3068,71 @@ function openManualAuthorizationDialog(rec) {
   });
 }
 
+function openFinalDeliveryDialog(rec) {
+  return new Promise((resolve) => {
+    qs("[data-final-delivery-modal]")?.remove();
+    const profile = trackingProfile(rec);
+    const saved = finalDeliverySchedule(rec, profile);
+    const estimatedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(profile.deliveryEstimate || ""))
+      ? profile.deliveryEstimate
+      : "";
+    const modal = document.createElement("div");
+    modal.className = "image-modal final-delivery-modal";
+    modal.dataset.finalDeliveryModal = "1";
+    modal.innerHTML = `
+      <div class="image-modal-card notification-modal-card final-delivery-dialog-card" role="dialog" aria-modal="true" aria-labelledby="final-delivery-title">
+        <div class="image-modal-head">
+          <div>
+            <h3 id="final-delivery-title">Programar entrega del vehículo</h3>
+            <small>${esc(rec?.number || "")}</small>
+          </div>
+          <button type="button" class="btn" data-final-delivery-cancel>Cerrar</button>
+        </div>
+        <div class="panel-body form-grid final-delivery-form">
+          <div class="notice full">
+            Confirme desde qué fecha y hora podrá el cliente recoger el vehículo. Esta información se mostrará en su seguimiento.
+          </div>
+          <label>Fecha de entrega
+            <input type="date" data-final-delivery-date value="${esc(saved.date || estimatedDate)}" required>
+          </label>
+          <label>Hora de entrega
+            <input type="time" data-final-delivery-time value="${esc(saved.time || "")}" required>
+          </label>
+          <div class="btn-row full final-delivery-actions">
+            <button type="button" class="btn primary" data-final-delivery-save>Confirmar y publicar</button>
+            <button type="button" class="btn" data-final-delivery-cancel>Cancelar</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    const dateInput = qs("[data-final-delivery-date]", modal);
+    const timeInput = qs("[data-final-delivery-time]", modal);
+    setTimeout(() => (dateInput?.value ? timeInput : dateInput)?.focus(), 30);
+    const close = (value) => {
+      modal.remove();
+      resolve(value);
+    };
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest("[data-final-delivery-cancel]")) {
+        event.preventDefault();
+        close(null);
+        return;
+      }
+      if (event.target.closest("[data-final-delivery-save]")) {
+        event.preventDefault();
+        const date = dateInput?.value || "";
+        const time = timeInput?.value || "";
+        if (!date || !time) {
+          toast("Seleccione la fecha y la hora de entrega.", "warn");
+          (!date ? dateInput : timeInput)?.focus();
+          return;
+        }
+        close({ date, time });
+      }
+    });
+  });
+}
+
 function purgeExpiredTrash(current) {
   const limit = 60 * 24 * 60 * 60 * 1000;
   const now = Date.now();
@@ -3198,6 +3342,74 @@ function resizeAdminMasterFrame() {
     frame.style.height = `${Math.max(contentHeight + 80, window.innerHeight - 120)}px`;
   } catch (error) {
     frame.style.height = "2600px";
+  }
+}
+
+async function confirmInternalLogSaved(message = "Bitácora interna guardada.", reason = "save-internal-log") {
+  if (!globalThis.AM_CLOUD_SYNC?.isReady?.()) {
+    toast("La bitácora quedó guardada localmente, pero la nube no está disponible.", "danger");
+    return false;
+  }
+
+  const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
+  let lastError = null;
+
+  try {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const attemptStartedAt = Date.now();
+      const saveProgress = 8 + (attempt - 1) * 30;
+      const verifyProgress = 25 + (attempt - 1) * 30;
+
+      setAdminSaving(
+        true,
+        "Guardando bitácora",
+        `Intento ${attempt} de 3. Respaldando la información en nube.`,
+        saveProgress
+      );
+
+      try {
+        await AM_CLOUD_SYNC.saveNow(`${reason}-attempt-${attempt}`, fixedSnapshot);
+        const remaining = Math.max(0, 5000 - (Date.now() - attemptStartedAt));
+        if (remaining) await sleep(remaining);
+
+        setAdminSaving(
+          true,
+          "Verificando bitácora",
+          `Comprobando el respaldo del intento ${attempt}.`,
+          verifyProgress
+        );
+
+        const confirmed = await AM_CLOUD_SYNC.fetchLatest();
+        if (confirmed?.exportedAt === fixedSnapshot?.exportedAt) {
+          AM_CLOUD_SYNC.applySnapshot?.(confirmed);
+          setAdminSaving(true, "Bitácora guardada", "El respaldo fue confirmado correctamente.", 100);
+          await sleep(550);
+          toast(message, "ok");
+          return true;
+        }
+
+        lastError = new Error("El servidor todavía no refleja la bitácora recién guardada.");
+      } catch (error) {
+        lastError = error;
+        console.warn(`No se confirmó la bitácora en el intento ${attempt}.`, error);
+      }
+
+      if (attempt < 3) {
+        setAdminSaving(
+          true,
+          "Reintentando bitácora",
+          `No se confirmó el intento ${attempt}. Iniciando intento ${attempt + 1} de 3.`,
+          verifyProgress
+        );
+        await sleep(500);
+      }
+    }
+
+    console.error(lastError);
+    toast("La bitácora quedó guardada localmente, pero no se pudo confirmar el respaldo en nube. Intente guardar nuevamente.", "danger");
+    return false;
+  } finally {
+    setAdminSaving(false);
   }
 }
 
@@ -3607,6 +3819,9 @@ function renderMobileVehicleCard(rec, options = {}) {
     ? `data-action="open-employee-vehicle" data-id="${esc(rec.id)}"`
     : `data-open-file-row="${esc(rec.id)}"`;
   const reviewBadge = signatureNeedsAdminReview(rec) ? '<span class="mobile-vehicle-alert">Firma</span>' : "";
+  const finalizationButton = !options.employee && finalizationNeedsPublish(rec)
+    ? `<button type="button" class="btn primary mobile-publish-finalization" data-action="publish-finalization" data-id="${esc(rec.id)}">Publicar finalización</button>`
+    : "";
   return `
     <article class="mobile-vehicle-card" ${attrs} role="button" tabindex="0">
       <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
@@ -3620,6 +3835,7 @@ function renderMobileVehicleCard(rec, options = {}) {
         <small>${esc(owner)}</small>
         ${subtitle ? `<em>${esc(subtitle)}</em>` : ""}
         ${deadlineMobileGauge(rec)}
+        ${finalizationButton}
         <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
       </div>
     </article>`;
@@ -4547,6 +4763,11 @@ function renderTrackingAdmin() {
   qsa("[data-track-field]").forEach((input) => {
     input.value = draft.profile[input.dataset.trackField] || "";
   });
+  const finalDeliveryTimeField = qs("[data-final-delivery-time-field]");
+  const finalDeliveryTimeInput = qs("[data-final-delivery-time]");
+  const draftIsFinalized = String(draft.profile.state || "").toUpperCase() === "FINALIZADO";
+  if (finalDeliveryTimeField) finalDeliveryTimeField.classList.toggle("hidden", !draftIsFinalized);
+  if (finalDeliveryTimeInput) finalDeliveryTimeInput.value = draft.finalDeliveryTime || "";
   const progress = qs("[data-admin-progress]");
   if (progress) {
     progress.value = Number(draft.progress || 0);
@@ -5074,6 +5295,10 @@ function renderTracking() {
   const cardPhoto = photos.find((photo) => /reverso.*tarjeta|tarjeta.*reverso/i.test(photo.label || ""))
     || photos.find((photo) => /frente.*tarjeta|tarjeta.*frente/i.test(photo.label || ""));
   const isFinalized = String(profile.state || "").toUpperCase() === "FINALIZADO";
+  const delivery = finalDeliverySchedule(rec, profile);
+  const deliveryDateText = formatFinalDeliveryDate(delivery.date);
+  const deliveryTimeText = formatFinalDeliveryTime(delivery.time);
+  const hasDeliverySchedule = Boolean(deliveryDateText && deliveryTimeText);
   host.innerHTML = `
     <div class="tracking-brief-notice">
       <strong>Seguimiento en actualización</strong>
@@ -5101,7 +5326,9 @@ function renderTracking() {
         <div>
           <span>Proceso finalizado</span>
           <h3>El diagnóstico o reparación de tu vehículo ha sido culminado exitosamente.</h3>
-          <p>Automotriz Medina agradece tu confianza. Puedes comunicarte con el taller para coordinar la entrega de tu vehículo.</p>
+          ${hasDeliverySchedule ? `<p class="tracking-final-delivery">Tu vehículo estará disponible para entrega a partir del <strong>${esc(deliveryDateText)}</strong> a las <strong>${esc(deliveryTimeText)}</strong>.</p>` : ""}
+          <p>Automotriz Medina agradece tu confianza. Si tienes alguna consulta o necesitas coordinar otro horario, puedes comunicarte con el taller.</p>
+          ${hasDeliverySchedule ? `<a class="tracking-final-whatsapp" href="${finalDeliveryWhatsappUrl(rec, deliveryDateText, deliveryTimeText)}" target="_blank" rel="noopener noreferrer"><span class="whatsapp-btn-icon">${whatsappLogoSvg()}</span>WhatsApp</a>` : ""}
         </div>
       </section>
     ` : `
@@ -6484,8 +6711,33 @@ function handleActions() {
         return;
       }
       const draft = captureAdminTrackingDraftFromDom(selectedRec);
+      const isFinalized = String(draft.profile.state || "").toUpperCase() === "FINALIZADO";
+      let deliverySchedule = null;
+      if (isFinalized) {
+        const deliveryDate = draft.profile.deliveryEstimate || "";
+        const deliveryTime = draft.finalDeliveryTime || "";
+        if (!deliveryDate) {
+          toast("Seleccione la estimación de entrega antes de publicar la finalización.", "warn");
+          qs('[data-track-field="deliveryEstimate"]')?.focus();
+          return;
+        }
+        if (!deliveryTime) {
+          toast("Escriba la hora de entrega antes de publicar la finalización.", "warn");
+          qs("[data-final-delivery-time]")?.focus();
+          return;
+        }
+        draft.progress = 100;
+        deliverySchedule = { date: deliveryDate, time: deliveryTime };
+        draft.profile.finalDeliveryDate = deliveryDate;
+        draft.profile.finalDeliveryTime = deliveryTime;
+      }
       AM_SIMPLE_STORE.mutate((current) => {
         persistAdminTrackingDraft(current, draft, true);
+        const updated = current.receptions.find((item) => item.id === selectedRec.id);
+        if (deliverySchedule && updated) {
+          applyFinalDeliverySchedule(updated, deliverySchedule);
+          updated.finalizationPublishedAt = new Date().toISOString();
+        }
       });
       adminTrackingDraft = null;
       syncSelectedAdminReceptionToEmployee();
@@ -6494,6 +6746,12 @@ function handleActions() {
       renderAdmin();
     }
     if (action === "publish-pending-tracking") {
+      const selectedRec = selected();
+      const pendingState = selectedRec?.pendingTracking?.state || selectedRec?.tracking?.state || selectedRec?.status;
+      const deliverySchedule = needsFinalDeliverySchedule(selectedRec, pendingState)
+        ? await openFinalDeliveryDialog(selectedRec)
+        : null;
+      if (needsFinalDeliverySchedule(selectedRec, pendingState) && !deliverySchedule) return;
       AM_SIMPLE_STORE.mutate((current) => {
         const rec = AM_SIMPLE_STORE.selected(current);
         const pending = rec.pendingTracking && rec.pendingTracking.status === "pending" ? rec.pendingTracking : null;
@@ -6514,6 +6772,7 @@ function handleActions() {
           status: "published",
           publishedAt: new Date().toISOString()
         };
+        if (deliverySchedule) applyFinalDeliverySchedule(rec, deliverySchedule);
       });
       syncSelectedAdminReceptionToEmployee();
       renderAdmin();
@@ -6524,7 +6783,8 @@ function handleActions() {
       event.stopPropagation();
       const rec = state().receptions.find((item) => item.id === button.dataset.id);
       if (!rec) return;
-      if (!confirm(`¿Publicar la finalización de ${rec.number} al cliente? El seguimiento privado mostrará el vehículo como finalizado.`)) return;
+      const deliverySchedule = await openFinalDeliveryDialog(rec);
+      if (!deliverySchedule) return;
       let updated = null;
       AM_SIMPLE_STORE.mutate((current) => {
         updated = current.receptions.find((item) => item.id === rec.id);
@@ -6536,6 +6796,7 @@ function handleActions() {
         updated.publishedProgress = 100;
         updated.progressLabel = "FINALIZADO";
         updated.finalizationPublishedAt = new Date().toISOString();
+        applyFinalDeliverySchedule(updated, deliverySchedule);
         if (updated.pendingTracking) {
           if (Array.isArray(updated.pendingTracking.requests)) {
             updated.trackingRequests = updated.pendingTracking.requests;
@@ -6603,7 +6864,7 @@ function handleActions() {
       });
       syncSelectedAdminReceptionToEmployee();
       renderAdmin();
-      if (!await confirmCloudSaved("Bitácora interna guardada.", "save-internal-log")) return;
+      if (!await confirmInternalLogSaved("Bitácora interna guardada.", "save-internal-log")) return;
     }
     if (action === "admin-add-internal-row") {
       AM_SIMPLE_STORE.mutate((current) => {
@@ -6615,7 +6876,7 @@ function handleActions() {
       });
       syncSelectedAdminReceptionToEmployee();
       renderAdmin();
-      if (!await confirmCloudSaved("Bitácora interna guardada.", "admin-add-internal-row")) return;
+      if (!await confirmInternalLogSaved("Bitácora interna guardada.", "admin-add-internal-row")) return;
     }
     if (action === "admin-remove-internal-row") {
       AM_SIMPLE_STORE.mutate((current) => {
@@ -6626,7 +6887,7 @@ function handleActions() {
       });
       syncSelectedAdminReceptionToEmployee();
       renderAdmin();
-      if (!await confirmCloudSaved("Bitácora interna guardada.", "admin-remove-internal-row")) return;
+      if (!await confirmInternalLogSaved("Bitácora interna guardada.", "admin-remove-internal-row")) return;
     }
     if (action === "print-authorization") {
       const rec = AM_SIMPLE_STORE.selected(state());
@@ -7054,6 +7315,13 @@ function handleActions() {
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target.matches('[data-track-field="state"]')) {
+      const isFinalized = String(event.target.value || "").toUpperCase() === "FINALIZADO";
+      const field = qs("[data-final-delivery-time-field]");
+      if (field) field.classList.toggle("hidden", !isFinalized);
+      if (isFinalized) qs("[data-final-delivery-time]")?.focus();
+      return;
+    }
     if (event.target.matches("[data-terms-check]")) {
       const button = qs("[data-action='authorize-client']");
       if (button) button.disabled = !event.target.checked;
@@ -7257,6 +7525,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (page === "admin") {
     resetAdminInitialViewToDashboard();
     applyAdminHashRoute();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const startup = qs("[data-admin-startup]");
+      if (!startup) return;
+      startup.classList.add("is-complete");
+      startup.addEventListener("transitionend", () => startup.remove(), { once: true });
+      setTimeout(() => startup.remove(), 800);
+    }));
   }
   if (page === "employee") renderEmployee();
   if (page === "client") renderClient();
