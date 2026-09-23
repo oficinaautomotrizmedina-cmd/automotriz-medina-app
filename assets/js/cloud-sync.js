@@ -66,58 +66,18 @@
   }
 
   function snapshot() {
-    const employeeState = window.__AM_CLOUD_EMPLOYEE_STATE__ || readJson(EMPLOYEE_KEY, null);
-    const storedAppState = readJson(ADMIN_KEY, null) || readJson(LEGACY_ADMIN_KEY, null) || window.__AM_CLOUD_APP_STATE__;
     return {
       version: 1,
       exportedAt: new Date().toISOString(),
       localWriteAt: localStorage.getItem(LOCAL_WRITE_KEY) || "",
       account: config().account,
-      appState: employeeState ? syncEmployeeVehiclesToAppState(storedAppState || defaultAppState(), employeeState) : storedAppState,
-      employeeState,
+      appState: readJson(ADMIN_KEY, null) || readJson(LEGACY_ADMIN_KEY, null),
+      employeeState: readJson(EMPLOYEE_KEY, null),
       archives: {
         master: readJson(MASTER_ARCHIVE_KEY, {}),
         quick: readJson(QUICK_ARCHIVE_KEY, {})
       }
     };
-  }
-
-  function snapshotWithEmployeeState(employeeState) {
-    const snap = snapshot();
-    if (!employeeState || typeof employeeState !== "object") return snap;
-    snap.employeeState = employeeState;
-    snap.appState = syncEmployeeVehiclesToAppState(snap.appState || defaultAppState(), employeeState);
-    snap.exportedAt = new Date().toISOString();
-    snap.localWriteAt = localStorage.getItem(LOCAL_WRITE_KEY) || snap.localWriteAt || "";
-    return snap;
-  }
-
-  function lightweightLocalCopy(value) {
-    if (!value || typeof value !== "object") return value;
-    try {
-      return JSON.parse(JSON.stringify(value, (key, item) => {
-        if (typeof item === "string" && /^data:(?:image|video)\//i.test(item)) return "";
-        return item;
-      }));
-    } catch {
-      return value;
-    }
-  }
-
-  function writeStateWithoutBlockingCloud(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (error) {
-      console.warn(`No hubo espacio para la copia local completa de ${key}; se guardara una copia liviana.`, error);
-      try {
-        localStorage.setItem(key, JSON.stringify(lightweightLocalCopy(value)));
-        return true;
-      } catch (lightError) {
-        console.warn(`No se pudo conservar la copia local liviana de ${key}.`, lightError);
-        return false;
-      }
-    }
   }
 
   function compressImageDataUrl(src, max = IMAGE_MAX, quality = IMAGE_QUALITY) {
@@ -625,19 +585,17 @@
       snap.appState = { ...defaultAppState(), ...snap.appState, config: { ...defaultAppState().config, ...(snap.appState.config || {}), schemaVersion: 3 } };
       snap.appState = syncEmployeeVehiclesToAppState(snap.appState, snap.employeeState);
       snap.appState = mergeProtectedLocalAppState(snap.appState, snap);
-      window.__AM_CLOUD_APP_STATE__ = snap.appState;
-      writeStateWithoutBlockingCloud(ADMIN_KEY, snap.appState);
+      localStorage.setItem(ADMIN_KEY, JSON.stringify(snap.appState));
       if (LEGACY_ADMIN_KEY !== ADMIN_KEY) {
         try { localStorage.removeItem(LEGACY_ADMIN_KEY); } catch {}
       }
     }
     if (snap.appState || snap.employeeState) {
       snap.employeeState = syncAppReceptionsToEmployeeState(snap.employeeState, snap.appState);
-      window.__AM_CLOUD_EMPLOYEE_STATE__ = snap.employeeState;
-      writeStateWithoutBlockingCloud(EMPLOYEE_KEY, snap.employeeState);
+      localStorage.setItem(EMPLOYEE_KEY, JSON.stringify(snap.employeeState));
     }
-    if (snap.archives?.master) writeStateWithoutBlockingCloud(MASTER_ARCHIVE_KEY, snap.archives.master);
-    if (snap.archives?.quick) writeStateWithoutBlockingCloud(QUICK_ARCHIVE_KEY, snap.archives.quick);
+    if (snap.archives?.master) localStorage.setItem(MASTER_ARCHIVE_KEY, JSON.stringify(snap.archives.master));
+    if (snap.archives?.quick) localStorage.setItem(QUICK_ARCHIVE_KEY, JSON.stringify(snap.archives.quick));
     window.dispatchEvent(new CustomEvent("am-cloud-loaded", { detail: { ok: true, snapshot: snap } }));
     return snap;
   }
@@ -663,5 +621,5 @@
     return post("ping", { snapshot: snapshot() });
   }
 
-  return { config, saveConfig, isReady, snapshot, snapshotWithEmployeeState, saveNow, queueSave, fetchLatest, applySnapshot, loadLatest, ready, ping };
+  return { config, saveConfig, isReady, snapshot, saveNow, queueSave, fetchLatest, applySnapshot, loadLatest, ready, ping };
 })();

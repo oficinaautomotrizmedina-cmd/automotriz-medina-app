@@ -7,7 +7,9 @@ const pages = ["index.html", "admin.html", "empleado.html", "cliente.html", "seg
 
 for (const page of pages) {
   const html = fs.readFileSync(path.join(root, page), "utf8");
-  if (!html.includes("assets/css/styles.css") && !html.includes("<style")) throw new Error(`${page} missing css`);
+  if (!html.includes("assets/css/styles.css") && !html.includes("<style")) {
+    throw new Error(`${page} missing styles`);
+  }
   if (!html.includes("AM") && !html.includes("Automotriz")) throw new Error(`${page} missing brand`);
 }
 

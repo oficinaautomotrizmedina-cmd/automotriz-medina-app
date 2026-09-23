@@ -758,6 +758,20 @@ button.photo-box { cursor: zoom-in; appearance: none; font: inherit; }
 .terms-box h3 { margin-top: 0; }
 .terms-box p { margin: 0 0 12px; }
 .terms-accept { align-items: flex-start; }
+body[data-page="client"] [data-client-terms-panel] .terms-box {
+  font-size: 11px;
+  line-height: 1.35;
+}
+body[data-page="client"] [data-client-terms-panel] .terms-box h3 {
+  font-size: 14px;
+}
+body[data-page="client"] [data-client-terms-panel] .terms-box p {
+  margin-bottom: 8px;
+}
+body[data-page="client"] [data-client-terms-panel] .terms-accept {
+  font-size: 12px;
+  line-height: 1.35;
+}
 .signature-preview {
   border: 1px solid var(--line);
   border-radius: 8px;

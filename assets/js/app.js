@@ -905,7 +905,7 @@ function authorizationMessage(rec) {
   const link = absoluteHref("cliente.html", rec.clientToken);
   return [
     `Hola ${rec.client?.name || ""}.`,
-    `Te compartimos el link privado de autorización para revisar la recepción, fotografías, inventario, observaciones y términos del servicio de Tu vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}. Por favor abre el enlace y, si todo esta correcto, autoriza el diagnóstico o reparación:`,
+    `Te compartimos el link privado de autorización para revisar el contrato y los daños registrados de Tu vehículo ${rec.vehicle?.marca || ""} ${rec.vehicle?.modelo || ""} ${rec.vehicle?.anio || ""}. Por favor abre el enlace y, si todo está correcto, autoriza el diagnóstico o reparación:`,
     link
   ].join("\n\n");
 }
@@ -3567,9 +3567,13 @@ function markConsumedClientLink(clientToken, trackingToken) {
   const token = String(clientToken || "").trim();
   const tracking = String(trackingToken || "").trim();
   if (!token || !tracking) return;
-  const consumed = consumedClientLinks();
-  consumed[token] = { trackingToken: tracking, consumedAt: new Date().toISOString() };
-  localStorage.setItem(CONSUMED_CLIENT_LINKS_KEY, JSON.stringify(consumed));
+  try {
+    const consumed = consumedClientLinks();
+    consumed[token] = { trackingToken: tracking, consumedAt: new Date().toISOString() };
+    localStorage.setItem(CONSUMED_CLIENT_LINKS_KEY, JSON.stringify(consumed));
+  } catch (error) {
+    console.warn("No se pudo registrar localmente el enlace consumido.", error);
+  }
 }
 
 function forgetConsumedClientLink(clientToken) {
@@ -4016,19 +4020,27 @@ function authorizationTermsHtml() {
   return `
     <h3>Contrato de servicio</h3>
     <p>El cliente autoriza a Automotriz Medina a recibir el vehículo identificado en esta recepción y a realizar las revisiones, pruebas, diagnósticos, desmontajes y verificaciones necesarias para determinar el estado del vehículo, la falla reportada y el trabajo requerido.</p>
-    <p>El cliente o persona responsable del vehículo acepta que todo diagnóstico, revisión, prueba, desmontaje, verificación, mano de obra, reparación, repuesto o servicio realizado deberá ser cancelado en su totalidad. Si después del diagnóstico el cliente decide no aprobar el presupuesto de reparación, igualmente deberá cancelar el costo correspondiente al diagnóstico, revisión, pruebas o procedimientos realizados hasta ese momento. Dicho costo podrá determinarse al finalizar el proceso de revisión o diagnóstico, según el tiempo, pruebas y procedimientos necesarios.</p>
-    <p>Cuando el cliente autorice una reparación, acepta pagar el costo total de los trabajos realizados, repuestos utilizados, mano de obra y cualquier cargo relacionado informado por Automotriz Medina al finalizar el servicio. Automotriz Medina podrá retener el vehículo hasta que el cliente cancele por completo facturas, repuestos, mano de obra, diagnósticos, almacenaje, custodia u otros cargos autorizados o derivados del servicio.</p>
-    <p>El cliente acepta que reparaciones, repuestos, trabajos adicionales o intervenciones especiales que excedan el diagnóstico inicial o el motivo principal de ingreso podrán requerir autorización previa del cliente o persona responsable, según criterio de Automotriz Medina. Los procedimientos necesarios para diagnosticar, verificar o confirmar la falla reportada podrán realizarse como parte del proceso de revisión autorizado.</p>
-    <p>El cliente autoriza a Automotriz Medina y a su personal encargado a hacer uso del vehículo para realizar pruebas de funcionamiento, pruebas de manejo y pruebas de carretera cuando sean necesarias para diagnóstico, verificación de fallas, confirmación de reparación o validación del trabajo realizado.</p>
-    <p>El cliente acepta que las autorizaciones, confirmaciones, fotografías, presupuestos, avisos y comunicaciones relacionadas con el servicio podrán realizarse por medios digitales, incluyendo enlaces privados, mensajes de WhatsApp u otros canales proporcionados por el cliente. Dichas confirmaciones tendrán validez como constancia de autorización o comunicación del servicio.</p>
-    <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción. Automotriz Medina no se responsabiliza por fallas previas, desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo.</p>
-    <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda y siempre que el vehículo no haya sido intervenido por terceros. Componentes eléctricos, electrónicos, sensores, módulos, computadoras, piezas usadas, piezas reparadas y repuestos proporcionados por el cliente quedan excluidos de garantía salvo acuerdo escrito distinto. Cuando el cliente proporcione repuestos, Automotriz Medina no será responsable por defectos, incompatibilidad, mala calidad, funcionamiento incorrecto o daños derivados de dichos repuestos.</p>
-    <p>El cliente o persona responsable declara que, antes de entregar el vehículo a Automotriz Medina, tuvo la oportunidad de revisarlo y de informar cualquier daño, faltante, condición especial, objeto personal, accesorio, documento, herramienta o situación relevante. Declara además haber retirado dinero, objetos de valor y pertenencias personales importantes antes de entregar el vehículo. Al aceptar estos términos, reconoce que está enterado de las condiciones en que entrega el vehículo y que la información, fotografías, inventario, observaciones y daños registrados reflejan la condición conocida al momento de la recepción. Cualquier condición, objeto o daño no informado o no declarado al momento de la recepción no será responsabilidad de Automotriz Medina.</p>
-    <p>El cliente acepta que el vehículo debe contar con combustible, batería y condiciones mínimas necesarias para realizar pruebas, diagnóstico o movilización interna. Si se requiere combustible, carga de batería, grúa u otro apoyo externo para continuar el diagnóstico, reparación, traslado o prueba del vehículo, dichos costos podrán ser cargados al cliente.</p>
-    <p>El cliente comprende que durante diagnósticos, desmontajes, revisiones o reparaciones pueden dañarse componentes frágiles, deteriorados, resecos, quebradizos, corroídos, vencidos o previamente manipulados, sin que esto constituya responsabilidad de Automotriz Medina.</p>
-    <p>Una vez notificado que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia.</p>
-    <p>Sí el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación, podrá considerarse abandonado y Automotriz Medina podrá iniciar las gestiones legales correspondientes para recuperar saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos relacionados.</p>
-    <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación según la información acordada con el taller, autoriza el uso del vehículo para pruebas necesarias, y acepta las responsabilidades de pago, resguardo, comunicación digital y condiciones aquí descritas.</p>`;
+    <p>El cliente o persona responsable del vehículo acepta que todo diagnóstico, revisión, prueba, desmontaje, verificación, mano de obra, reparación, repuesto o servicio previamente autorizado y efectivamente realizado deberá ser cancelado en su totalidad. Si después del diagnóstico el cliente decide no continuar con la reparación, igualmente deberá cancelar el costo correspondiente al diagnóstico, revisión, pruebas o procedimientos realizados hasta ese momento. Dicho costo podrá determinarse al finalizar el proceso de revisión o diagnóstico, según el tiempo, pruebas y procedimientos necesarios, y será informado y detallado al cliente.</p>
+    <p>Cuando el cliente autorice una reparación, acepta pagar el costo total de los trabajos realizados, repuestos utilizados, mano de obra y cualquier cargo relacionado que haya sido previamente informado y autorizado. Automotriz Medina proporcionará el detalle de los conceptos cobrados. El vehículo podrá ser retenido únicamente en los casos y condiciones permitidos por la legislación aplicable, mientras existan saldos vencidos correspondientes a trabajos, repuestos o servicios autorizados.</p>
+    <p>El cliente acepta que las reparaciones, repuestos, trabajos adicionales o intervenciones especiales que excedan el diagnóstico inicial o el motivo principal de ingreso deberán ser informados y autorizados previamente por el cliente o persona responsable. Los procedimientos necesarios para diagnosticar, verificar o confirmar la falla reportada podrán realizarse como parte del proceso de revisión autorizado. La falta de respuesta del cliente no se considerará una autorización.</p>
+    <p>Si el cliente decide retirar el vehículo y no continuar con el diagnóstico o reparación, deberá cancelar los trabajos autorizados y realizados hasta ese momento, el diagnóstico efectuado, los repuestos o servicios previamente autorizados y, cuando sea necesario para entregar el vehículo de forma segura, el desmontaje o rearmado previamente informado. No se cobrarán trabajos que no hayan sido realizados.</p>
+    <p>Si Automotriz Medina determina que no puede continuar con el diagnóstico o reparación por razones técnicas, de seguridad, falta de repuestos u otra causa justificada, se lo comunicará al cliente y coordinará la entrega del vehículo. En este caso, únicamente se cobrarán los trabajos y costos previamente autorizados que ya hayan sido realizados.</p>
+    <p>El cliente autoriza a Automotriz Medina y a su personal encargado a hacer uso del vehículo para realizar pruebas de funcionamiento, pruebas de manejo y pruebas de carretera cuando sean necesarias para el diagnóstico, verificación de fallas, confirmación de una reparación o validación del trabajo realizado. Estas pruebas se limitarán al tiempo y recorrido razonablemente necesarios.</p>
+    <p>El cliente acepta que las autorizaciones, confirmaciones, avisos y comunicaciones relacionadas con el servicio podrán realizarse por medios digitales, incluyendo este sistema, enlaces privados, mensajes de WhatsApp, correo electrónico u otros canales proporcionados por el cliente. Dichas confirmaciones quedarán registradas como constancia de la autorización o comunicación correspondiente.</p>
+    <p>El cliente comprende que durante una revisión pueden aparecer fallas preexistentes, intermitentes o no visibles al momento de la recepción, así como desgaste natural, manipulaciones anteriores o condiciones ocultas del vehículo. Automotriz Medina no será responsable por fallas o daños cuya causa sea anterior y ajena al trabajo realizado, sin perjuicio de la responsabilidad que legalmente corresponda por daños atribuibles a la intervención del taller.</p>
+    <p>La garantía de mano de obra aplica por 30 días continuos, cuando corresponda, contados desde la entrega del vehículo y siempre que la parte relacionada con el trabajo reclamado no haya sido intervenida posteriormente por terceros. La garantía cubre deficiencias directamente relacionadas con el trabajo realizado y no cubre fallas diferentes o preexistentes, desgaste normal ni daños causados por uso inadecuado.</p>
+    <p>Cuando el cliente proporcione repuestos, Automotriz Medina no podrá garantizar su calidad, procedencia, durabilidad, compatibilidad o funcionamiento, pero conservará la responsabilidad y garantía que corresponda sobre la instalación o mano de obra realizada. Esta garantía no limita los demás derechos reconocidos al consumidor por la legislación aplicable.</p>
+    <p>El cliente o persona responsable declara que, antes de entregar el vehículo a Automotriz Medina, tuvo la oportunidad de revisarlo y de informar cualquier daño, rayón, golpe, faltante, condición especial, objeto personal, accesorio, documento, herramienta o situación relevante.</p>
+    <p>Declara además haber retirado dinero, objetos de valor y pertenencias personales importantes antes de entregar el vehículo, y deberá informar cualquier objeto que permanezca en su interior. Al aceptar estos términos, reconoce que está enterado de las condiciones en que entrega el vehículo y que la información, observaciones y daños registrados reflejan la condición conocida al momento de la recepción.</p>
+    <p>Automotriz Medina no recibe en depósito objetos que no hayan sido declarados. Esta condición no excluye la responsabilidad que legalmente corresponda al taller cuando se compruebe dolo, culpa o negligencia de su personal.</p>
+    <p>El cliente acepta que el vehículo debe contar con combustible, batería y condiciones mínimas necesarias para realizar pruebas, diagnóstico o movilización interna. Si se requiere combustible, carga de batería, grúa u otro apoyo externo que genere un costo, Automotriz Medina solicitará previamente la autorización del cliente.</p>
+    <p>En una situación urgente destinada exclusivamente a evitar un daño inmediato al vehículo o a terceros, el taller podrá adoptar únicamente las medidas indispensables y deberá informar al cliente tan pronto como sea posible.</p>
+    <p>El cliente comprende que durante diagnósticos, desmontajes, revisiones o reparaciones pueden encontrarse componentes frágiles, deteriorados, resecos, quebradizos, corroídos, vencidos o previamente manipulados. Automotriz Medina informará los riesgos previsibles antes de intervenirlos y no será responsable por daños cuya causa sea exclusivamente preexistente o ajena a su actuación, manteniendo la responsabilidad que legalmente corresponda por el trabajo realizado.</p>
+    <p>Una vez notificado por un medio verificable que el vehículo está listo para retiro, el cliente tendrá 72 horas para retirarlo sin cargo adicional. Después de ese periodo podrá aplicarse un cargo diario de $5.00 USD por resguardo, parqueo, pernocta o custodia, siempre que dicho cargo haya sido informado y aceptado y que la demora no sea responsabilidad del taller.</p>
+    <p>Si el vehículo no es retirado ni reclamado durante 90 días continuos después de la notificación y no existe un acuerdo vigente con el cliente, Automotriz Medina podrá iniciar las gestiones legales correspondientes para resolver el resguardo del vehículo y recuperar los saldos pendientes por diagnóstico, reparación, repuestos, almacenaje u otros cargos previamente autorizados.</p>
+    <p>El transcurso de dicho plazo no transfiere automáticamente la propiedad del vehículo a Automotriz Medina ni autoriza su venta o disposición fuera del procedimiento permitido por la ley.</p>
+    <p>Al aceptar estos términos, el cliente autoriza proceder con el diagnóstico y/o reparación según la información acordada con el taller, autoriza el uso del vehículo para las pruebas necesarias y acepta las responsabilidades de pago, resguardo, comunicación digital y demás condiciones aquí descritas.</p>
+    <p>Cualquier trabajo o costo adicional requerirá autorización expresa del cliente. Para consultas o reclamos podrá comunicarse con Automotriz Medina al WhatsApp +503 7166-0867 o al correo oficinaautomotrizmedina@gmail.com.</p>`;
 }
 
 function authorizationProofHtml(rec) {
@@ -4486,7 +4498,6 @@ function renderAdmin() {
     links.innerHTML = rec ? `
       <div class="notice">
         Autorización cliente: <a href="${tokenHref("cliente.html", rec.clientToken)}"${previewAttrs}>${tokenHref("cliente.html", rec.clientToken)}</a><br>
-        Revisión de fotos: <a href="${photoReviewHref(rec.clientToken)}"${previewAttrs}>${photoReviewHref(rec.clientToken)}</a><br>
         Seguimiento: <a href="${tokenHref("seguimiento.html", rec.trackingToken)}"${previewAttrs}>${tokenHref("seguimiento.html", rec.trackingToken)}</a>
       </div>` : '<div class="notice">Seleccione un expediente para ver enlaces.</div>';
   }
@@ -4569,8 +4580,6 @@ function renderAdminFile(rec) {
     links.innerHTML = `
       <div class="notice">
         <strong>Link de autorización:</strong> <a href="${tokenHref("cliente.html", rec.clientToken)}"${previewAttrs}>${tokenHref("cliente.html", rec.clientToken)}</a><br>
-        <strong>Link de revisión de fotos:</strong> <a href="${photoReviewHref(rec.clientToken)}"${previewAttrs}>${photoReviewHref(rec.clientToken)}</a><br>
-        <button type="button" class="btn small" data-action="admin-regenerate-photo-review-link">Generar nuevo link de revisión de fotos</button><br>
         <strong>Link de seguimiento:</strong> <a href="${tokenHref("seguimiento.html", rec.trackingToken)}"${previewAttrs}>${tokenHref("seguimiento.html", rec.trackingToken)}</a>
       </div>`;
   }
@@ -5096,13 +5105,14 @@ function renderClient() {
   }
   const rec = findReceptionByParam("clientToken");
   if (!rec) return renderMissingToken();
-  const clientParams = new URLSearchParams(location.search);
-  const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
-  const photoReviewMode = (clientParams.get("modo") || hashParams.get("modo") || "") === "fotos";
-  if (rec.photoAcknowledged) {
+  if (rec.signed || rec.photoAcknowledged) {
+    markConsumedClientLink(rec.clientToken, rec.trackingToken);
     location.replace(tokenHref("seguimiento.html", rec.trackingToken));
     return;
   }
+  const clientParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+  const photoReviewMode = (clientParams.get("modo") || hashParams.get("modo") || "") === "fotos";
   const flow = qs("[data-authorization-flow]");
   const authorizedOnly = qs("[data-authorized-only]");
   const processingOnly = qs("[data-processing-only]");
@@ -5123,7 +5133,6 @@ function renderClient() {
         </div>
       </article>`);
   }
-  renderClientCarousel(rec);
   renderClientInventory(rec);
   renderClientDamages(rec);
   const observations = qs("[data-client-observations]");
@@ -5244,8 +5253,7 @@ function renderClientDamages(rec) {
   if (!host) return;
   host.innerHTML = rec.damages.map((damage) => `
     <article class="panel">
-      <div class="panel-header"><div><h3>${damage.área}</h3><p>${damage.detail}</p></div></div>
-      <div class="panel-body photo-grid">${damage.photos.map(photoVisual).join("")}</div>
+      <div class="panel-header"><div><h3>${esc(damage.área || damage.area || "Daño")}</h3><p>${esc(damage.detail || "Sin descripción.")}</p></div></div>
     </article>`).join("") || '<div class="notice">No se registraron daños adicionales.</div>';
 }
 
@@ -7079,7 +7087,7 @@ function handleActions() {
       if (processingTitle) processingTitle.textContent = "Habilitando seguimiento";
       if (processingMessage) processingMessage.textContent = "En este momento se habilitará tu link de seguimiento.";
       if (processingOnly) processingOnly.classList.remove("hidden");
-      setTimeout(() => {
+      setTimeout(async () => {
         AM_SIMPLE_STORE.mutate((current) => {
           const item = current.receptions.find((candidate) => candidate.id === rec.id);
           item.signed = true;
@@ -7098,9 +7106,20 @@ function handleActions() {
             viewport: `${innerWidth}x${innerHeight}`
           };
         });
-        renderClient();
-        toast("Autorización recibida. Link de seguimiento generado.");
-      }, 3000);
+        markConsumedClientLink(rec.clientToken, rec.trackingToken);
+        if (globalThis.AM_CLOUD_SYNC?.isReady?.()) {
+          try {
+            const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
+            await Promise.race([
+              AM_CLOUD_SYNC.saveNow("client-authorization-completed", fixedSnapshot),
+              sleep(4500)
+            ]);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+        window.location.replace(tokenHref("seguimiento.html", rec.trackingToken));
+      }, 250);
     }
     if (action === "acknowledge-client-photos") {
       const rec = findReceptionByParam("clientToken");

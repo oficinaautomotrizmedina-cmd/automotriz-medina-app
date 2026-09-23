@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
   <title>Autorización cliente - AM Recepción Símple</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=mobile-followup-fix-5">
+  <link rel="stylesheet" href="assets/css/styles.css?v=client-auth-direct-1">
   <script defer src="pwa-register.js?v=20260812-1"></script>
   <style>
     .client-loading-screen {
@@ -414,7 +414,7 @@
         <span>Validando</span>
         <span>Leyendo expediente</span>
         <span>Registro de token</span>
-        <span>Examinando fotografías</span>
+        <span>Preparando contrato</span>
       </div>
       <p data-client-loading-note>Estamos preparando la autorizaci&oacute;n y los datos de tu expediente.</p>
       <div class="client-loading-bar" aria-hidden="true"></div>
@@ -447,11 +447,7 @@
     </section>
     <section class="authorization-flow" data-authorization-flow>
     <div data-client-summary></div>
-    <div class="split">
-      <article class="panel">
-        <div class="panel-header"><div><h3>Fotografías de recepción</h3><p>Use siguiente/anterior para revisar el vehículo</p></div></div>
-        <div class="panel-body carousel" data-carousel></div>
-      </article>
+    <div class="grid">
       <aside class="panel">
         <div class="panel-header"><h3>Observaciones y daños</h3></div>
         <div class="panel-body grid">
@@ -472,7 +468,7 @@
       <div class="panel-header"><div><h3>Terminos y autorización</h3><p>Lea el documento antes de autorizar diagnóstico o reparación</p></div></div>
       <div class="panel-body grid">
         <div class="terms-box" tabindex="0" data-client-terms-box></div>
-        <label class="check-item terms-accept"><input type="checkbox" data-terms-check> He leido y aceptó los términos y condiciones. Certifico que la inspeccion visual y el inventario son correctos.</label>
+        <label class="check-item terms-accept"><input type="checkbox" data-terms-check> He leído y acepto los términos del servicio. Confirmo que revisé el vehículo, informé las condiciones y daños que conozco y retiré mis objetos de valor.</label>
         <button class="btn primary authorize-btn" data-action="authorize-client" disabled>Autorizar mi reparación / diagnóstico</button>
       </div>
     </article>
@@ -480,7 +476,7 @@
   </main>
 <script src="assets/js/cloud-sync.js?v=contact-wa-27"></script>
   <script src="assets/js/store.js?v=20260730-cloudcompact1"></script>
-<script src="assets/js/app.js?v=contact-wa-27"></script>
+<script src="assets/js/app.js?v=client-auth-direct-1"></script>
 <script>
   (function () {
     const overlay = document.querySelector('[data-client-loading]');
