@@ -457,6 +457,16 @@ textarea { min-height: 104px; resize: vertical; }
 .mobile-vehicle-info strong { font-size: 15px; line-height: 1.2; text-transform: uppercase; }
 .mobile-vehicle-info small { color: #a7a7a7; font-weight: 700; }
 .mobile-vehicle-info em { color: #7d7d7d; font-style: normal; font-size: 12px; }
+.vehicle-cloud-state { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; width: fit-content; margin-top: 7px; }
+.vehicle-cloud-pill { display: inline-flex; align-items: center; gap: 6px; width: fit-content; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 900; line-height: 1.1; }
+.vehicle-cloud-pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.vehicle-cloud-state.pending .vehicle-cloud-pill { background: #fff3d6; color: #9b6500; }
+.vehicle-cloud-state.confirmed .vehicle-cloud-pill { background: #e6f7ed; color: #197344; }
+.vehicle-cloud-state.error .vehicle-cloud-pill { background: #ffe7e7; color: #ad272f; }
+.vehicle-cloud-retry { min-height: 30px; padding: 5px 9px; border: 1px solid #d84a50; border-radius: 6px; background: #b52931; color: #fff; font-size: 11px; font-weight: 900; cursor: pointer; }
+.mobile-vehicle-card .vehicle-cloud-state.pending .vehicle-cloud-pill { background: rgba(240,179,61,.16); color: #f0b33d; border: 1px solid rgba(240,179,61,.34); }
+.mobile-vehicle-card .vehicle-cloud-state.confirmed .vehicle-cloud-pill { background: rgba(69,194,112,.16); color: #45c270; border: 1px solid rgba(69,194,112,.34); }
+.mobile-vehicle-card .vehicle-cloud-state.error .vehicle-cloud-pill { background: rgba(255,90,98,.16); color: #ff737a; border: 1px solid rgba(255,90,98,.34); }
 .mobile-deadline-gauge {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);

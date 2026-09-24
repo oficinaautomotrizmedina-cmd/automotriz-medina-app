@@ -6,6 +6,11 @@
   const MASTER_ARCHIVE_KEY = "am_master_taller_archives_v1";
   const QUICK_ARCHIVE_KEY = "am_quick_taller_archives_v1";
   const LOCAL_WRITE_KEY = "am_cloud_local_write_v1";
+  const OUTBOX_DB = "am_cloud_outbox_v1";
+  const OUTBOX_STORE = "jobs";
+  const OUTBOX_KEY = "latest";
+  const OUTBOX_STATUS_KEY = "am_cloud_last_status_v1";
+  const OUTBOX_MAX_WAIT = 5 * 60 * 1000;
   const DEFAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycbysDn3BlShlZm5NxZOu1WdkTZDrb1vpWhLLUED_J8cuc9RS6n4cr48rvTkFr7X-UbfRBQ/exec";
   const BLOCKED_ENDPOINTS = new Set([
     "https://script.google.com/macros/s/AKfycbwJfuzhng2vZQ338s2GbdXb8El41OhtHz81ZyXgpLhSfJ7QLIfnKT0dQODAkymCLMvs/exec",
@@ -18,6 +23,10 @@
   let saveTail = Promise.resolve();
   let activeSavePromise = null;
   let initialLoadPromise = null;
+  let outboxProcessPromise = null;
+  let outboxIndicatorTimer = null;
+  const invoiceCache = new Map();
+  const photoCache = new Map();
   const IMAGE_MAX = 2048;
   const IMAGE_QUALITY = 0.9;
   const IMAGE_LIMIT = 220000;
@@ -65,8 +74,62 @@
     return raw.slice(0, 360);
   }
 
+  function invoiceKeys(item) {
+    return [item?.id, item?.number, item?.rec, item?.vehicleId].map((value) => String(value || "").trim()).filter(Boolean);
+  }
+
+  function cacheInvoices(item, invoices) {
+    const list = Array.isArray(invoices) ? invoices.map((invoice) => ({ ...invoice })) : [];
+    invoiceKeys(item).forEach((key) => {
+      const existing = invoiceCache.get(key) || [];
+      if (list.length || !existing.length) invoiceCache.set(key, list);
+    });
+    return list;
+  }
+
+  function cachedInvoices(item) {
+    for (const key of invoiceKeys(item)) {
+      if (invoiceCache.has(key)) return invoiceCache.get(key).map((invoice) => ({ ...invoice }));
+    }
+    return null;
+  }
+
+  function cachePhotos(item, photos) {
+    const list = Array.isArray(photos) ? photos.map((photo) => ({ ...photo })) : [];
+    const count = list.filter((photo) => photo?.dataUrl).length;
+    invoiceKeys(item).forEach((key) => {
+      const existing = photoCache.get(key) || [];
+      const existingCount = existing.filter((photo) => photo?.dataUrl).length;
+      if (count >= existingCount) photoCache.set(key, list);
+    });
+    return list;
+  }
+
+  function cachedPhotos(item) {
+    for (const key of invoiceKeys(item)) {
+      if (photoCache.has(key)) return photoCache.get(key).map((photo) => ({ ...photo }));
+    }
+    return null;
+  }
+
+  function mergeCachedInvoices(snap) {
+    (snap?.appState?.receptions || []).forEach((rec) => {
+      const cached = cachedInvoices(rec);
+      if (cached) rec.invoices = cached;
+      const photos = cachedPhotos(rec);
+      if (photos) rec.photos = photos;
+    });
+    (snap?.employeeState?.vehicles || []).forEach((vehicle) => {
+      const cached = cachedInvoices(vehicle);
+      if (cached) vehicle.invoices = cached;
+      const photos = cachedPhotos(vehicle);
+      if (photos) vehicle.photos = photos;
+    });
+    return snap;
+  }
+
   function snapshot() {
-    return {
+    return mergeCachedInvoices({
       version: 1,
       exportedAt: new Date().toISOString(),
       localWriteAt: localStorage.getItem(LOCAL_WRITE_KEY) || "",
@@ -77,7 +140,7 @@
         master: readJson(MASTER_ARCHIVE_KEY, {}),
         quick: readJson(QUICK_ARCHIVE_KEY, {})
       }
-    };
+    });
   }
 
   function compressImageDataUrl(src, max = IMAGE_MAX, quality = IMAGE_QUALITY) {
@@ -193,6 +256,9 @@
 
   async function saveNow(reason = "manual", fixedSnapshot = null) {
     if (!isReady()) throw new Error("La nube no está configurada.");
+    if (!String(reason || "").startsWith("background-")) {
+      try { await deleteOutboxJob(); } catch {}
+    }
     clearTimeout(timer);
     timer = null;
 
@@ -580,6 +646,18 @@
 
   function applySnapshot(snap) {
     if (!snap) return null;
+    (snap.appState?.receptions || []).forEach((rec) => {
+      if (Array.isArray(rec.invoices)) cacheInvoices(rec, rec.invoices);
+      rec.invoices = [];
+      if (Array.isArray(rec.photos)) cachePhotos(rec, rec.photos);
+      rec.photos = (rec.photos || []).map((photo) => ({ ...photo, dataUrl: "" }));
+    });
+    (snap.employeeState?.vehicles || []).forEach((vehicle) => {
+      if (Array.isArray(vehicle.invoices)) cacheInvoices(vehicle, vehicle.invoices);
+      vehicle.invoices = [];
+      if (Array.isArray(vehicle.photos)) cachePhotos(vehicle, vehicle.photos);
+      vehicle.photos = (vehicle.photos || []).map((photo) => ({ ...photo, dataUrl: "" }));
+    });
     if (!snap.appState && snap.employeeState) snap.appState = defaultAppState();
     if (snap.appState) {
       snap.appState = { ...defaultAppState(), ...snap.appState, config: { ...defaultAppState().config, ...(snap.appState.config || {}), schemaVersion: 3 } };
@@ -621,5 +699,280 @@
     return post("ping", { snapshot: snapshot() });
   }
 
-  return { config, saveConfig, isReady, snapshot, saveNow, queueSave, fetchLatest, applySnapshot, loadLatest, ready, ping };
+  function openOutboxDb() {
+    return new Promise((resolve, reject) => {
+      if (!globalThis.indexedDB) {
+        reject(new Error("El almacenamiento local seguro no esta disponible."));
+        return;
+      }
+      const request = indexedDB.open(OUTBOX_DB, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(OUTBOX_STORE)) db.createObjectStore(OUTBOX_STORE, { keyPath: "key" });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("No se pudo abrir la bandeja local de respaldos."));
+    });
+  }
+
+  async function outboxRequest(mode, operation) {
+    const db = await openOutboxDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const transaction = db.transaction(OUTBOX_STORE, mode);
+        const store = transaction.objectStore(OUTBOX_STORE);
+        let request;
+        try { request = operation(store); } catch (error) { reject(error); return; }
+        transaction.oncomplete = () => resolve(request?.result ?? null);
+        transaction.onerror = () => reject(transaction.error || request?.error || new Error("No se pudo actualizar la bandeja local."));
+        transaction.onabort = () => reject(transaction.error || new Error("Se cancelo la actualizacion de la bandeja local."));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  const readOutboxJob = () => outboxRequest("readonly", (store) => store.get(OUTBOX_KEY));
+  const writeOutboxJob = (job) => outboxRequest("readwrite", (store) => store.put(job));
+  const deleteOutboxJob = () => outboxRequest("readwrite", (store) => store.delete(OUTBOX_KEY));
+
+  function dispatchOutboxStatus(status, job = null, extra = {}) {
+    try {
+      localStorage.setItem(OUTBOX_STATUS_KEY, JSON.stringify({ status, operationId: job?.operationId || "", updatedAt: new Date().toISOString(), context: job?.context || {} }));
+    } catch {}
+    window.dispatchEvent(new CustomEvent("am-cloud-background-status", {
+      detail: {
+        status,
+        operationId: job?.operationId || "",
+        reason: job?.reason || "",
+        context: job?.context || {},
+        createdAt: job?.createdAt || "",
+        attempts: Number(job?.attempts || 0),
+        ...extra
+      }
+    }));
+  }
+
+  function isBackofficePage() {
+    const page = String(location.pathname || "").split("/").pop().toLowerCase();
+    return ["admin.html", "admin-mobile.html", "empleado.html", "edwin.html", "rafael.html", "cristian.html"].includes(page);
+  }
+
+  function installOutboxIndicator() {
+    if (!isBackofficePage()) return;
+    if (document.querySelector("[data-cloud-outbox-indicator]")) return;
+    const style = document.createElement("style");
+    style.textContent = `
+      .cloud-outbox-indicator{position:fixed;right:14px;bottom:14px;z-index:10020;display:flex;align-items:center;gap:10px;max-width:min(390px,calc(100vw - 28px));padding:11px 14px;border:1px solid transparent;border-radius:8px;background:#202a33;color:#fff;font:700 14px/1.25 system-ui,sans-serif;box-shadow:0 10px 32px rgba(0,0,0,.28)}
+      .cloud-outbox-indicator[hidden]{display:none}.cloud-outbox-indicator.pending{border-color:#e2a927;background:#3a2d0e}.cloud-outbox-indicator.confirmed{border-color:#25a968;background:#0d3525}.cloud-outbox-indicator.error{border-color:#dc4a4a;background:#421616}.cloud-outbox-dot{width:11px;height:11px;border-radius:50%;background:currentColor;flex:0 0 auto}.cloud-outbox-indicator.pending .cloud-outbox-dot{color:#ffc84d}.cloud-outbox-indicator.confirmed .cloud-outbox-dot{color:#55e39d}.cloud-outbox-indicator.error .cloud-outbox-dot{color:#ff7777}.cloud-outbox-toast{position:fixed;left:50%;top:18px;z-index:10030;transform:translate(-50%,-18px);opacity:0;padding:12px 18px;border-radius:8px;background:#152b22;color:#fff;border:1px solid #32b477;font:800 15px system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.25);transition:.2s ease;pointer-events:none}.cloud-outbox-toast.show{transform:translate(-50%,0);opacity:1}
+      @media(max-width:700px){.cloud-outbox-indicator{left:12px;right:12px;bottom:12px;max-width:none}.cloud-outbox-toast{width:max-content;max-width:calc(100vw - 24px);text-align:center}}
+    `;
+    document.head.appendChild(style);
+    const host = document.createElement("div");
+    host.className = "cloud-outbox-indicator";
+    host.hidden = true;
+    host.dataset.cloudOutboxIndicator = "";
+    host.innerHTML = '<span class="cloud-outbox-dot"></span><span data-cloud-outbox-text></span>';
+    document.body.appendChild(host);
+    const toast = document.createElement("div");
+    toast.className = "cloud-outbox-toast";
+    toast.dataset.cloudOutboxToast = "";
+    toast.textContent = "Informacion enviada.";
+    document.body.appendChild(toast);
+  }
+
+  function showOutboxToast(message = "Informacion enviada.") {
+    installOutboxIndicator();
+    const toast = document.querySelector("[data-cloud-outbox-toast]");
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showOutboxToast.timer);
+    showOutboxToast.timer = setTimeout(() => toast.classList.remove("show"), 1700);
+  }
+
+  function renderOutboxIndicator(status, message = "") {
+    installOutboxIndicator();
+    const host = document.querySelector("[data-cloud-outbox-indicator]");
+    if (!host) return;
+    const text = host.querySelector("[data-cloud-outbox-text]");
+    host.hidden = !status;
+    host.className = `cloud-outbox-indicator ${status || ""}`;
+    if (text) text.textContent = message || (status === "confirmed" ? "Respaldado en nube" : status === "error" ? "Respaldo sin confirmar" : "Subiendo respaldo...");
+    clearTimeout(outboxIndicatorTimer);
+    outboxIndicatorTimer = setTimeout(() => { host.hidden = true; }, status === "error" ? 3800 : 2300);
+  }
+
+  async function remoteHasOperation(operationId) {
+    if (!operationId) return false;
+    const remote = await fetchLatest();
+    return remote?.clientSync?.operationId === operationId;
+  }
+
+  async function registerBackgroundSync() {
+    try {
+      if (!("serviceWorker" in navigator)) return;
+      const registration = await navigator.serviceWorker.ready;
+      if (registration.sync?.register) await registration.sync.register("am-cloud-outbox");
+    } catch {}
+  }
+
+  async function enqueueBackgroundSave(reason = "background-save", options = {}) {
+    const fixedSnapshot = options.snapshot || snapshot();
+    const operationId = makeToken("sync");
+    const createdAt = new Date().toISOString();
+    fixedSnapshot.exportedAt = createdAt;
+    fixedSnapshot.clientSync = { operationId, reason, createdAt };
+    const job = {
+      key: OUTBOX_KEY,
+      operationId,
+      reason,
+      createdAt,
+      deadlineAt: new Date(Date.now() + OUTBOX_MAX_WAIT).toISOString(),
+      attempts: 0,
+      lastAttemptAt: "",
+      status: "pending",
+      context: options.context || {},
+      endpoint: config().endpoint,
+      account: config().account,
+      snapshot: fixedSnapshot
+    };
+    try { await navigator.storage?.persist?.(); } catch {}
+    await writeOutboxJob(job);
+    dispatchOutboxStatus("pending", job);
+    renderOutboxIndicator("pending", "Subiendo respaldo...");
+    showOutboxToast(options.message || "Informacion enviada.");
+    registerBackgroundSync();
+    setTimeout(() => processBackgroundOutbox(), 0);
+    return { ok: true, operationId, createdAt };
+  }
+
+  async function processOneOutboxJob(job) {
+    const deadline = Date.parse(job.deadlineAt || "") || (Date.now() + OUTBOX_MAX_WAIT);
+    let current = job;
+    while (Date.now() < deadline) {
+      const latest = await readOutboxJob();
+      if (!latest || latest.operationId !== current.operationId) return "superseded";
+      current = latest;
+      try {
+        if (await remoteHasOperation(current.operationId)) {
+          await deleteOutboxJob();
+          dispatchOutboxStatus("confirmed", current);
+          renderOutboxIndicator("confirmed", "Respaldado en nube");
+          return "confirmed";
+        }
+      } catch {}
+
+      const lastAttempt = Date.parse(current.lastAttemptAt || "") || 0;
+      const canSend = Number(current.attempts || 0) < 3 && (!lastAttempt || Date.now() - lastAttempt >= 45000);
+      if (canSend && isReady()) {
+        current.attempts = Number(current.attempts || 0) + 1;
+        current.lastAttemptAt = new Date().toISOString();
+        await writeOutboxJob(current);
+        dispatchOutboxStatus("pending", current);
+        try {
+          const remainingWindow = Math.max(1, deadline - Date.now());
+          await Promise.race([
+            saveNow(`background-${current.reason}`, current.snapshot),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Finalizo el tiempo de verificacion.")), remainingWindow))
+          ]);
+        } catch {}
+        try {
+          if (await remoteHasOperation(current.operationId)) {
+            await deleteOutboxJob();
+            dispatchOutboxStatus("confirmed", current);
+            renderOutboxIndicator("confirmed", "Respaldado en nube");
+            return "confirmed";
+          }
+        } catch {}
+      }
+      await new Promise((resolve) => setTimeout(resolve, 8000));
+    }
+    const latest = await readOutboxJob();
+    if (!latest || latest.operationId !== current.operationId) return "superseded";
+    latest.status = "error";
+    latest.errorAt = new Date().toISOString();
+    await writeOutboxJob(latest);
+    dispatchOutboxStatus("error", latest, { error: "No se pudo confirmar el respaldo durante cinco minutos." });
+    renderOutboxIndicator("error", "Respaldo sin confirmar");
+    return "error";
+  }
+
+  async function processBackgroundOutbox() {
+    if (outboxProcessPromise) return outboxProcessPromise;
+    outboxProcessPromise = (async () => {
+      while (true) {
+        const job = await readOutboxJob();
+        if (!job) return null;
+        if (job.status === "confirmed") {
+          await deleteOutboxJob();
+          dispatchOutboxStatus("confirmed", job);
+          renderOutboxIndicator("confirmed", "Respaldado en nube");
+          return "confirmed";
+        }
+        if (job.status === "error") {
+          dispatchOutboxStatus("error", job);
+          renderOutboxIndicator("error", "Respaldo sin confirmar");
+          return job;
+        }
+        renderOutboxIndicator("pending", "Subiendo respaldo...");
+        const result = await processOneOutboxJob(job);
+        if (result !== "superseded") return result;
+      }
+    })().catch((error) => {
+      console.warn("No se pudo procesar la bandeja de respaldos", error);
+      return null;
+    }).finally(() => { outboxProcessPromise = null; });
+    return outboxProcessPromise;
+  }
+
+  async function retryBackgroundSave(options = {}) {
+    if (outboxProcessPromise) {
+      try { await outboxProcessPromise; } catch {}
+    }
+    let job = await readOutboxJob();
+    if (!job) return enqueueBackgroundSave(options.reason || "manual-retry", options);
+    job.status = "pending";
+    job.attempts = 0;
+    job.lastAttemptAt = "";
+    job.createdAt = new Date().toISOString();
+    job.deadlineAt = new Date(Date.now() + OUTBOX_MAX_WAIT).toISOString();
+    await writeOutboxJob(job);
+    dispatchOutboxStatus("pending", job);
+    renderOutboxIndicator("pending", "Subiendo respaldo...");
+    showOutboxToast("Reintentando respaldo.");
+    registerBackgroundSync();
+    return processBackgroundOutbox();
+  }
+
+  async function backgroundStatus() {
+    const job = await readOutboxJob();
+    return job ? { status: job.status || "pending", operationId: job.operationId, context: job.context || {}, createdAt: job.createdAt } : { status: "confirmed" };
+  }
+
+  function resumeBackgroundOutbox() {
+    if (!isBackofficePage()) return;
+    installOutboxIndicator();
+    readOutboxJob().then((job) => {
+      if (!job) return;
+      dispatchOutboxStatus(job.status === "error" ? "error" : "pending", job);
+      renderOutboxIndicator(job.status === "error" ? "error" : "pending", job.status === "error" ? "Respaldo sin confirmar" : "Subiendo respaldo...");
+      if (job.status !== "error") processBackgroundOutbox();
+    }).catch(() => {});
+  }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("online", resumeBackgroundOutbox);
+    navigator.serviceWorker?.addEventListener?.("message", (event) => {
+      if (event.data?.type !== "AM_CLOUD_OUTBOX_STATUS") return;
+      const status = event.data.status || "pending";
+      const job = event.data.job || {};
+      dispatchOutboxStatus(status, job);
+      renderOutboxIndicator(status, status === "confirmed" ? "Respaldado en nube" : status === "error" ? "Respaldo sin confirmar" : "Subiendo respaldo...");
+    });
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", resumeBackgroundOutbox, { once: true });
+    else setTimeout(resumeBackgroundOutbox, 0);
+  }
+
+  return { config, saveConfig, isReady, snapshot, saveNow, queueSave, fetchLatest, applySnapshot, loadLatest, ready, ping, enqueueBackgroundSave, processBackgroundOutbox, retryBackgroundSave, backgroundStatus, cacheInvoices, cachedInvoices, cachePhotos, cachedPhotos };
 })();

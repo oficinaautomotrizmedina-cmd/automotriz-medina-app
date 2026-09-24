@@ -4,6 +4,7 @@ function state() { return AM_SIMPLE_STORE.load(); }
 let adminLocalArchivePreviewRec = null;
 let adminLocalArchiveSearch = "";
 let notifierMode = "";
+const adminInvoiceDrafts = new Map();
 function selected() { return adminLocalArchivePreviewRec || AM_SIMPLE_STORE.selected(); }
 function selectedAdminReceptionFromHash() {
   if (adminLocalArchivePreviewRec) return adminLocalArchivePreviewRec;
@@ -993,7 +994,7 @@ function tableRows(headers, rows) {
 }
 
 function photoBackupRows(rec) {
-  return (rec.photos || []).map((photo) => [
+  return receptionPhotos(rec).map((photo) => [
     photo.label || "Foto",
     photo.note || "",
     photo.dataUrl ? "Incluida en respaldo" : "Sin imagen",
@@ -1634,7 +1635,7 @@ function employeeVehicleFromReception(rec) {
     deadlineUnlockRequested: !!rec.employeeDeadlineUnlockRequested,
     notifications: Array.isArray(rec.employeeNotifications) ? rec.employeeNotifications.map((item) => ({ ...item })) : [],
     invoices: Array.isArray(rec.invoices) ? rec.invoices.map((item) => ({ ...item })) : [],
-    photos: Array.isArray(rec.photos) ? rec.photos.map((photo) => ({ ...photo })) : [],
+    photos: receptionPhotos(rec).map((photo) => ({ ...photo })),
     inventory: Array.isArray(rec.inventory) ? rec.inventory.map((item) => ({ ...item })) : [],
     damages: Array.isArray(rec.damages) ? rec.damages.map((damage) => ({ ...damage })) : []
   };
@@ -2250,7 +2251,7 @@ function collectReceptionFiles(rec, index) {
     { path: `${folder}/expediente-completo.html`, data: backupWorkbook(rec) },
     { path: `${folder}/archivo-taller.xls`, data: masterArchiveForReception(rec)?.html || masterWorkbookFallback(rec) }
   ];
-  (rec.photos || []).forEach((photo, photoIndex) => {
+  receptionPhotos(rec).forEach((photo, photoIndex) => {
     const file = dataUrlFile(photo.dataUrl, `${String(photoIndex + 1).padStart(2, "0")}-${photo.label || "foto-recepcion"}`);
     if (file) files.push({ path: `${folder}/fotografias-recepcion/${file.name}`, data: file.bytes });
   });
@@ -2451,7 +2452,7 @@ function showEmployeeStep(index) {
     finalSummary.innerHTML = `
       <div class="grid cols-3">
         <div class="metric"><span>Vehículo</span><strong>${rec.vehicle.marca || "Pendiente"} ${rec.vehicle.modelo || ""}</strong><small>${rec.vehicle.placa || "Sin placa"}</small></div>
-        <div class="metric"><span>Fotos</span><strong>${rec.photos.filter((p) => p.dataUrl).length}/${rec.photos.length}</strong><small>Cargadas</small></div>
+        <div class="metric"><span>Fotos</span><strong>${receptionPhotos(rec).filter((p) => p.dataUrl).length}/${receptionPhotos(rec).length}</strong><small>Cargadas</small></div>
         <div class="metric"><span>Daños</span><strong>${rec.damages.length}</strong><small>Registrados</small></div>
       </div>`;
   }
@@ -3302,28 +3303,119 @@ async function fetchConfirmedCloudSnapshot(exportedAt) {
 }
 
 async function confirmCloudSaved(message = "Guardado confirmado en nube.", reason = "confirmed-save") {
-  if (!globalThis.AM_CLOUD_SYNC?.isReady?.()) {
-    toast("La nube no esta disponible. No se confirmo el guardado.", "danger");
-    return false;
-  }
-  setAdminSaving(true, "Guardando y respaldando", "Preparando respaldo seguro.", 16);
   try {
+    const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+    const hashId = hashParams.get("expediente") || "";
+    const selectedId = state().receptions.some((rec) => rec.id === hashId) ? hashId : "";
+    if (selectedId) setAdminVehicleCloudStatus(selectedId, "pending", "Respaldo en nube pendiente de confirmar.");
     const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
-    await AM_CLOUD_SYNC.saveNow(reason, fixedSnapshot);
-    const confirmed = await fetchConfirmedCloudSnapshot(fixedSnapshot?.exportedAt);
-    AM_CLOUD_SYNC.applySnapshot?.(confirmed);
-    setAdminSaving(true, "Guardado confirmado", "El respaldo fue confirmado correctamente.", 100);
-    await sleep(650);
-    toast(message, "ok");
+    markQueuedSnapshotCloudConfirmed(fixedSnapshot);
+    await AM_CLOUD_SYNC.enqueueBackgroundSave(reason, {
+      snapshot: fixedSnapshot,
+      context: { module: "admin", selectedId },
+      message: "Información enviada."
+    });
     return true;
   } catch (error) {
     console.error(error);
-    toast(`No se pudo confirmar en nube: ${error.message || error}`, "danger");
+    toast(`No se pudo proteger el respaldo local: ${error.message || error}`, "danger");
     return false;
-  } finally {
-    setAdminSaving(false);
   }
 }
+
+function setAdminVehicleCloudStatus(recId, status, message = "") {
+  if (!recId) return false;
+  let changed = false;
+  AM_SIMPLE_STORE.mutate((current) => {
+    const rec = current.receptions.find((item) => item.id === recId);
+    if (!rec) return;
+    rec.cloudStatus = status;
+    rec.cloudMessage = message;
+    rec.cloudUpdatedAt = new Date().toISOString();
+    changed = true;
+  }, { markLocalWrite: false });
+  return changed;
+}
+
+function markQueuedSnapshotCloudConfirmed(snapshot) {
+  if (!snapshot) return;
+  (snapshot.appState?.receptions || []).forEach((rec) => {
+    if (rec.cloudStatus === "pending") rec.cloudStatus = "confirmed";
+  });
+  (snapshot.employeeState?.vehicles || []).forEach((vehicle) => {
+    if (vehicle.cloudStatus === "pending") vehicle.cloudStatus = "confirmed";
+  });
+}
+
+async function retryAdminVehicleCloudBackup(recId) {
+  if (!recId) return;
+  setAdminVehicleCloudStatus(recId, "pending", "Reintentando respaldo en nube.");
+  renderReceptionTable();
+  const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
+  markQueuedSnapshotCloudConfirmed(fixedSnapshot);
+  try {
+    await AM_CLOUD_SYNC.enqueueBackgroundSave("admin-manual-retry", {
+      snapshot: fixedSnapshot,
+      context: { module: "admin", selectedId: recId },
+      message: "Reintentando respaldo."
+    });
+  } catch (error) {
+    setAdminVehicleCloudStatus(recId, "error", "No se pudo preparar el reintento.");
+    renderReceptionTable();
+    toast("No se pudo preparar el reintento del respaldo.", "danger");
+  }
+}
+
+function applyAdminCloudStatus(detail = {}) {
+  if (document.body?.dataset.page !== "admin") return;
+  const moduleName = detail.context?.module || "";
+  if (moduleName !== "admin" && moduleName !== "empleado") return;
+  let selectedId = detail.context?.selectedId || "";
+  let receptionNumber = "";
+  if (moduleName === "empleado") {
+    const employeeState = (() => { try { return JSON.parse(localStorage.getItem("am_employee_module_safe_v2") || "null"); } catch { return null; } })();
+    const vehicle = employeeState?.vehicles?.find((item) => item.id === detail.context?.vehicleId);
+    receptionNumber = vehicle?.rec || "";
+    selectedId = vehicle?.id ? `emp-${vehicle.id}` : "";
+  }
+  const status = detail.status === "confirmed" ? "confirmed" : detail.status === "error" ? "error" : "pending";
+  const message = status === "confirmed" ? "Respaldo confirmado en nube." : status === "error" ? "El respaldo local no pudo confirmarse en nube." : "Respaldo en nube pendiente de confirmar.";
+  AM_SIMPLE_STORE.mutate((current) => {
+    current.receptions.forEach((rec) => {
+      const belongs = rec.id === selectedId || (receptionNumber && rec.number === receptionNumber) || ((status === "confirmed" || status === "error") && rec.cloudStatus === "pending");
+      if (!belongs) return;
+      rec.cloudStatus = status;
+      rec.cloudMessage = message;
+      rec.cloudUpdatedAt = new Date().toISOString();
+    });
+  }, { markLocalWrite: false });
+  if (document.body?.dataset.page === "admin") renderReceptionTable();
+  if (status === "confirmed" && moduleName === "empleado" && globalThis.AM_CLOUD_SYNC?.fetchLatest) {
+    AM_CLOUD_SYNC.fetchLatest()
+      .then((snapshot) => AM_CLOUD_SYNC.applySnapshot?.(snapshot))
+      .then(() => renderReceptionTable())
+      .catch(() => {});
+  }
+}
+
+window.addEventListener("am-cloud-background-status", (event) => {
+  applyAdminCloudStatus(event.detail || {});
+});
+
+window.addEventListener("storage", (event) => {
+  if (event.key === "am_cloud_media_refresh_v1" && document.body?.dataset.page === "admin") {
+    AM_CLOUD_SYNC.fetchLatest?.()
+      .then((snapshot) => AM_CLOUD_SYNC.applySnapshot?.(snapshot))
+      .then(() => renderReceptionTable())
+      .catch(() => {});
+    return;
+  }
+  if (event.key === "am_cloud_last_status_v1" && event.newValue) {
+    try { applyAdminCloudStatus(JSON.parse(event.newValue)); } catch {}
+    return;
+  }
+  if (event.key === "am_recepción_local_v1" && document.body?.dataset.page === "admin") renderReceptionTable();
+});
 
 function resizeAdminMasterFrame() {
   const frame = qs("[data-master-file-frame]");
@@ -3346,71 +3438,7 @@ function resizeAdminMasterFrame() {
 }
 
 async function confirmInternalLogSaved(message = "Bitácora interna guardada.", reason = "save-internal-log") {
-  if (!globalThis.AM_CLOUD_SYNC?.isReady?.()) {
-    toast("La bitácora quedó guardada localmente, pero la nube no está disponible.", "danger");
-    return false;
-  }
-
-  const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
-  let lastError = null;
-
-  try {
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      const attemptStartedAt = Date.now();
-      const saveProgress = 8 + (attempt - 1) * 30;
-      const verifyProgress = 25 + (attempt - 1) * 30;
-
-      setAdminSaving(
-        true,
-        "Guardando bitácora",
-        `Intento ${attempt} de 3. Respaldando la información en nube.`,
-        saveProgress
-      );
-
-      try {
-        await AM_CLOUD_SYNC.saveNow(`${reason}-attempt-${attempt}`, fixedSnapshot);
-        const remaining = Math.max(0, 5000 - (Date.now() - attemptStartedAt));
-        if (remaining) await sleep(remaining);
-
-        setAdminSaving(
-          true,
-          "Verificando bitácora",
-          `Comprobando el respaldo del intento ${attempt}.`,
-          verifyProgress
-        );
-
-        const confirmed = await AM_CLOUD_SYNC.fetchLatest();
-        if (confirmed?.exportedAt === fixedSnapshot?.exportedAt) {
-          AM_CLOUD_SYNC.applySnapshot?.(confirmed);
-          setAdminSaving(true, "Bitácora guardada", "El respaldo fue confirmado correctamente.", 100);
-          await sleep(550);
-          toast(message, "ok");
-          return true;
-        }
-
-        lastError = new Error("El servidor todavía no refleja la bitácora recién guardada.");
-      } catch (error) {
-        lastError = error;
-        console.warn(`No se confirmó la bitácora en el intento ${attempt}.`, error);
-      }
-
-      if (attempt < 3) {
-        setAdminSaving(
-          true,
-          "Reintentando bitácora",
-          `No se confirmó el intento ${attempt}. Iniciando intento ${attempt + 1} de 3.`,
-          verifyProgress
-        );
-        await sleep(500);
-      }
-    }
-
-    console.error(lastError);
-    toast("La bitácora quedó guardada localmente, pero no se pudo confirmar el respaldo en nube. Intente guardar nuevamente.", "danger");
-    return false;
-  } finally {
-    setAdminSaving(false);
-  }
+  return confirmCloudSaved(message, reason);
 }
 
 function setAdminMasterFrameSource(href) {
@@ -3745,8 +3773,13 @@ function syncEmployeeModuleVehiclesIntoAdmin() {
 }
 
 function frontReceptionPhoto(rec) {
-  const photos = Array.isArray(rec.photos) ? rec.photos : [];
+  const photos = receptionPhotos(rec);
   return photos.find((photo) => photoLabelKey(photo.label) === "frente") || photos[0] || null;
+}
+
+function receptionPhotos(rec) {
+  const cached = globalThis.AM_CLOUD_SYNC?.cachedPhotos?.(rec);
+  return Array.isArray(cached) ? cached : (Array.isArray(rec?.photos) ? rec.photos : []);
 }
 
 function photoLabelKey(value) {
@@ -3774,7 +3807,7 @@ function photoLabelTargets(label, fallback = "") {
 }
 
 function receptionPhotoByLabel(rec, label, fallback = "") {
-  const photos = Array.isArray(rec.photos) ? rec.photos : [];
+  const photos = receptionPhotos(rec);
   const targets = photoLabelTargets(label, fallback);
   return photos.find((photo) => targets.has(photoLabelKey(photo.label))) || null;
 }
@@ -3809,6 +3842,16 @@ function mobileVehicleTitle(rec) {
   return `${vehicle.marca || ""} ${vehicle.modelo || ""} ${vehicle.anio || ""}`.trim() || "Vehículo";
 }
 
+function adminVehicleCloudStatus(rec) {
+  const status = String(rec?.cloudStatus || "").toLowerCase();
+  if (!["pending", "confirmed", "error"].includes(status)) return "";
+  const label = status === "confirmed" ? "Respaldo en nube" : status === "error" ? "Nube sin confirmar" : "Subiendo respaldo";
+  const retry = status === "error"
+    ? `<button type="button" class="vehicle-cloud-retry" data-action="retry-admin-cloud" data-id="${esc(rec.id)}">Reintentar</button>`
+    : "";
+  return `<div class="vehicle-cloud-state ${status}"><span class="vehicle-cloud-pill">${label}</span>${retry}</div>`;
+}
+
 function renderMobileVehicleCard(rec, options = {}) {
   const photo = mobileVehiclePhoto(rec);
   const cardBackPhoto = mobileVehicleCardBackPhoto(rec);
@@ -3838,6 +3881,7 @@ function renderMobileVehicleCard(rec, options = {}) {
         <strong>${esc(mobileVehicleTitle(rec))}</strong>
         <small>${esc(owner)}</small>
         ${subtitle ? `<em>${esc(subtitle)}</em>` : ""}
+        ${adminVehicleCloudStatus(rec)}
         ${deadlineMobileGauge(rec)}
         ${finalizationButton}
         <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
@@ -4143,7 +4187,7 @@ function renderReceptionTable() {
   renderAdminMobileGallery(filtered);
   tbody.innerHTML = filtered.map((rec) => `
     <tr class="clickable-row ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? "row-finalized" : ""} ${signatureNeedsAdminReview(rec) ? "row-signature-review" : ""}" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
-      <td data-label="Vehículo">${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small></td>
+      <td data-label="Vehículo">${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small>${adminVehicleCloudStatus(rec)}</td>
       <td data-label="Fotografía">${receptionTableThumb(rec, "Frente")}</td>
       <td data-label="Tarjeta reverso">${receptionTableThumb(rec, "Tarjeta reverso", "", "card-thumb")}</td>
       <td data-label="Tarjeta frente">${receptionTableThumb(rec, "Tarjeta frente", "", "card-thumb")}</td>
@@ -4412,7 +4456,7 @@ function renderPhotoEditor() {
   const host = qs("[data-photo-editor]");
   if (!host) return;
   const rec = selected();
-  host.innerHTML = rec.photos.map((photo, index) => `
+  host.innerHTML = receptionPhotos(rec).map((photo, index) => `
     <article class="photo-card">
       ${photoVisual(photo)}
       <div class="field">
@@ -4613,7 +4657,7 @@ function renderAdminFile(rec) {
   }
   const photos = qs("[data-admin-file-photos]");
   if (photos) {
-    photos.innerHTML = rec.photos.map((photo, index) => `
+    photos.innerHTML = receptionPhotos(rec).map((photo, index) => `
       <article class="photo-card">
         ${photoVisual(photo)}
         <div class="field">
@@ -4682,7 +4726,7 @@ function renderAdminInvoices() {
     host.innerHTML = '<div class="notice">Seleccione un expediente para ver facturas.</div>';
     return;
   }
-  const invoices = Array.isArray(rec.invoices) ? rec.invoices : [];
+  const invoices = adminInvoiceList(rec);
   host.innerHTML = invoices.map((item, index) => {
     const label = item.label || `Factura ${index + 1}`;
     const src = item.dataUrl || "";
@@ -4697,8 +4741,18 @@ function renderAdminInvoices() {
   }).join("") || '<div class="notice">Sin facturas registradas para este vehículo.</div>';
 }
 
+function adminInvoiceList(rec) {
+  if (!rec) return [];
+  if (adminInvoiceDrafts.has(rec.id)) return adminInvoiceDrafts.get(rec.id);
+  const cloud = globalThis.AM_CLOUD_SYNC?.cachedInvoices?.(rec);
+  const initial = Array.isArray(cloud) ? cloud : (Array.isArray(rec.invoices) ? rec.invoices : []);
+  const list = JSON.parse(JSON.stringify(initial || []));
+  adminInvoiceDrafts.set(rec.id, list);
+  return list;
+}
+
 function captureAdminInvoicesFromDom(rec) {
-  const current = Array.isArray(rec?.invoices) ? rec.invoices : [];
+  const current = adminInvoiceList(rec);
   qsa("[data-admin-invoice-label]").forEach((input) => {
     const index = Number(input.dataset.adminInvoiceLabel);
     if (current[index]) current[index].label = input.value.trim() || `Factura ${index + 1}`;
@@ -4715,18 +4769,12 @@ async function addAdminInvoices(input) {
   if (!rec || !files.length) return;
   const images = (await Promise.all(files.map(readImageFilePromise))).filter(Boolean);
   if (!images.length) return;
-  AM_SIMPLE_STORE.mutate((current) => {
-    const selectedRec = AM_SIMPLE_STORE.selected(current);
-    if (!selectedRec) return;
-    if (!Array.isArray(selectedRec.invoices)) selectedRec.invoices = [];
-    const base = selectedRec.invoices.length;
-    images.forEach((dataUrl, index) => {
-      selectedRec.invoices.push({ label: `Factura ${base + index + 1}`, dataUrl });
-    });
-  });
-  syncSelectedAdminReceptionToEmployee();
-  renderAdmin();
-  toast("Factura agregada. Presione Guardar facturas para respaldar en nube.", "ok");
+  const invoices = adminInvoiceList(rec);
+  const base = invoices.length;
+  images.forEach((dataUrl, index) => invoices.push({ label: `Factura ${base + index + 1}`, dataUrl }));
+  adminInvoiceDrafts.set(rec.id, invoices);
+  renderAdminInvoices();
+  toast("Factura preparada. Presione Guardar facturas para enviarla a la nube.", "ok");
 }
 
 async function saveAdminInvoices() {
@@ -4735,27 +4783,64 @@ async function saveAdminInvoices() {
     toast("Seleccione un expediente para guardar facturas.", "warn");
     return;
   }
-  AM_SIMPLE_STORE.mutate((current) => {
-    const selectedRec = AM_SIMPLE_STORE.selected(current);
-    if (selectedRec) selectedRec.invoices = captureAdminInvoicesFromDom(rec);
-  });
-  syncSelectedAdminReceptionToEmployee();
-  renderAdmin();
-  if (!await confirmCloudSaved("Facturas guardadas.", "save-admin-invoices")) return;
-  renderAdmin();
+  const invoices = captureAdminInvoicesFromDom(rec);
+  adminInvoiceDrafts.set(rec.id, invoices);
+  if (!globalThis.AM_CLOUD_SYNC?.saveNow) {
+    toast("La nube no está disponible para guardar facturas.", "danger");
+    return;
+  }
+  const fixed = AM_CLOUD_SYNC.snapshot();
+  const cloudRec = (fixed.appState?.receptions || []).find((item) => item.id === rec.id || item.number === rec.number);
+  if (cloudRec) cloudRec.invoices = JSON.parse(JSON.stringify(invoices));
+  const cloudVehicle = (fixed.employeeState?.vehicles || []).find((item) => item.rec === rec.number || `emp-${item.id}` === rec.id);
+  if (cloudVehicle) cloudVehicle.invoices = JSON.parse(JSON.stringify(invoices));
+  setAdminSaving(true, "Guardando facturas", "Enviando las facturas directamente a la nube.", 45);
+  try {
+    await AM_CLOUD_SYNC.saveNow("admin-invoices-confirmadas", fixed);
+    let confirmed = false;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      setAdminSaving(true, "Validando facturas", `Confirmando respaldo en nube (${attempt + 1} de 8).`, 62 + attempt * 4);
+      const remote = await AM_CLOUD_SYNC.fetchLatest();
+      const remoteRec = (remote?.appState?.receptions || []).find((item) => item.id === rec.id || item.number === rec.number);
+      const remoteInvoices = Array.isArray(remoteRec?.invoices) ? remoteRec.invoices : [];
+      if (remoteInvoices.length === invoices.length && remoteInvoices.every((item, index) => String(item?.dataUrl || "").length === String(invoices[index]?.dataUrl || "").length)) {
+        confirmed = true;
+        break;
+      }
+      await sleep(900 + attempt * 450);
+    }
+    if (!confirmed) throw new Error("El servidor no confirmó todas las facturas.");
+    AM_CLOUD_SYNC.cacheInvoices?.(rec, invoices);
+    AM_SIMPLE_STORE.mutate((current) => {
+      const localRec = current.receptions.find((item) => item.id === rec.id);
+      if (localRec) localRec.invoices = [];
+    }, { markLocalWrite: false });
+    try {
+      const employee = JSON.parse(localStorage.getItem("am_employee_module_safe_v2") || "null");
+      const vehicle = employee?.vehicles?.find((item) => item.rec === rec.number || `emp-${item.id}` === rec.id);
+      if (vehicle) {
+        vehicle.invoices = [];
+        localStorage.setItem("am_employee_module_safe_v2", JSON.stringify(employee));
+      }
+    } catch {}
+    toast("Facturas guardadas y confirmadas en nube.", "ok");
+    renderAdminInvoices();
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "No se pudieron confirmar las facturas en nube.", "danger");
+  } finally {
+    setAdminSaving(false);
+  }
 }
 
 function removeAdminInvoice(index) {
   const rec = selected();
   if (!rec) return;
   if (!confirm("¿Está seguro de que desea eliminar esta factura?")) return;
-  AM_SIMPLE_STORE.mutate((current) => {
-    const selectedRec = AM_SIMPLE_STORE.selected(current);
-    if (!selectedRec || !Array.isArray(selectedRec.invoices)) return;
-    selectedRec.invoices.splice(index, 1);
-  });
-  syncSelectedAdminReceptionToEmployee();
-  renderAdmin();
+  const invoices = adminInvoiceList(rec);
+  invoices.splice(index, 1);
+  adminInvoiceDrafts.set(rec.id, invoices);
+  renderAdminInvoices();
   toast("Factura eliminada. Presione Guardar facturas para respaldar en nube.", "ok");
 }
 
@@ -5189,7 +5274,7 @@ function renderReadonlyClientSignature(rec) {
 function renderClientCarousel(rec) {
   const host = qs("[data-carousel]");
   if (!host) return;
-  const photos = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label));
+  const photos = receptionPhotos(rec).filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label));
   if (!photos.length) {
     host.innerHTML = '<div class="notice">No hay fotografias de recepcion disponibles.</div>';
     return;
@@ -5213,7 +5298,7 @@ function renderClientCarousel(rec) {
 function moveClientCarousel(direction) {
   const rec = findReceptionByParam("clientToken");
   if (!rec) return;
-  const total = rec.photos.filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label)).length;
+  const total = receptionPhotos(rec).filter((photo) => AM_SIMPLE_STORE.carouselPhotos.includes(photo.label)).length;
   if (!total) return;
   carouselIndex = direction > 0 ? (carouselIndex + 1) % total : (carouselIndex - 1 + total) % total;
   renderClientCarousel(rec);
@@ -5290,7 +5375,7 @@ function renderTracking() {
     return renderInactiveTrackingLink();
   }
   const profile = trackingProfile(rec);
-  const photos = Array.isArray(rec.photos) ? rec.photos : [];
+  const photos = receptionPhotos(rec);
   const publicProgress = pendingTracking(rec) ? (rec.publishedProgress ?? 0) : (rec.publishedProgress ?? rec.progress ?? profile.progress ?? 0);
   const progress = Math.max(0, Math.min(100, Number(publicProgress) || 0));
   AM_SIMPLE_STORE.mutate((current) => {
@@ -5667,6 +5752,12 @@ function handleActions() {
     if (!button) return;
     const action = button.dataset.action;
     if (button.closest(".action-menu")) setTimeout(() => closeActionMenus(), 0);
+    if (action === "retry-admin-cloud") {
+      event.preventDefault();
+      event.stopPropagation();
+      retryAdminVehicleCloudBackup(button.dataset.id || "");
+      return;
+    }
     if (action === "start-dictation") {
       event.preventDefault();
       event.stopPropagation();
@@ -6915,7 +7006,7 @@ function handleActions() {
           <td>${esc(damage.detail || "Sin detalle")}</td>
           <td>${(damage.photos || []).length}</td>
         </tr>`).join("");
-      const photoRows = (rec.photos || []).map((photo) => `
+      const photoRows = receptionPhotos(rec).map((photo) => `
         <tr>
           <td>${esc(photo.label || "Fotografía")}</td>
           <td>${photo.dataUrl ? "Registrada" : "Pendiente"}</td>
@@ -7383,7 +7474,7 @@ function handleEmployeeModuleAction(action, button, event) {
       finalSummary.innerHTML = `
         <div class="grid cols-3">
           <div class="metric"><span>Vehículo</span><strong>${rec.vehicle.marca || "Pendiente"} ${rec.vehicle.modelo || ""}</strong><small>${rec.vehicle.placa || "Sin placa"}</small></div>
-          <div class="metric"><span>Fotos</span><strong>${rec.photos.filter((p) => p.dataUrl).length}/${rec.photos.length}</strong><small>Cargadas</small></div>
+          <div class="metric"><span>Fotos</span><strong>${receptionPhotos(rec).filter((p) => p.dataUrl).length}/${receptionPhotos(rec).length}</strong><small>Cargadas</small></div>
           <div class="metric"><span>Daños</span><strong>${rec.damages.length}</strong><small>Registrados</small></div>
         </div>`;
     }
