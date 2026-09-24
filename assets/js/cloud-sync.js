@@ -143,6 +143,60 @@
     });
   }
 
+  function protectedMediaRecords(snap) {
+    return [
+      ...(Array.isArray(snap?.appState?.receptions) ? snap.appState.receptions : []),
+      ...(Array.isArray(snap?.employeeState?.vehicles) ? snap.employeeState.vehicles : [])
+    ];
+  }
+
+  function richestRemoteMedia(remote, field, score) {
+    const byKey = new Map();
+    protectedMediaRecords(remote).forEach((item) => {
+      const list = Array.isArray(item?.[field]) ? item[field] : [];
+      const value = score(list);
+      invoiceKeys(item).forEach((key) => {
+        const current = byKey.get(key);
+        if (!current || value > current.score) byKey.set(key, { score: value, list });
+      });
+    });
+    return byKey;
+  }
+
+  function remoteMediaFor(item, index) {
+    let best = null;
+    invoiceKeys(item).forEach((key) => {
+      const candidate = index.get(key);
+      if (candidate && (!best || candidate.score > best.score)) best = candidate;
+    });
+    return best;
+  }
+
+  async function preserveRemoteProtectedMedia(outgoing) {
+    const data = await post("loadLatest", {});
+    const remote = data?.snapshot;
+    if (!remote) return outgoing;
+    const photoScore = (list) => list.filter((item) => String(item?.dataUrl || "").trim()).length;
+    const invoiceScore = (list) => list.filter((item) => String(item?.dataUrl || item?.url || "").trim()).length;
+    const remotePhotos = richestRemoteMedia(remote, "photos", photoScore);
+    const remoteInvoices = richestRemoteMedia(remote, "invoices", invoiceScore);
+    protectedMediaRecords(outgoing).forEach((item) => {
+      const localPhotos = Array.isArray(item?.photos) ? item.photos : [];
+      const preservedPhotos = remoteMediaFor(item, remotePhotos);
+      if (preservedPhotos && preservedPhotos.score > photoScore(localPhotos)) {
+        item.photos = preservedPhotos.list.map((photo) => ({ ...photo }));
+        cachePhotos(item, item.photos);
+      }
+      const localInvoices = Array.isArray(item?.invoices) ? item.invoices : [];
+      const preservedInvoices = remoteMediaFor(item, remoteInvoices);
+      if (preservedInvoices && preservedInvoices.score > invoiceScore(localInvoices)) {
+        item.invoices = preservedInvoices.list.map((invoice) => ({ ...invoice }));
+        cacheInvoices(item, item.invoices);
+      }
+    });
+    return outgoing;
+  }
+
   function compressImageDataUrl(src, max = IMAGE_MAX, quality = IMAGE_QUALITY) {
     return new Promise((resolve) => {
       if (!src || !String(src).startsWith("data:image/") || String(src).length <= IMAGE_LIMIT) {
@@ -265,7 +319,9 @@
     const runSave = async () => {
       saving = true;
       try {
-        const result = await post("saveSnapshot", { reason, snapshot: await compactSnapshotImages(fixedSnapshot || snapshot()) });
+        let outgoing = await compactSnapshotImages(fixedSnapshot || snapshot());
+        outgoing = await preserveRemoteProtectedMedia(outgoing);
+        const result = await post("saveSnapshot", { reason, snapshot: outgoing });
         try { localStorage.removeItem(LOCAL_WRITE_KEY); } catch {}
         window.dispatchEvent(new CustomEvent("am-cloud-sync", { detail: { ok: true, result } }));
         return result;
