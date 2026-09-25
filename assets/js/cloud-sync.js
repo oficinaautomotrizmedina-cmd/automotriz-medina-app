@@ -389,8 +389,9 @@
       receptions: Array.isArray(appState.receptions) ? appState.receptions.slice() : [],
       deletedReceptionNumbers: Array.isArray(appState.deletedReceptionNumbers) ? appState.deletedReceptionNumbers.slice() : []
     };
-    const deleted = new Set(merged.deletedReceptionNumbers.filter(Boolean));
     const employeeNumbers = employeeState.vehicles.map((vehicle) => String(vehicle?.rec || "").trim()).filter(Boolean);
+    merged.deletedReceptionNumbers = merged.deletedReceptionNumbers.filter((number) => !employeeNumbers.includes(String(number || "").trim()));
+    const deleted = new Set(merged.deletedReceptionNumbers.filter(Boolean));
     const activeAdminCount = merged.receptions.filter((rec) => !rec?.deletedAt && !rec?.archivedAt).length;
     const shouldReviveEmployeeVehicles = employeeNumbers.length > 0 && activeAdminCount === 0;
     const staleDeleteListBlocksAll = shouldReviveEmployeeVehicles && employeeNumbers.every((number) => deleted.has(number));
@@ -428,9 +429,9 @@
         };
         merged.receptions.unshift(rec);
       }
+      rec.deletedAt = "";
+      rec.deletedBy = "";
       if (shouldReviveEmployeeVehicles) {
-        rec.deletedAt = "";
-        rec.deletedBy = "";
         rec.archivedAt = "";
         rec.archivedBy = "";
         rec.deliveredAt = "";

@@ -13,7 +13,7 @@
   <script>
     (function(){try{var q=new URLSearchParams(location.search);var h=new URLSearchParams(location.hash.replace(/^#/,''));var id=String(q.get('empleado')||h.get('empleado')||'').toLowerCase();if(id==='christian')id='cristian';if(['edwin','rafael','cristian'].indexOf(id)>=0){document.getElementById('pwaManifest').setAttribute('href','manifest-'+id+'.webmanifest?v=20260812-1')}}catch(e){}})();
   </script>
-  <script defer src="pwa-register.js?v=20260923-1"></script>
+  <script defer src="pwa-register.js?v=archivo-oculto-1"></script>
   <style>
     :root{--bg:#f4f6f8;--panel:#fff;--ink:#17202a;--muted:#637282;--line:#d9e1e8;--brand:#206f78;--dark:#17202a;--ok:#24744a;--warn:#a56400;--danger:#a83232;--radius:8px}
     *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Arial,Helvetica,sans-serif}button,input,select,textarea{font:inherit}button,a.btn{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:9px 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px}.primary{background:var(--brand)!important;border-color:var(--brand)!important;color:#fff!important}.danger{background:#b52931!important;border-color:#b52931!important;color:#fff!important}.signature-done{background:var(--ok)!important;border-color:var(--ok)!important;color:#fff!important;font-weight:800}
@@ -86,7 +86,11 @@
     @media(max-width:430px){body.employee-mobile-catalog #assigned>.panel>.head .btns{grid-template-columns:1fr}.employee-mobile-gallery{gap:10px}.employee-mobile-card-info{padding:8px}.employee-mobile-card-info b{font-size:14px}.employee-mobile-status{font-size:10px}}
     @media(max-width:900px){body.employee-mobile-full{background:#f4f7fa}body.employee-mobile-full .app{display:block;min-height:100vh}body.employee-mobile-full .side,body.employee-mobile-full .top{display:none}body.employee-mobile-full .content{padding:0;background:#f4f7fa;display:block}body.employee-mobile-full #work,body.employee-mobile-full #new,body.employee-mobile-full #express,body.employee-mobile-full #archivo,body.employee-mobile-full #vineta{min-height:100vh;padding:0}body.employee-mobile-full #workPanel,body.employee-mobile-full #work>.notice,body.employee-mobile-full #new>.panel,body.employee-mobile-full #express>.panel,body.employee-mobile-full #archivo>.panel,body.employee-mobile-full #vineta>.panel{border:0;border-radius:0;box-shadow:none;min-height:100vh}body.employee-mobile-full #workPanel>.head,body.employee-mobile-full #new .head,body.employee-mobile-full #express .head,body.employee-mobile-full #archivo .head,body.employee-mobile-full #vineta .head{position:sticky;top:0;z-index:6;background:#fff}body.employee-mobile-folder #workPanel>.head,body.employee-mobile-folder #workSummary,body.employee-mobile-folder #expressActions,body.employee-mobile-folder .work-folder-tabs,body.employee-mobile-folder #workFolderHome{display:none!important}body.employee-mobile-folder #workPanel,body.employee-mobile-folder #workPanel>.body,body.employee-mobile-folder #workDetailsGrid,body.employee-mobile-folder .work-folder-section{min-height:100vh;border:0;border-radius:0;box-shadow:none}body.employee-mobile-folder #workPanel>.body{padding:0}body.employee-mobile-folder .work-folder-section>.head{position:sticky;top:0;z-index:8;background:#fff;border-bottom:1px solid var(--line);padding:14px 16px}body.employee-mobile-folder .work-folder-section>.body{padding:16px}.work-folder-frame{min-height:100vh!important;border:0!important;border-radius:0!important}}
     .employee-tracking-private{display:none!important}
-    @media(max-width:900px){button[data-work-folder="archivo"],#workFolderArchivo{display:none!important}}
+    button[data-work-folder="archivo"],
+    #workFolderArchivo,
+    #archivo,
+    #quickModuleLink,
+    #mobileNav option[value="archivo"]{display:none!important}
     html.employee-direct-boot:after{
       content:attr(data-employee-date);
       position:fixed;
@@ -290,7 +294,7 @@
     </main>
   </div>
 <script src="assets/js/auth-guard.js?v=20260810-force3"></script>
-<script src="assets/js/cloud-sync.js?v=protected-cloud-media-1"></script>
+<script src="assets/js/cloud-sync.js?v=dashboard-sync-repair-1"></script>
   <script>
     const KEY='am_employee_module_safe_v2';
     const ADMIN_KEY='am_recepción_local_v1';

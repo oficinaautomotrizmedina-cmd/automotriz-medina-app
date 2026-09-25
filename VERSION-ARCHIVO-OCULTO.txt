@@ -1,0 +1,13 @@
+AUTOMOTRIZ MEDINA - VARIANTE CON ARCHIVO OCULTO
+Fecha: 2026-09-25
+
+Esta variante conserva sin cambios la lógica y los archivos internos del programa.
+Únicamente oculta visualmente el apartado Archivo para administrador y empleados.
+
+Continúan visibles y operativos:
+- Seguimiento
+- Bitácora
+- Facturas
+- Expediente
+- Notificaciones
+
