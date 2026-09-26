@@ -389,21 +389,13 @@
       receptions: Array.isArray(appState.receptions) ? appState.receptions.slice() : [],
       deletedReceptionNumbers: Array.isArray(appState.deletedReceptionNumbers) ? appState.deletedReceptionNumbers.slice() : []
     };
-    const employeeNumbers = employeeState.vehicles.map((vehicle) => String(vehicle?.rec || "").trim()).filter(Boolean);
-    merged.deletedReceptionNumbers = merged.deletedReceptionNumbers.filter((number) => !employeeNumbers.includes(String(number || "").trim()));
     const deleted = new Set(merged.deletedReceptionNumbers.filter(Boolean));
-    const activeAdminCount = merged.receptions.filter((rec) => !rec?.deletedAt && !rec?.archivedAt).length;
-    const shouldReviveEmployeeVehicles = employeeNumbers.length > 0 && activeAdminCount === 0;
-    const staleDeleteListBlocksAll = shouldReviveEmployeeVehicles && employeeNumbers.every((number) => deleted.has(number));
-    if (staleDeleteListBlocksAll) {
-      merged.deletedReceptionNumbers = merged.deletedReceptionNumbers.filter((number) => !employeeNumbers.includes(number));
-      deleted.clear();
-    }
 
     employeeState.vehicles.forEach((vehicle) => {
       const number = String(vehicle?.rec || "").trim();
       if (!number || deleted.has(number)) return;
       let rec = merged.receptions.find((item) => item.number === number || item.id === `emp-${vehicle.id}`);
+      if (rec?.deletedAt) return;
       if (!rec) {
         rec = {
           id: `emp-${vehicle.id || makeToken("veh")}`,
@@ -431,12 +423,6 @@
       }
       rec.deletedAt = "";
       rec.deletedBy = "";
-      if (shouldReviveEmployeeVehicles) {
-        rec.archivedAt = "";
-        rec.archivedBy = "";
-        rec.deliveredAt = "";
-        rec.deliveredBy = "";
-      }
 
       rec.express = !!vehicle.express;
       rec.serviceType = vehicle.tipoServicio || rec.serviceType || "";

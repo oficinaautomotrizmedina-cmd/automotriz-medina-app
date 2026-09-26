@@ -1,4 +1,4 @@
-var AM_SW_VERSION = 'am-pwa-background-sync-20260925-archivo-oculto-1';
+var AM_SW_VERSION = 'am-pwa-mobile-archive-20260926-1';
 var AM_OUTBOX_DB = 'am_cloud_outbox_v1';
 var AM_OUTBOX_STORE = 'jobs';
 var AM_OUTBOX_KEY = 'latest';

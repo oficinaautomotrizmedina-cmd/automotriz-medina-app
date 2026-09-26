@@ -294,7 +294,7 @@
     </main>
   </div>
 <script src="assets/js/auth-guard.js?v=20260810-force3"></script>
-<script src="assets/js/cloud-sync.js?v=dashboard-sync-repair-1"></script>
+<script src="assets/js/cloud-sync.js?v=delete-confirmed-1"></script>
   <script>
     const KEY='am_employee_module_safe_v2';
     const ADMIN_KEY='am_recepción_local_v1';
@@ -392,17 +392,6 @@
         return false;
       }
     }
-    confirmCloudSave=async function(message='Guardado',vehicleId='',savingTitle='Guardando y respaldando',options={}){
-      return enqueueEmployeeBackgroundSave(vehicleId,'employee-background-save',null);
-    };
-    confirmEmployeeCloudOnly=async function(vehicleId,mode='tracking-all',rowIndex=null,savingTitle='Guardando y respaldando',useModal=true){
-      const localVehicle=(loadRaw().vehicles||[]).find(v=>v.id===vehicleId);
-      if(!localVehicle)return false;
-      let fixedSnapshot;
-      if(mode==='tracking-row'||mode==='tracking-all')fixedSnapshot=buildTrackingSnapshot(localVehicle);
-      else fixedSnapshot=window.AM_CLOUD_SYNC?.snapshot?.();
-      return enqueueEmployeeBackgroundSave(vehicleId,'employee-'+mode,fixedSnapshot);
-    };
     confirmBitacoraCloudSave=async function(vehicleId,mode='internal-all',rowIndex=null,savingTitle='Guardando bitácora',useModal=true){
       const localVehicle=(loadRaw().vehicles||[]).find(v=>v.id===vehicleId);
       if(!localVehicle)return false;
@@ -434,7 +423,7 @@
     function requiredPhotosComplete(){return draft&&draft.photos.slice(0,photosReq.length).every(p=>p.dataUrl)}
     function visiblePhotoCount(){if(!draft)return 1;const missing=draft.photos.findIndex((p,i)=>i<photosReq.length&&!p.dataUrl);return missing<0?photosReq.length:missing+1}
     function resetDamageForm(){damagePhotoData='';const area=$('#damageArea'),detail=$('#damageDetail');if(area)area.value='';if(detail)detail.value=''}
-    const PHOTO_MAX=1280,PHOTO_QUALITY=.82,PHOTO_LIMIT=48000;
+    const PHOTO_MAX=2048,PHOTO_QUALITY=.9,PHOTO_LIMIT=48000;
     function compressImageSource(src,max=PHOTO_MAX,quality=PHOTO_QUALITY){return new Promise(resolve=>{if(!src||!String(src).startsWith('data:image/')){resolve(src||'');return}const img=new Image();img.onload=()=>{try{const scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,canvas.width,canvas.height);const out=canvas.toDataURL('image/jpeg',quality);resolve(out&&out.length<src.length?out:src)}catch{resolve(src)}};img.onerror=()=>resolve(src);img.src=src})}
     function readCompressedImage(file,callback){if(!file)return;const reader=new FileReader();reader.onload=async()=>callback(await compressImageSource(reader.result));reader.readAsDataURL(file)}
     async function compactPhotoItem(item){if(item&&item.dataUrl&&String(item.dataUrl).startsWith('data:image/')&&(item.dataUrl.length>PHOTO_LIMIT||!item.dataUrl.includes('image/jpeg')))item.dataUrl=await compressImageSource(item.dataUrl)}

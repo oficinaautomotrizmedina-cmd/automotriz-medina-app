@@ -1815,6 +1815,28 @@ function upsertEmployeeVehicle(vehicle) {
   setStorageSafely("am_employee_module_safe_v2", JSON.stringify(employeeState), JSON.stringify({ selected: "", seq: employeeState.seq || 0, vehicles: [nextVehicle] }));
 }
 
+function removeEmployeeVehicleForReception(rec) {
+  if (!rec) return;
+  const employeeState = safeJsonParse(localStorage.getItem("am_employee_module_safe_v2"), { selected: "", seq: 0, vehicles: [] });
+  if (!Array.isArray(employeeState.vehicles)) employeeState.vehicles = [];
+  const recId = String(rec.id || "").replace(/^emp-/, "");
+  employeeState.vehicles = employeeState.vehicles.filter((vehicle) => {
+    const vehicleId = String(vehicle.id || "").replace(/^emp-/, "");
+    return vehicle.rec !== rec.number
+      && vehicle.number !== rec.number
+      && vehicle.reception !== rec.number
+      && (!recId || vehicleId !== recId);
+  });
+  if (employeeState.selected && !employeeState.vehicles.some((vehicle) => vehicle.id === employeeState.selected)) {
+    employeeState.selected = "";
+  }
+  setStorageSafely(
+    "am_employee_module_safe_v2",
+    JSON.stringify(employeeState),
+    JSON.stringify({ selected: "", seq: employeeState.seq || 0, vehicles: [] })
+  );
+}
+
 function syncSelectedAdminReceptionToEmployee() {
   const rec = AM_SIMPLE_STORE.selected(state());
   if (rec) upsertEmployeeVehicle(employeeVehicleFromReception(rec));
@@ -3303,23 +3325,26 @@ async function fetchConfirmedCloudSnapshot(exportedAt) {
 }
 
 async function confirmCloudSaved(message = "Guardado confirmado en nube.", reason = "confirmed-save") {
+  if (!globalThis.AM_CLOUD_SYNC?.isReady?.()) {
+    toast("La nube no esta disponible. No se confirmo el guardado.", "danger");
+    return false;
+  }
+  setAdminSaving(true, "Guardando y respaldando", "Preparando respaldo seguro.", 16);
   try {
-    const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
-    const hashId = hashParams.get("expediente") || "";
-    const selectedId = state().receptions.some((rec) => rec.id === hashId) ? hashId : "";
-    if (selectedId) setAdminVehicleCloudStatus(selectedId, "pending", "Respaldo en nube pendiente de confirmar.");
     const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
-    markQueuedSnapshotCloudConfirmed(fixedSnapshot);
-    await AM_CLOUD_SYNC.enqueueBackgroundSave(reason, {
-      snapshot: fixedSnapshot,
-      context: { module: "admin", selectedId },
-      message: "Información enviada."
-    });
+    await AM_CLOUD_SYNC.saveNow(reason, fixedSnapshot);
+    const confirmed = await fetchConfirmedCloudSnapshot(fixedSnapshot?.exportedAt);
+    AM_CLOUD_SYNC.applySnapshot?.(confirmed);
+    setAdminSaving(true, "Guardado confirmado", "El respaldo fue confirmado correctamente.", 100);
+    await sleep(650);
+    toast(message, "ok");
     return true;
   } catch (error) {
     console.error(error);
-    toast(`No se pudo proteger el respaldo local: ${error.message || error}`, "danger");
+    toast(`No se pudo confirmar en nube: ${error.message || error}`, "danger");
     return false;
+  } finally {
+    setAdminSaving(false);
   }
 }
 
@@ -3438,7 +3463,27 @@ function resizeAdminMasterFrame() {
 }
 
 async function confirmInternalLogSaved(message = "Bitácora interna guardada.", reason = "save-internal-log") {
-  return confirmCloudSaved(message, reason);
+  if (!globalThis.AM_CLOUD_SYNC?.enqueueBackgroundSave) {
+    toast("La bitácora quedó guardada localmente, pero no se pudo preparar el respaldo en nube.", "danger");
+    return false;
+  }
+  try {
+    const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+    const hashId = hashParams.get("expediente") || "";
+    const selectedId = state().receptions.some((rec) => rec.id === hashId) ? hashId : "";
+    const fixedSnapshot = AM_CLOUD_SYNC.snapshot ? AM_CLOUD_SYNC.snapshot() : null;
+    await AM_CLOUD_SYNC.enqueueBackgroundSave(reason, {
+      snapshot: fixedSnapshot,
+      context: { module: "admin", selectedId, kind: "bitacora" },
+      message: "Bitácora enviada."
+    });
+    toast(message, "ok");
+    return true;
+  } catch (error) {
+    console.error(error);
+    toast(`La bitácora quedó local, pero no se pudo preparar el respaldo: ${error.message || error}`, "danger");
+    return false;
+  }
 }
 
 function setAdminMasterFrameSource(href) {
@@ -3869,6 +3914,9 @@ function renderMobileVehicleCard(rec, options = {}) {
   const finalizationButton = !options.employee && finalizationNeedsPublish(rec)
     ? `<button type="button" class="btn primary mobile-publish-finalization" data-action="publish-finalization" data-id="${esc(rec.id)}">Publicar finalización</button>`
     : "";
+  const archiveButton = !options.employee && !isArchived(rec) && !isDeleted(rec)
+    ? `<button type="button" class="btn mobile-archive-reception" data-action="archive-reception" data-id="${esc(rec.id)}">Archivar</button>`
+    : "";
   return `
     <article class="mobile-vehicle-card" ${attrs} role="button" tabindex="0">
       <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
@@ -3884,7 +3932,10 @@ function renderMobileVehicleCard(rec, options = {}) {
         ${adminVehicleCloudStatus(rec)}
         ${deadlineMobileGauge(rec)}
         ${finalizationButton}
-        <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
+        <div class="mobile-vehicle-actions">
+          <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
+          ${archiveButton}
+        </div>
       </div>
     </article>`;
 }
@@ -6412,6 +6463,7 @@ function handleActions() {
         item.deletedBy = "Administrador";
         if (current.selectedId === item.id) current.selectedId = "";
       });
+      removeEmployeeVehicleForReception(rec);
       if (location.hash.includes(rec.id)) history.replaceState(null, "", "admin.html");
       renderAdmin();
       showSection("dashboard");
@@ -6574,6 +6626,7 @@ function handleActions() {
         current.receptions = current.receptions.filter((item) => item.id !== rec.id);
         if (current.selectedId === rec.id) current.selectedId = "";
       });
+      removeEmployeeVehicleForReception(rec);
       if (location.hash.includes(rec.id)) history.replaceState(null, "", "admin.html");
       renderAdmin();
       if (!await confirmCloudSaved("Expediente eliminado definitivamente.", "purge-trash-reception")) return;

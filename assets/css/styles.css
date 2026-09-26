@@ -524,6 +524,23 @@ textarea { min-height: 104px; resize: vertical; }
   opacity: .48;
   cursor: not-allowed;
 }
+.mobile-vehicle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.mobile-vehicle-actions .mobile-card-link { margin-top: 0; }
+.mobile-archive-reception {
+  min-height: 34px;
+  padding: 6px 12px;
+  border-color: rgba(240, 179, 61, .5);
+  background: rgba(240, 179, 61, .16);
+  color: #ffd77d;
+  font-size: 12px;
+  font-weight: 900;
+}
 .mobile-card-viewer {
   position: fixed;
   inset: 0;

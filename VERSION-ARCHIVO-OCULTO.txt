@@ -1,6 +1,10 @@
 AUTOMOTRIZ MEDINA - VARIANTE CON ARCHIVO OCULTO
 Fecha: 2026-09-25
 
+Actualización 2026-09-26:
+- Todos los guardados, salvo bitácora, esperan la confirmación real de la nube.
+- La bitácora permanece rápida y continúa su respaldo en segundo plano.
+
 Esta variante conserva sin cambios la lógica y los archivos internos del programa.
 Únicamente oculta visualmente el apartado Archivo para administrador y empleados.
 
@@ -10,4 +14,3 @@ Continúan visibles y operativos:
 - Facturas
 - Expediente
 - Notificaciones
-
