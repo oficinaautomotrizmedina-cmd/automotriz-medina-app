@@ -2511,6 +2511,7 @@ function renderTabs() {
 let adminFileTab = "";
 let adminDashboardFilter = "all";
 let adminEmployeeFilter = "";
+let trashSelectedIds = new Set();
 let previewBackup = null;
 let adminDashboardQuickSearch = "";
 let adminTrackingDraft = null;
@@ -3970,8 +3971,12 @@ function renderMobileVehicleCard(rec, options = {}) {
     ? `<button type="button" class="btn primary mobile-publish-finalization" data-action="publish-finalization" data-id="${esc(rec.id)}">Publicar finalización</button>`
     : "";
   const adminActions = options.employee ? "" : mobileAdminActionsMenu(rec);
+  const trashSelector = !options.employee && adminDashboardFilter === "trash"
+    ? `<label class="trash-card-selector" title="Seleccionar ${esc(rec.number || "expediente")}"><input type="checkbox" data-trash-select-id="${esc(rec.id)}" ${trashSelectedIds.has(rec.id) ? "checked" : ""}><span>Seleccionar</span></label>`
+    : "";
   return `
     <article class="mobile-vehicle-card" ${attrs} role="button" tabindex="0">
+      ${trashSelector}
       <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
         ${notificationBadge}
         ${photo ? `<img src="${photo}" alt="${esc(mobileVehicleTitle(rec))}">` : `<span>${esc(rec.number || "AM")}</span>`}
@@ -4036,6 +4041,27 @@ function renderAdminMobileGallery(records) {
       })).join("")
     : '<div class="mobile-gallery-empty">No hay vehículos en este filtro.</div>';
   initActionMenus();
+}
+
+function updateTrashBulkControls(records = []) {
+  const toolbar = qs("[data-trash-bulk-toolbar]");
+  if (!toolbar) return;
+  const trashRecords = records.filter(isDeleted);
+  const visibleIds = new Set(trashRecords.map((rec) => rec.id));
+  trashSelectedIds = new Set([...trashSelectedIds].filter((id) => visibleIds.has(id)));
+  const isTrash = adminDashboardFilter === "trash";
+  toolbar.classList.toggle("hidden", !isTrash);
+  const selectAll = qs("[data-trash-select-all]", toolbar);
+  const selectedCount = trashSelectedIds.size;
+  if (selectAll) {
+    selectAll.disabled = !trashRecords.length;
+    selectAll.checked = !!trashRecords.length && selectedCount === trashRecords.length;
+    selectAll.indeterminate = selectedCount > 0 && selectedCount < trashRecords.length;
+  }
+  const count = qs("[data-trash-selected-count]", toolbar);
+  if (count) count.textContent = `${selectedCount} seleccionado${selectedCount === 1 ? "" : "s"}`;
+  const purge = qs('[data-action="purge-selected-trash"]', toolbar);
+  if (purge) purge.disabled = !selectedCount;
 }
 
 function closeImagePreview() {
@@ -4290,9 +4316,10 @@ function renderReceptionTable() {
   syncDashboardQuickSearchInput();
   qsa("[data-admin-search-count]").forEach((input) => { input.value = `${filtered.length} expediente(s)`; });
   renderAdminMobileGallery(filtered);
+  updateTrashBulkControls(filtered);
   tbody.innerHTML = filtered.map((rec) => `
     <tr class="clickable-row ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? "row-finalized" : ""} ${signatureNeedsAdminReview(rec) ? "row-signature-review" : ""}" data-open-file-row="${rec.id}" tabindex="0" title="Abrir seguimiento">
-      <td data-label="Vehículo">${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small>${adminVehicleCloudStatus(rec)}</td>
+      <td data-label="Vehículo">${isDeleted(rec) ? `<label class="trash-row-selector"><input type="checkbox" data-trash-select-id="${esc(rec.id)}" ${trashSelectedIds.has(rec.id) ? "checked" : ""}><span>Seleccionar</span></label>` : ""}${finalizationNeedsPublish(rec) ? `<button class="btn primary publish-finalization-btn" data-action="publish-finalization" data-id="${rec.id}" title="Publicar finalización al cliente">Publicar finalización</button>` : ""}<strong>${rec.vehicle.marca} ${rec.vehicle.modelo} ${rec.vehicle.anio}</strong>${receptionNotificationAckCount(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count" title="Confirmaciones pendientes">${receptionNotificationAckCount(rec)}</span>` : ""}${signatureNeedsAdminReview(rec) ? `<span class="vehicle-notify-count admin-vehicle-notify-count signature-review-count" title="Firma pendiente de revisión">!</span>` : ""}<br><small>${rec.vehicle.placa}</small>${adminVehicleCloudStatus(rec)}</td>
       <td data-label="Fotografía">${receptionTableThumb(rec, "Frente")}</td>
       <td data-label="Tarjeta reverso">${receptionTableThumb(rec, "Tarjeta reverso", "", "card-thumb")}</td>
       <td data-label="Tarjeta frente">${receptionTableThumb(rec, "Tarjeta frente", "", "card-thumb")}</td>
@@ -5281,6 +5308,50 @@ function renderEmployee() {
 }
 
 let carouselIndex = 0;
+
+function publicCloudLoadingNote(message) {
+  const selector = document.body.dataset.page === "tracking"
+    ? "[data-tracking-loading-note]"
+    : "[data-client-loading-note]";
+  const note = qs(selector);
+  if (note) note.textContent = message;
+}
+
+function waitForPublicCloudRetry(delay) {
+  return new Promise((resolve) => setTimeout(resolve, delay));
+}
+
+async function loadPublicCloudReliably() {
+  if (!globalThis.AM_CLOUD_SYNC?.isReady?.()) return null;
+  const attempts = [0, 1800, 4200];
+  for (let index = 0; index < attempts.length; index += 1) {
+    if (attempts[index]) await waitForPublicCloudRetry(attempts[index]);
+    publicCloudLoadingNote(index === 0
+      ? "Estamos preparando la informaci\u00f3n y las fotograf\u00edas de tu veh\u00edculo."
+      : `La conexi\u00f3n est\u00e1 tardando. Reintentando la carga (${index + 1} de ${attempts.length})...`);
+    try {
+      const snapshot = index === 0
+        ? await AM_CLOUD_SYNC.ready()
+        : await AM_CLOUD_SYNC.loadLatest();
+      if (snapshot) return snapshot;
+    } catch (error) {
+      console.warn(`No se pudo cargar la vista publica (intento ${index + 1})`, error);
+    }
+  }
+  return null;
+}
+
+function renderPublicCloudFailure(page) {
+  const host = page === "tracking" ? qs("[data-tracking-view]") : qs("[data-client-summary]");
+  if (!host) return;
+  host.innerHTML = `
+    <div class="notice danger public-cloud-failure">
+      <strong>No pudimos completar la carga.</strong><br>
+      La informaci\u00f3n sigue protegida. Revisa tu conexi\u00f3n y vuelve a intentarlo.
+      <div style="margin-top:14px"><button class="btn primary" type="button" onclick="location.reload()">Reintentar</button></div>
+    </div>`;
+}
+
 function renderClient() {
   const rawClientHash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
   const clientParamsForRedirect = new URLSearchParams(location.search);
@@ -5751,6 +5822,22 @@ function saveReception() {
 }
 
 function handleActions() {
+  document.addEventListener("change", (event) => {
+    const selected = event.target.closest?.("[data-trash-select-id]");
+    if (selected) {
+      event.stopPropagation();
+      if (selected.checked) trashSelectedIds.add(selected.dataset.trashSelectId);
+      else trashSelectedIds.delete(selected.dataset.trashSelectId);
+      renderReceptionTable();
+      return;
+    }
+    if (event.target.matches?.("[data-trash-select-all]")) {
+      event.stopPropagation();
+      const visibleTrash = applyAdminSearchFilters(state().receptions.filter(isDeleted)).filter(matchesDashboardQuickSearch);
+      trashSelectedIds = event.target.checked ? new Set(visibleTrash.map((rec) => rec.id)) : new Set();
+      renderReceptionTable();
+    }
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && hasOpenActionMenu()) {
       closeActionMenus();
@@ -5849,13 +5936,35 @@ function handleActions() {
       return;
     }
     const row = event.target.closest("[data-open-file-row]");
-    if (row && !event.target.closest("[data-action]")) {
+    if (row && !event.target.closest("[data-action], [data-trash-select-id], .trash-row-selector, .trash-card-selector")) {
       openAdminReceptionFile(row.dataset.openFileRow);
       return;
     }
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const action = button.dataset.action;
+    if (action === "purge-selected-trash") {
+      event.preventDefault();
+      const selectedRecords = state().receptions.filter((rec) => trashSelectedIds.has(rec.id) && isDeleted(rec));
+      if (!selectedRecords.length) return;
+      const label = selectedRecords.length === 1 ? selectedRecords[0].number : `${selectedRecords.length} expedientes`;
+      if (!confirm(`Eliminar definitivamente ${label}? Esta acción ya no se podrá restaurar desde papelera.`)) return;
+      const selectedIds = new Set(selectedRecords.map((rec) => rec.id));
+      AM_SIMPLE_STORE.mutate((current) => {
+        if (!Array.isArray(current.deletedReceptionNumbers)) current.deletedReceptionNumbers = [];
+        selectedRecords.forEach((rec) => {
+          if (rec.number && !current.deletedReceptionNumbers.includes(rec.number)) current.deletedReceptionNumbers.push(rec.number);
+        });
+        current.receptions = current.receptions.filter((rec) => !selectedIds.has(rec.id));
+        if (selectedIds.has(current.selectedId)) current.selectedId = "";
+      });
+      selectedRecords.forEach(removeEmployeeVehicleForReception);
+      trashSelectedIds.clear();
+      renderAdmin();
+      if (!await confirmCloudSaved(`${selectedRecords.length} expediente(s) eliminado(s) definitivamente.`, "purge-selected-trash")) return;
+      toast(`${selectedRecords.length} expediente(s) eliminado(s) definitivamente.`);
+      return;
+    }
     if (action === "toggle-mobile-admin-menu") {
       event.preventDefault();
       event.stopPropagation();
@@ -7738,7 +7847,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (page === "admin") compactLocalArchiveStores();
   if ((page === "admin" || page === "employee") && !requireLocalAccess(page)) return;
   if (page === "notificador" && !requireLocalAccess("admin")) return;
-  if (globalThis.AM_CLOUD_SYNC?.isReady?.() && ["admin", "client", "tracking", "notificador"].includes(page)) {
+  let publicCloudLoaded = true;
+  if (["client", "tracking"].includes(page)) {
+    publicCloudLoaded = !!(await loadPublicCloudReliably());
+  } else if (globalThis.AM_CLOUD_SYNC?.isReady?.() && ["admin", "notificador"].includes(page)) {
     try {
       await AM_CLOUD_SYNC.ready();
       if (page === "admin") cloudLog("Datos cargados desde nube.", "ok");
@@ -7761,8 +7873,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }));
   }
   if (page === "employee") renderEmployee();
-  if (page === "client") renderClient();
-  if (page === "tracking") renderTracking();
+  if (page === "client") publicCloudLoaded ? renderClient() : renderPublicCloudFailure(page);
+  if (page === "tracking") publicCloudLoaded ? renderTracking() : renderPublicCloudFailure(page);
   if (page === "notificador") {
     history.replaceState({ notifierMode: "choice" }, "", location.pathname + location.search);
     setNotifierMode("choice", false);

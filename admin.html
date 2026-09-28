@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="automotriz-medina-logo.png">
   <title>Administrador - AM Recepción Símple</title>
-  <link rel="stylesheet" href="assets/css/styles.css?v=mobile-admin-full-menu-1">
+  <link rel="stylesheet" href="assets/css/styles.css?v=trash-bulk-delete-1">
   <script defer src="pwa-register.js?v=archivo-oculto-1"></script>
   <style>
     [data-admin-file-tab="archivo"],
@@ -158,6 +158,11 @@
           </article>
           <article class="panel">
             <div class="panel-header"><div><h3>Recepciones</h3><p>Seleccione una recepción para abrir el perfil del cliente y expediente</p></div><a class="btn primary dashboard-reception-link" href="empleado.html">Recepción</a></div>
+            <div class="trash-bulk-toolbar hidden" data-trash-bulk-toolbar>
+              <label class="trash-select-all"><input type="checkbox" data-trash-select-all> Seleccionar todos</label>
+              <span data-trash-selected-count>0 seleccionados</span>
+              <button type="button" class="btn danger" data-action="purge-selected-trash" disabled>Eliminar seleccionados</button>
+            </div>
             <div class="mobile-vehicle-gallery" data-admin-mobile-gallery></div>
             <div class="table-wrap mobile-hidden-table">
               <table>
@@ -474,7 +479,7 @@
 <script src="assets/js/auth-guard.js?v=20260810-force3"></script>
 <script src="assets/js/cloud-sync.js?v=delete-confirmed-1"></script>
   <script src="assets/js/store.js?v=20260730-cloudcompact1"></script>
-<script src="assets/js/app.js?v=mobile-admin-full-menu-1"></script>
+  <script src="assets/js/app.js?v=trash-bulk-delete-1"></script>
 </body>
 </html>
 
