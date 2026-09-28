@@ -2442,17 +2442,29 @@ function renderNav() {
     });
   }));
   if (mobile) mobile.addEventListener("change", (event) => {
-    if (event.target.value === "archived-dashboard") {
-      adminDashboardFilter = "archived";
-      adminEmployeeFilter = "";
+    const value = event.target.value;
+    const dashboardOptions = {
+      dashboard: { filter: "all", employee: "" },
+      "workshop-dashboard": { filter: "workshop", employee: "" },
+      "employee-edwin-dashboard": { filter: "employee", employee: "edwin" },
+      "employee-cristian-dashboard": { filter: "employee", employee: "cristian" },
+      "employee-rafael-dashboard": { filter: "employee", employee: "rafael" },
+      "archived-dashboard": { filter: "archived", employee: "" },
+      "trash-dashboard": { filter: "trash", employee: "" }
+    };
+    const dashboardOption = dashboardOptions[value];
+    if (dashboardOption) {
+      adminDashboardFilter = dashboardOption.filter;
+      adminEmployeeFilter = dashboardOption.employee;
       adminLocalArchivePreviewRec = null;
       showSection("dashboard");
       renderReceptionTable();
       pushAdminHash("dashboard");
+      mobile.value = value;
       return;
     }
-    showSection(event.target.value);
-    if (event.target.value === "visor-local") loadLocalArchivedBackups().catch((error) => {
+    showSection(value);
+    if (value === "visor-local") loadLocalArchivedBackups().catch((error) => {
       console.warn("No se pudieron cargar archivados locales", error);
       renderLocalArchiveStatus("No se pudieron cargar los archivados locales.");
     });
@@ -3897,6 +3909,49 @@ function adminVehicleCloudStatus(rec) {
   return `<div class="vehicle-cloud-state ${status}"><span class="vehicle-cloud-pill">${label}</span>${retry}</div>`;
 }
 
+function mobileAdminAuthorizationStatus(rec) {
+  if (signatureNeedsAdminReview(rec)) {
+    return '<div class="mobile-authorization-state warn"><span>Autorización</span><strong>Firma capturada</strong></div>';
+  }
+  if (rec?.signed) {
+    return '<div class="mobile-authorization-state ok"><span>Autorización</span><strong>Autorizado</strong></div>';
+  }
+  if (rec?.express) {
+    return '<div class="mobile-authorization-state info"><span>Autorización</span><strong>No aplica</strong></div>';
+  }
+  return '<div class="mobile-authorization-state warn"><span>Autorización</span><strong>Pendiente</strong></div>';
+}
+
+function mobileAdminActionsMenu(rec) {
+  let actions = "";
+  if (isDeleted(rec)) {
+    actions = `
+      <button type="button" class="btn" data-action="download-backup" data-id="${esc(rec.id)}">Descargar respaldo</button>
+      <button type="button" class="btn" data-action="restore-trash-reception" data-id="${esc(rec.id)}">Restaurar al dashboard</button>
+      <button type="button" class="btn danger" data-action="purge-trash-reception" data-id="${esc(rec.id)}">Eliminar definitivamente</button>`;
+  } else if (isArchived(rec)) {
+    actions = `
+      <button type="button" class="btn primary" data-action="download-local-archive" data-id="${esc(rec.id)}">Descargar expediente</button>
+      <button type="button" class="btn" data-action="unarchive-reception" data-id="${esc(rec.id)}">Desarchivar</button>
+      ${rec.localArchiveConfirmedAt ? `<button type="button" class="btn danger" data-action="delete-cloud-archived" data-id="${esc(rec.id)}">Borrar de la nube</button>` : ""}
+      <button type="button" class="btn danger" data-action="delete-reception" data-id="${esc(rec.id)}">Mover a papelera</button>`;
+  } else {
+    actions = `
+      <button type="button" class="btn" data-action="grant-deadline-token" data-id="${esc(rec.id)}">Dar más tokens</button>
+      ${String(rec.status || "").toUpperCase() === "FINALIZADO" ? `<button type="button" class="btn primary" data-action="reactivate-reception" data-id="${esc(rec.id)}">Reactivar vehículo</button>` : ""}
+      <button type="button" class="btn" data-action="archive-reception" data-id="${esc(rec.id)}">Archivar</button>
+      <button type="button" class="btn danger" data-action="delete-reception" data-id="${esc(rec.id)}">Eliminar</button>`;
+  }
+  return `
+    <details class="action-menu mobile-admin-action-menu">
+      <summary class="btn mobile-admin-menu-trigger" data-action="toggle-mobile-admin-menu">Más opciones</summary>
+      <div class="action-menu-list">
+        <button type="button" class="btn" data-action="open-file" data-id="${esc(rec.id)}">Abrir expediente</button>
+        ${actions}
+      </div>
+    </details>`;
+}
+
 function renderMobileVehicleCard(rec, options = {}) {
   const photo = mobileVehiclePhoto(rec);
   const cardBackPhoto = mobileVehicleCardBackPhoto(rec);
@@ -3910,13 +3965,11 @@ function renderMobileVehicleCard(rec, options = {}) {
   const attrs = options.employee
     ? `data-action="open-employee-vehicle" data-id="${esc(rec.id)}"`
     : `data-open-file-row="${esc(rec.id)}"`;
-  const reviewBadge = signatureNeedsAdminReview(rec) ? '<span class="mobile-vehicle-alert">Firma</span>' : "";
+  const authorizationStatus = mobileAdminAuthorizationStatus(rec);
   const finalizationButton = !options.employee && finalizationNeedsPublish(rec)
     ? `<button type="button" class="btn primary mobile-publish-finalization" data-action="publish-finalization" data-id="${esc(rec.id)}">Publicar finalización</button>`
     : "";
-  const archiveButton = !options.employee && !isArchived(rec) && !isDeleted(rec)
-    ? `<button type="button" class="btn mobile-archive-reception" data-action="archive-reception" data-id="${esc(rec.id)}">Archivar</button>`
-    : "";
+  const adminActions = options.employee ? "" : mobileAdminActionsMenu(rec);
   return `
     <article class="mobile-vehicle-card" ${attrs} role="button" tabindex="0">
       <div class="mobile-vehicle-photo ${photo ? "" : "empty"}">
@@ -3925,7 +3978,7 @@ function renderMobileVehicleCard(rec, options = {}) {
       </div>
       <div class="mobile-vehicle-info">
         <span class="mobile-vehicle-status ${mobileVehicleStatusClass(status)}">${esc(status)}</span>
-        ${reviewBadge}
+        ${authorizationStatus}
         <strong>${esc(mobileVehicleTitle(rec))}</strong>
         <small>${esc(owner)}</small>
         ${subtitle ? `<em>${esc(subtitle)}</em>` : ""}
@@ -3934,8 +3987,8 @@ function renderMobileVehicleCard(rec, options = {}) {
         ${finalizationButton}
         <div class="mobile-vehicle-actions">
           <button type="button" class="mobile-card-link ${cardBackPhoto ? "" : "disabled"}" data-action="open-mobile-card-photo" data-id="${esc(rec.id)}" ${cardBackPhoto ? "" : "disabled"}>${cardBackPhoto ? "Tarjeta" : "Sin tarjeta"}</button>
-          ${archiveButton}
         </div>
+        ${adminActions}
       </div>
     </article>`;
 }
@@ -3982,6 +4035,7 @@ function renderAdminMobileGallery(records) {
         subtitle: `${rec.client?.name || "Cliente pendiente"} · ${rec.number || ""}`
       })).join("")
     : '<div class="mobile-gallery-empty">No hay vehículos en este filtro.</div>';
+  initActionMenus();
 }
 
 function closeImagePreview() {
@@ -5802,6 +5856,16 @@ function handleActions() {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const action = button.dataset.action;
+    if (action === "toggle-mobile-admin-menu") {
+      event.preventDefault();
+      event.stopPropagation();
+      const menu = button.closest(".action-menu");
+      if (menu) {
+        menu.open = !menu.open;
+        if (menu.open) closeActionMenus(menu);
+      }
+      return;
+    }
     if (button.closest(".action-menu")) setTimeout(() => closeActionMenus(), 0);
     if (action === "retry-admin-cloud") {
       event.preventDefault();

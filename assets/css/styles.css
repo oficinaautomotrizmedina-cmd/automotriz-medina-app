@@ -454,6 +454,25 @@ textarea { min-height: 104px; resize: vertical; }
 .mobile-status-warn { color: #f0b33d; }
 .mobile-status-danger { color: #ff5a62; }
 .mobile-vehicle-alert { color: #ffcf66; }
+.mobile-authorization-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 4px 0 3px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.07);
+  font-size: 11px;
+  line-height: 1.15;
+}
+.mobile-authorization-state span { color: #aeb8c1; font-weight: 700; }
+.mobile-authorization-state strong { font-size: 11px; text-transform: uppercase; }
+.mobile-authorization-state.ok strong { color: #65db91; }
+.mobile-authorization-state.warn strong { color: #ffcf66; }
+.mobile-authorization-state.info strong { color: #73d8e2; }
 .mobile-vehicle-info strong { font-size: 15px; line-height: 1.2; text-transform: uppercase; }
 .mobile-vehicle-info small { color: #a7a7a7; font-weight: 700; }
 .mobile-vehicle-info em { color: #7d7d7d; font-style: normal; font-size: 12px; }
@@ -532,15 +551,26 @@ textarea { min-height: 104px; resize: vertical; }
   margin-top: 6px;
 }
 .mobile-vehicle-actions .mobile-card-link { margin-top: 0; }
-.mobile-archive-reception {
-  min-height: 34px;
-  padding: 6px 12px;
-  border-color: rgba(240, 179, 61, .5);
-  background: rgba(240, 179, 61, .16);
-  color: #ffd77d;
-  font-size: 12px;
+.mobile-admin-action-menu { margin-top: 8px; }
+.mobile-admin-action-menu > .mobile-admin-menu-trigger {
+  width: 100%;
+  min-height: 42px;
+  border-color: rgba(125, 211, 216, .4);
+  background: rgba(32, 111, 120, .2);
+  color: #dffbff;
+  font-size: 13px;
   font-weight: 900;
 }
+.mobile-admin-action-menu .action-menu-list {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  margin-top: 8px;
+  background: #1b1b1b;
+  border-color: rgba(255, 255, 255, .12);
+  box-shadow: none;
+}
+.mobile-admin-action-menu .action-menu-list .btn { min-height: 44px; }
 .mobile-card-viewer {
   position: fixed;
   inset: 0;
