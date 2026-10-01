@@ -1,4 +1,4 @@
-var AM_SW_VERSION = 'am-pwa-trash-bulk-delete-20260928-1';
+var AM_SW_VERSION = 'am-pwa-preserve-all-records-20261001-1';
 var AM_OUTBOX_DB = 'am_cloud_outbox_v1';
 var AM_OUTBOX_STORE = 'jobs';
 var AM_OUTBOX_KEY = 'latest';
@@ -77,6 +77,58 @@ async function postCloud(job, action, payload) {
   return data;
 }
 
+function recordKeys(item) {
+  return [item && item.id, item && item.number, item && item.rec, item && item.vehicleId]
+    .map(function (value) { return String(value || '').trim(); })
+    .filter(Boolean);
+}
+
+function recordsMatch(left, right) {
+  var leftKeys = recordKeys(left);
+  return recordKeys(right).some(function (key) { return leftKeys.indexOf(key) >= 0; });
+}
+
+function mediaCount(list) {
+  return (Array.isArray(list) ? list : []).filter(function (item) {
+    return String(item && (item.dataUrl || item.url) || '').trim();
+  }).length;
+}
+
+function preserveRicherMedia(localItem, remoteItem) {
+  ['photos', 'invoices'].forEach(function (field) {
+    var local = Array.isArray(localItem[field]) ? localItem[field] : [];
+    var remote = Array.isArray(remoteItem[field]) ? remoteItem[field] : [];
+    if (mediaCount(remote) > mediaCount(local)) localItem[field] = remote;
+  });
+}
+
+function preserveRemoteSnapshot(outgoing, remote) {
+  if (!outgoing || !remote) return outgoing;
+  outgoing.appState = outgoing.appState || { receptions: [], deletedReceptionNumbers: [] };
+  outgoing.employeeState = outgoing.employeeState || { selected: '', seq: 0, vehicles: [] };
+  outgoing.appState.receptions = Array.isArray(outgoing.appState.receptions) ? outgoing.appState.receptions : [];
+  outgoing.employeeState.vehicles = Array.isArray(outgoing.employeeState.vehicles) ? outgoing.employeeState.vehicles : [];
+  var deleted = (Array.isArray(outgoing.appState.deletedReceptionNumbers) ? outgoing.appState.deletedReceptionNumbers : [])
+    .map(function (value) { return String(value || '').trim(); });
+  var explicitlyDeleted = function (item) {
+    return recordKeys(item).some(function (key) { return deleted.indexOf(key) >= 0; });
+  };
+
+  (Array.isArray(remote.appState && remote.appState.receptions) ? remote.appState.receptions : []).forEach(function (remoteRec) {
+    if (explicitlyDeleted(remoteRec)) return;
+    var localRec = outgoing.appState.receptions.find(function (item) { return recordsMatch(item, remoteRec); });
+    if (localRec) preserveRicherMedia(localRec, remoteRec);
+    else outgoing.appState.receptions.push(remoteRec);
+  });
+  (Array.isArray(remote.employeeState && remote.employeeState.vehicles) ? remote.employeeState.vehicles : []).forEach(function (remoteVehicle) {
+    if (explicitlyDeleted(remoteVehicle)) return;
+    var localVehicle = outgoing.employeeState.vehicles.find(function (item) { return recordsMatch(item, remoteVehicle); });
+    if (localVehicle) preserveRicherMedia(localVehicle, remoteVehicle);
+    else outgoing.employeeState.vehicles.push(remoteVehicle);
+  });
+  return outgoing;
+}
+
 async function processBackgroundSync() {
   var openWindows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   if (openWindows.some(function (client) { return client.visibilityState === 'visible'; })) return;
@@ -95,7 +147,9 @@ async function processBackgroundSync() {
     await writeOutbox(job);
     await notifyOutboxClients('pending', job);
     try {
-      await postCloud(job, 'saveSnapshot', { reason: 'background-' + job.reason, snapshot: job.snapshot });
+      var currentCloud = await postCloud(job, 'loadLatest', {});
+      var protectedSnapshot = preserveRemoteSnapshot(job.snapshot, currentCloud && currentCloud.snapshot);
+      await postCloud(job, 'saveSnapshot', { reason: 'background-' + job.reason, snapshot: protectedSnapshot });
     } catch (_) {}
   }
   var latest = await postCloud(job, 'loadLatest', {});

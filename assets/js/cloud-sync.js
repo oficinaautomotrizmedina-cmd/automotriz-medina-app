@@ -172,10 +172,45 @@
     return best;
   }
 
+  function recordMatches(left, right) {
+    const leftKeys = new Set(invoiceKeys(left));
+    return invoiceKeys(right).some((key) => leftKeys.has(key));
+  }
+
+  function preserveRemoteOnlyRecords(outgoing, remote) {
+    if (!outgoing || !remote) return outgoing;
+    outgoing.appState ||= defaultAppState();
+    outgoing.employeeState ||= { selected: "", seq: 0, vehicles: [] };
+    outgoing.appState.receptions = Array.isArray(outgoing.appState.receptions) ? outgoing.appState.receptions : [];
+    outgoing.employeeState.vehicles = Array.isArray(outgoing.employeeState.vehicles) ? outgoing.employeeState.vehicles : [];
+
+    const deleted = new Set(
+      (Array.isArray(outgoing.appState.deletedReceptionNumbers) ? outgoing.appState.deletedReceptionNumbers : [])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    );
+    const wasExplicitlyDeleted = (item) => invoiceKeys(item).some((key) => deleted.has(key));
+
+    (Array.isArray(remote.appState?.receptions) ? remote.appState.receptions : []).forEach((remoteRec) => {
+      if (wasExplicitlyDeleted(remoteRec)) return;
+      if (!outgoing.appState.receptions.some((localRec) => recordMatches(localRec, remoteRec))) {
+        outgoing.appState.receptions.push(structuredClone(remoteRec));
+      }
+    });
+    (Array.isArray(remote.employeeState?.vehicles) ? remote.employeeState.vehicles : []).forEach((remoteVehicle) => {
+      if (wasExplicitlyDeleted(remoteVehicle)) return;
+      if (!outgoing.employeeState.vehicles.some((localVehicle) => recordMatches(localVehicle, remoteVehicle))) {
+        outgoing.employeeState.vehicles.push(structuredClone(remoteVehicle));
+      }
+    });
+    return outgoing;
+  }
+
   async function preserveRemoteProtectedMedia(outgoing) {
     const data = await post("loadLatest", {});
     const remote = data?.snapshot;
     if (!remote) return outgoing;
+    preserveRemoteOnlyRecords(outgoing, remote);
     const photoScore = (list) => list.filter((item) => String(item?.dataUrl || "").trim()).length;
     const invoiceScore = (list) => list.filter((item) => String(item?.dataUrl || item?.url || "").trim()).length;
     const remotePhotos = richestRemoteMedia(remote, "photos", photoScore);
