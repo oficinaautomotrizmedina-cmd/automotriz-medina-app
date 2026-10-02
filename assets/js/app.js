@@ -80,10 +80,16 @@ function requireLocalAccess(page) {
   return true;
 }
 
-const AM_IMAGE_MAX = 2048;
-const AM_IMAGE_QUALITY = 0.9;
+const AM_IMAGE_QUALITY = 0.5;
+const AM_CARD_BACK_IMAGE_QUALITY = 0.7;
 
-function compressImageDataUrl(src, max = AM_IMAGE_MAX, quality = AM_IMAGE_QUALITY) {
+function imageQualityForLabel(label = "") {
+  return /(?:tarjeta.*reverso|reverso.*tarjeta)/i.test(String(label))
+    ? AM_CARD_BACK_IMAGE_QUALITY
+    : AM_IMAGE_QUALITY;
+}
+
+function compressImageDataUrl(src, quality = AM_IMAGE_QUALITY) {
   return new Promise((resolve) => {
     if (!src || !String(src).startsWith("data:image/")) {
       resolve(src || "");
@@ -92,13 +98,12 @@ function compressImageDataUrl(src, max = AM_IMAGE_MAX, quality = AM_IMAGE_QUALIT
     const img = new Image();
     img.onload = () => {
       try {
-        const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
         const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round((img.width || 1) * scale));
-        canvas.height = Math.max(1, Math.round((img.height || 1) * scale));
+        canvas.width = Math.max(1, img.naturalWidth || img.width || 1);
+        canvas.height = Math.max(1, img.naturalHeight || img.height || 1);
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const out = canvas.toDataURL("image/jpeg", quality);
+        const out = canvas.toDataURL("image/webp", quality);
         resolve(out && out.length < src.length ? out : src);
       } catch {
         resolve(src);
@@ -109,11 +114,11 @@ function compressImageDataUrl(src, max = AM_IMAGE_MAX, quality = AM_IMAGE_QUALIT
   });
 }
 
-function readFile(input, callback) {
+function readFile(input, callback, quality = AM_IMAGE_QUALITY) {
   const file = input.files && input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async () => callback(await compressImageDataUrl(reader.result));
+  reader.onload = async () => callback(await compressImageDataUrl(reader.result, quality));
   reader.readAsDataURL(file);
 }
 
@@ -7561,12 +7566,13 @@ function handleActions() {
     }
     if (input.matches("[data-photo-index]") && input.dataset.damagePhoto == null) {
       const index = Number(input.dataset.photoIndex);
+      const quality = imageQualityForLabel(selected()?.photos?.[index]?.label);
       readFile(input, (dataUrl) => {
         AM_SIMPLE_STORE.mutate((current) => {
           AM_SIMPLE_STORE.selected(current).photos[index].dataUrl = dataUrl;
         });
         renderPhotoEditor();
-      });
+      }, quality);
     }
     if (input.matches("[data-damage-photo]")) {
       const damageId = input.dataset.damagePhoto;
@@ -7581,13 +7587,14 @@ function handleActions() {
     }
     if (input.matches("[data-admin-photo-index]")) {
       const photoIndex = Number(input.dataset.adminPhotoIndex);
+      const quality = imageQualityForLabel(selected()?.photos?.[photoIndex]?.label);
       readFile(input, (dataUrl) => {
         AM_SIMPLE_STORE.mutate((current) => {
           const rec = AM_SIMPLE_STORE.selected(current);
           if (rec.photos[photoIndex]) rec.photos[photoIndex].dataUrl = dataUrl;
         });
         renderAdmin();
-      });
+      }, quality);
     }
     if (input.matches("[data-admin-detail-image]")) {
       const rec = selected();

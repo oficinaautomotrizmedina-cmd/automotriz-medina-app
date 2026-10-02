@@ -1,4 +1,4 @@
-var AM_SW_VERSION = 'am-pwa-preserve-all-records-20261001-1';
+var AM_SW_VERSION = 'am-pwa-image-weight-20261002-1';
 var AM_OUTBOX_DB = 'am_cloud_outbox_v1';
 var AM_OUTBOX_STORE = 'jobs';
 var AM_OUTBOX_KEY = 'latest';

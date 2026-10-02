@@ -27,8 +27,8 @@
   let outboxIndicatorTimer = null;
   const invoiceCache = new Map();
   const photoCache = new Map();
-  const IMAGE_MAX = 2048;
-  const IMAGE_QUALITY = 0.9;
+  const IMAGE_QUALITY = 0.5;
+  const CARD_BACK_IMAGE_QUALITY = 0.7;
   const IMAGE_LIMIT = 220000;
 
   function readJson(key, fallback = null) {
@@ -232,21 +232,26 @@
     return outgoing;
   }
 
-  function compressImageDataUrl(src, max = IMAGE_MAX, quality = IMAGE_QUALITY) {
+  function imageQualityForLabel(label = "") {
+    return /(?:tarjeta.*reverso|reverso.*tarjeta)/i.test(String(label))
+      ? CARD_BACK_IMAGE_QUALITY
+      : IMAGE_QUALITY;
+  }
+
+  function compressImageDataUrl(src, quality = IMAGE_QUALITY) {
     return new Promise((resolve) => {
-      if (!src || !String(src).startsWith("data:image/") || String(src).length <= IMAGE_LIMIT) {
+      if (!src || !String(src).startsWith("data:image/") || /^data:image\/webp/i.test(String(src)) || String(src).length <= IMAGE_LIMIT) {
         resolve(src || "");
         return;
       }
       const img = new Image();
       img.onload = () => {
         try {
-          const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
           const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round((img.width || 1) * scale));
-          canvas.height = Math.max(1, Math.round((img.height || 1) * scale));
+          canvas.width = Math.max(1, img.naturalWidth || img.width || 1);
+          canvas.height = Math.max(1, img.naturalHeight || img.height || 1);
           canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-          const out = canvas.toDataURL("image/jpeg", quality);
+          const out = canvas.toDataURL("image/webp", quality);
           resolve(out && out.length < src.length ? out : src);
         } catch {
           resolve(src);
@@ -258,7 +263,7 @@
   }
 
   async function compactPhoto(photo) {
-    if (photo && photo.dataUrl) photo.dataUrl = await compressImageDataUrl(photo.dataUrl);
+    if (photo && photo.dataUrl) photo.dataUrl = await compressImageDataUrl(photo.dataUrl, imageQualityForLabel(photo.label));
   }
 
   async function compactImageRows(rows) {
