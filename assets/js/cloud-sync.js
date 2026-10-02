@@ -359,7 +359,7 @@
     const runSave = async () => {
       saving = true;
       try {
-        let outgoing = await compactSnapshotImages(fixedSnapshot || snapshot());
+        let outgoing = fixedSnapshot || snapshot();
         outgoing = await preserveRemoteProtectedMedia(outgoing);
         const result = await post("saveSnapshot", { reason, snapshot: outgoing });
         try { localStorage.removeItem(LOCAL_WRITE_KEY); } catch {}
@@ -394,7 +394,7 @@
 
   async function fetchLatest() {
     const data = await post("loadLatest", {});
-    return compactSnapshotImages(data.snapshot || null);
+    return data.snapshot || null;
   }
 
   function receptionKey(rec) {
@@ -762,7 +762,7 @@
   }
 
   async function loadLatest() {
-    return applySnapshot(await compactSnapshotImages(await fetchLatest()));
+    return applySnapshot(await fetchLatest());
   }
 
   function ready() {
