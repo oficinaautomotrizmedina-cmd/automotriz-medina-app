@@ -324,7 +324,11 @@
     const cfg = config();
     if (!cfg.endpoint) throw new Error("No se ha configurado la URL de Apps Script.");
     const controller = new AbortController();
-    const timeoutMs = action === "saveSnapshot" ? 90000 : 22000;
+    const timeoutMs = action === "saveSnapshot"
+      ? 300000
+      : action === "loadLatest"
+        ? 300000
+        : 45000;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     let text;

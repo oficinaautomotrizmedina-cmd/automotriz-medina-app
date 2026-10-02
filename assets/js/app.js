@@ -7901,6 +7901,48 @@ window.addEventListener("pageshow", (event) => {
   if (event.persisted) renderClient();
 });
 
+let adminCloudRefreshPromise = null;
+let adminHiddenAt = 0;
+
+function refreshAdminDashboardFromCloud() {
+  if (document.body.dataset.page !== "admin" || !globalThis.AM_CLOUD_SYNC?.isReady?.()) return Promise.resolve(null);
+  if (adminCloudRefreshPromise) return adminCloudRefreshPromise;
+  adminCloudRefreshPromise = AM_CLOUD_SYNC.loadLatest()
+    .then((snapshot) => {
+      if (!snapshot) return null;
+      renderNav();
+      renderTabs();
+      renderAdmin();
+      return snapshot;
+    })
+    .catch((error) => {
+      console.warn("No se pudo actualizar el dashboard al volver a la aplicacion", error);
+      return null;
+    })
+    .finally(() => {
+      adminCloudRefreshPromise = null;
+    });
+  return adminCloudRefreshPromise;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.body.dataset.page !== "admin") return;
+  if (document.hidden) {
+    adminHiddenAt = Date.now();
+    return;
+  }
+  if (adminHiddenAt && Date.now() - adminHiddenAt >= 15000) refreshAdminDashboardFromCloud();
+  adminHiddenAt = 0;
+});
+
+window.addEventListener("pageshow", (event) => {
+  if (document.body.dataset.page === "admin" && event.persisted) refreshAdminDashboardFromCloud();
+});
+
+window.addEventListener("online", () => {
+  if (document.body.dataset.page === "admin") refreshAdminDashboardFromCloud();
+});
+
 window.addEventListener("hashchange", () => {
   if (document.body.dataset.page !== "admin") return;
   applyAdminHashRoute();
