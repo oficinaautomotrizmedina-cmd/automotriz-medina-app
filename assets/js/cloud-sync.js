@@ -106,10 +106,18 @@
   }
 
   function cachedPhotos(item) {
+    let richest = null;
+    let richestCount = -1;
     for (const key of invoiceKeys(item)) {
-      if (photoCache.has(key)) return photoCache.get(key).map((photo) => ({ ...photo }));
+      if (!photoCache.has(key)) continue;
+      const candidate = photoCache.get(key) || [];
+      const count = candidate.filter((photo) => photo?.dataUrl).length;
+      if (count > richestCount) {
+        richest = candidate;
+        richestCount = count;
+      }
     }
-    return null;
+    return richest ? richest.map((photo) => ({ ...photo })) : null;
   }
 
   function mergeCachedInvoices(snap) {
@@ -395,6 +403,46 @@
   async function fetchLatest() {
     const data = await post("loadLatest", {});
     return data.snapshot || null;
+  }
+
+  function snapshotImageSources(snap) {
+    const sources = new Set();
+    const collectPhotos = (item) => {
+      (Array.isArray(item?.photos) ? item.photos : []).forEach((photo) => {
+        const src = String(photo?.dataUrl || "");
+        if (src.startsWith("data:image/")) sources.add(src);
+      });
+    };
+    (snap?.appState?.receptions || []).forEach(collectPhotos);
+    (snap?.employeeState?.vehicles || []).forEach(collectPhotos);
+    return [...sources];
+  }
+
+  function waitForImageSource(src, timeout = 15000) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      let finished = false;
+      const done = (ok) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        img.onload = null;
+        img.onerror = null;
+        resolve(ok);
+      };
+      const timer = setTimeout(() => done(false), timeout);
+      img.onload = () => done(true);
+      img.onerror = () => done(false);
+      img.src = src;
+    });
+  }
+
+  async function waitForSnapshotImages(snap) {
+    const sources = snapshotImageSources(snap);
+    for (let index = 0; index < sources.length; index += 2) {
+      await Promise.all(sources.slice(index, index + 2).map((src) => waitForImageSource(src)));
+    }
+    return snap;
   }
 
   function receptionKey(rec) {
@@ -762,7 +810,9 @@
   }
 
   async function loadLatest() {
-    return applySnapshot(await fetchLatest());
+    const snap = await fetchLatest();
+    await waitForSnapshotImages(snap);
+    return applySnapshot(snap);
   }
 
   function ready() {
