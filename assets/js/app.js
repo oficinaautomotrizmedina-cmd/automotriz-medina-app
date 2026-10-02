@@ -5331,9 +5331,9 @@ async function loadPublicCloudReliably() {
   const attempts = [0, 1800, 4200];
   for (let index = 0; index < attempts.length; index += 1) {
     if (attempts[index]) await waitForPublicCloudRetry(attempts[index]);
-    publicCloudLoadingNote(index === 0
-      ? "Estamos preparando la informaci\u00f3n y las fotograf\u00edas de tu veh\u00edculo."
-      : `La conexi\u00f3n est\u00e1 tardando. Reintentando la carga (${index + 1} de ${attempts.length})...`);
+    if (index === 0) {
+      publicCloudLoadingNote("Estamos preparando la informaci\u00f3n y las fotograf\u00edas de tu veh\u00edculo.");
+    }
     try {
       const snapshot = index === 0
         ? await AM_CLOUD_SYNC.ready()

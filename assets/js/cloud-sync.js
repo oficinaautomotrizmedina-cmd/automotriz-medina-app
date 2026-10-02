@@ -407,14 +407,42 @@
 
   function snapshotImageSources(snap) {
     const sources = new Set();
-    const collectPhotos = (item) => {
-      (Array.isArray(item?.photos) ? item.photos : []).forEach((photo) => {
-        const src = String(photo?.dataUrl || "");
-        if (src.startsWith("data:image/")) sources.add(src);
-      });
+    const seen = new WeakSet();
+    const collectImages = (value) => {
+      if (typeof value === "string") {
+        if (value.startsWith("data:image/")) sources.add(value);
+        return;
+      }
+      if (!value || typeof value !== "object" || seen.has(value)) return;
+      seen.add(value);
+      Object.values(value).forEach(collectImages);
     };
-    (snap?.appState?.receptions || []).forEach(collectPhotos);
-    (snap?.employeeState?.vehicles || []).forEach(collectPhotos);
+
+    const page = String(document.body?.dataset?.page || "");
+    if (page !== "tracking" && page !== "client") return [];
+
+    const collectPublicImages = (item) => {
+      collectImages(item?.photos);
+      collectImages(item?.trackingImages);
+      if (page === "client") {
+        collectImages(item?.signatureDataUrl);
+        collectImages(item?.authorizationEvidence?.signatureDataUrl);
+      }
+    };
+
+    const params = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : "");
+    hashParams.forEach((value, name) => {
+      if (!params.has(name)) params.set(name, value);
+    });
+    const token = String(params.get("token") || "").trim();
+    if (!token) return [];
+
+    const tokenKey = page === "tracking" ? "trackingToken" : "clientToken";
+    const receptions = Array.isArray(snap?.appState?.receptions) ? snap.appState.receptions : [];
+    const vehicles = Array.isArray(snap?.employeeState?.vehicles) ? snap.employeeState.vehicles : [];
+    receptions.filter((item) => String(item?.[tokenKey] || "") === token).forEach(collectPublicImages);
+    vehicles.filter((item) => String(item?.[tokenKey] || "") === token).forEach(collectPublicImages);
     return [...sources];
   }
 
@@ -440,7 +468,10 @@
   async function waitForSnapshotImages(snap) {
     const sources = snapshotImageSources(snap);
     for (let index = 0; index < sources.length; index += 2) {
-      await Promise.all(sources.slice(index, index + 2).map((src) => waitForImageSource(src)));
+      const results = await Promise.all(sources.slice(index, index + 2).map((src) => waitForImageSource(src)));
+      if (results.some((ready) => !ready)) {
+        throw new Error("No se pudieron preparar todas las fotografias del expediente.");
+      }
     }
     return snap;
   }

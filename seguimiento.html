@@ -45,7 +45,7 @@
 <body data-page="tracking" class="tracking-page tracking-booting">
   <div class="tracking-loading-screen" data-tracking-loading>
     <div class="tracking-loading-card">
-      <h2>Cargando datos del veh&iacute;culo</h2>
+      <h2 data-tracking-loading-title>Cargando datos del veh&iacute;culo</h2>
       <div class="tracking-loading-logo-wrap" aria-hidden="true">
         <img class="tracking-loading-logo" src="automotriz-medina-logo.png" alt="">
       </div>
@@ -73,13 +73,14 @@
   <main class="tracking-main">
     <section class="tracking-card" data-tracking-view></section>
   </main>
-<script src="assets/js/cloud-sync.js?v=image-ready-1"></script>
+<script src="assets/js/cloud-sync.js?v=public-image-ready-2"></script>
   <script src="assets/js/store.js?v=20260820-tracking-notice1"></script>
-<script src="assets/js/app.js?v=image-weight-1"></script>
+<script src="assets/js/app.js?v=public-image-ready-2"></script>
 <script>
   (function () {
     const overlay = document.querySelector('[data-tracking-loading]');
     if (!overlay) return;
+    const title = overlay.querySelector('[data-tracking-loading-title]');
     const note = overlay.querySelector('[data-tracking-loading-note]');
     let hidden = false;
     function trackingIsReady() {
@@ -106,8 +107,10 @@
     setTimeout(checkReady, 500);
     setTimeout(checkReady, 1200);
     setTimeout(() => {
-      if (!hidden && note) note.textContent = 'La conexi\u00f3n est\u00e1 tardando un poco. Seguimos sincronizando la informaci\u00f3n.';
-    }, 7000);
+      if (hidden) return;
+      if (title) title.textContent = 'Conexi\u00f3n lenta';
+      if (note) note.textContent = 'Tu conexi\u00f3n a internet parece estar lenta o inestable. La informaci\u00f3n de tu veh\u00edculo puede tardar un poco m\u00e1s en mostrarse. Mant\u00e9n esta pantalla abierta mientras completamos la carga.';
+    }, 15000);
   }());
 </script>
 </body>
